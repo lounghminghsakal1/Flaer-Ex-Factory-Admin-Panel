@@ -47,21 +47,25 @@ function generateProducts(baseName, properties) {
 
   if (!validProps.length) return [];
 
-  const propValues = validProps.map(p =>
-    p.values.map(v => v)
-  );
+  // ✅ FIX: Generate one product per property value (not cartesian)
+  const allProducts = [];
+  let productId = 1;
 
-  const combinations = cartesian(propValues);
+  validProps.forEach(prop => {
+    prop.values.forEach(value => {
+      allProducts.push({
+        id: productId++,
+        name: `${baseName} ${value}`.trim(),
+        properties: [{
+          name: prop.name,
+          value: value
+        }],
+        skuCount: 0
+      });
+    });
+  });
 
-  return combinations.map((combo, idx) => ({
-    id: idx + 1,
-    name: `${baseName} ${combo.join(" ")}`.trim(),
-    properties: validProps.map((p, i) => ({
-      name: p.name,
-      value: combo[i]
-    })),
-    skuCount: 0
-  }));
+  return allProducts;
 }
 
 function generateSkus(productName, options) {
@@ -69,10 +73,15 @@ function generateSkus(productName, options) {
     o => o.type && o.values.length > 0
   );
 
-  if (!validOpts.length) return [];
+  if (!validOpts.length) {
+    // ✅ If no options, create one default SKU
+    return [{
+      sku_name: productName,
+      option_type_values: []
+    }];
+  }
 
   const optValues = validOpts.map(o => o.values);
-
   const combinations = cartesian(optValues);
 
   return combinations.map((combo) => ({
@@ -104,8 +113,6 @@ export default function ProductAttributes({
     { type: "", values: [], input: "" }
   ]);
 
-  const [productMedia, setProductMedia] = useState([]);
-
   /*
   productMedia = [
     {
@@ -118,10 +125,12 @@ export default function ProductAttributes({
     }
   ]
   */
-
   const [productContents, setProductContents] = useState([
     { content_type: "", content_value: "" }
   ]);
+
+  const [productMedia, setProductMedia] = useState([]);
+
 
   //  THIS useEffect to disable property/option editing in edit mode
   useEffect(() => {
@@ -305,9 +314,29 @@ export default function ProductAttributes({
     updated[index].input = "";
     setProperties(updated);
 
-    // ✅ AUTO-GENERATE PRODUCTS
+    //  AUTO-GENERATE PRODUCTS
     const newProducts = generateProducts(formData.name, updated);
     setGeneratedProducts(newProducts);
+
+    // ✅ ALWAYS generate SKUs for new products (even if no options yet)
+    setTimeout(() => {
+      if (options.some(o => o.type && o.values.length > 0)) {
+        handleCreateSkus();
+      } else {
+        // Create products with empty SKUs array if no options exist yet
+        setProducts(
+          newProducts.map(gp => ({
+            name: gp.name,
+            display_name: gp.name,
+            product_properties: gp.properties.map(prop => ({
+              property_name: prop.name,
+              property_value: prop.value
+            })),
+            product_skus: []
+          }))
+        );
+      }
+    }, 0);
   };
 
   const removePropertyValue = (row, valueIndex) => {
@@ -334,6 +363,11 @@ export default function ProductAttributes({
     const updated = [...options];
     const value = updated[index].input.trim();
 
+    if (!updated[index].type) {
+      alert("Please select option type first");
+      return;
+    }
+
     if (!value) return;
     if (updated[index].values.includes(value)) return;
 
@@ -341,8 +375,18 @@ export default function ProductAttributes({
     updated[index].input = "";
     setOptions(updated);
 
-    // ✅ AUTO-GENERATE/UPDATE SKUs
-    handleCreateSkus();
+    // ✅ AUTO-GENERATE/UPDATE SKUs for ALL products immediately
+    setTimeout(() => {
+      if (generatedProducts.length > 0) {
+        const tempSkus = generatedProducts.map(gp => ({
+          product: gp,
+          skus: generateSkus(gp.name, updated)
+        }));
+
+        console.log("Generated SKUs:", tempSkus); // ✅ Debug log
+        handleCreateSkus();
+      }
+    }, 0);
   };
 
   const removeOptionValue = (row, valueIndex) => {
@@ -367,81 +411,48 @@ export default function ProductAttributes({
   function handleCreateSkus() {
     if (!generatedProducts.length) return;
 
+    // ✅ Use current options state
+    const currentOptions = options.filter(o => o.type && o.values.length > 0);
+
+    console.log("Creating SKUs with options:", currentOptions); // ✅ Debug
+
     setProducts(prev => {
       const safePrev = Array.isArray(prev) ? prev : [];
 
-      // If products array is empty, generate fresh
-      if (safePrev.length === 0) {
-        return generatedProducts.map(p => {
-          const skus = generateSkus(p.name, options);
-
-          return {
-            name: p.name, // ✅ already contains base product name
-            display_name: p.name,
-            product_properties: (p.properties ?? []).map(prop => ({
-              property_name: prop.name,
-              property_value: prop.value
-            })),
-            product_skus: skus.map((s, idx) => ({
-              sku_name: s.sku_name,
-              display_name: s.sku_name,
-              display_name_edited: false,
-              sku_code: "",
-              mrp: "",
-              selling_price: "",
-              unit_price: "",
-              dimension: "",
-              weight: "",
-              conversion_factor: 1,
-              multiplication_factor: 1,
-              uom: "pcs",
-              threshold_quantity: 1,
-              status: "active",
-              master: idx === 0,
-              option_type_values: s.option_type_values ?? [],
-              sku_media: []
-            }))
-          };
-        });
-      }
-
-      // Merge with existing products
-      return generatedProducts.map(genProd => {
+      const newProducts = generatedProducts.map(genProd => {
         const existingProduct = safePrev.find(
           p => p.name === genProd.name
         );
 
-        const newSkus = generateSkus(genProd.name, options);
+        // ✅ Pass current options explicitly
+        const newSkus = generateSkus(genProd.name, currentOptions);
+
+        console.log(`Product: ${genProd.name}, SKUs:`, newSkus); // ✅ Debug
 
         const mergedSkus = newSkus.map((newSku, idx) => {
-          const existingSku =
-            existingProduct?.product_skus?.find(
-              old => old.sku_name === newSku.sku_name
-            );
-
-          return (
-            existingSku ?? {
-              sku_name: newSku.sku_name,
-              display_name: newSku.sku_name,
-              display_name_edited: false,
-              sku_code: "",
-              mrp: "",
-              selling_price: "",
-              unit_price: "",
-              dimension: "",
-              weight: "",
-              conversion_factor: 1,
-              multiplication_factor: 1,
-              uom: "pcs",
-              threshold_quantity: 1,
-              status: "active",
-              master:
-                idx === 0 &&
-                !(existingProduct?.product_skus ?? []).some(s => s.master),
-              option_type_values: newSku.option_type_values ?? [],
-              sku_media: []
-            }
+          const existingSku = existingProduct?.product_skus?.find(
+            old => old.sku_name === newSku.sku_name
           );
+
+          return existingSku ?? {
+            sku_name: newSku.sku_name,
+            display_name: newSku.sku_name,
+            display_name_edited: false,
+            sku_code: "",
+            mrp: "",
+            selling_price: "",
+            unit_price: "",
+            dimension: "",
+            weight: "",
+            conversion_factor: 1,
+            multiplication_factor: 1,
+            uom: "pcs",
+            threshold_quantity: 1,
+            status: "active",
+            master: idx === 0 && !(existingProduct?.product_skus ?? []).some(s => s.master),
+            option_type_values: newSku.option_type_values ?? [],
+            sku_media: []
+          };
         });
 
         return {
@@ -454,7 +465,17 @@ export default function ProductAttributes({
           product_skus: mergedSkus
         };
       });
+
+      return newProducts;
     });
+
+    // ✅ Update SKU count
+    setGeneratedProducts(prev =>
+      prev.map(gp => ({
+        ...gp,
+        skuCount: generateSkus(gp.name, currentOptions).length
+      }))
+    );
   }
 
   return (
@@ -576,6 +597,11 @@ export default function ProductAttributes({
                     const updated = [...options];
                     updated[i].type = value;
                     setOptions(updated);
+                    if (updated[i].values.length > 0 && generatedProducts.length > 0) {
+                      setTimeout(() => {
+                        handleCreateSkus();
+                      }, 0);
+                    }
                   }}
                   placeholder="Select option"
                   emptyMessage="No option types available"
@@ -689,7 +715,7 @@ export default function ProductAttributes({
               </h4>
 
               <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible">
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
@@ -987,7 +1013,7 @@ export default function ProductAttributes({
                           )}
 
                           {/* UOM */}
-                          <td className="px-2 py-1">
+                          <td className="px-2 py-1" style={{ position: 'relative', zIndex: 9999 }}>
                             <SearchableDropdown
                               options={[
                                 { id: 'pcs', name: 'Pcs' },
@@ -1016,7 +1042,7 @@ export default function ProductAttributes({
                           </td>
 
                           {/* STATUS */}
-                          <td className="px-2 py-1">
+                          <td className="px-2 py-1" style={{ position: 'relative', zIndex: 9999 }}>
                             <SearchableDropdown
                               options={[
                                 { id: 'active', name: 'Active' },
@@ -1299,7 +1325,7 @@ export default function ProductAttributes({
         </div>
       )}
 
-      {generatedProducts.map((p, index) => (
+      {/* {generatedProducts.map((p, index) => (
         <div key={p.id} className="border rounded-lg p-4 mt-6">
           <ProductContentSection
             product={p}
@@ -1315,46 +1341,61 @@ export default function ProductAttributes({
             setMediaPopup={setMediaPopup}
           />
         </div>
-      ))}
+      ))} */}
+
+      {/* ================= GLOBAL PRODUCT CONTENT ================= */}
+      <ProductContentSection
+        productContents={productContents}
+        setProductContents={setProductContents}
+      />
+
+      {/* ================= GLOBAL PRODUCT MEDIA ================= */}
+      <ProductMediaSection
+        productMedia={productMedia}
+        setProductMedia={setProductMedia}
+        uploadMediaFiles={uploadMediaFiles}
+        setMediaPopup={setMediaPopup}
+      />
+
 
     </div>
   );
 }
 
-function ProductContentSection({ product, index, setGeneratedProducts }) {
+function ProductContentSection({ productContents, setProductContents }) {
   // Ensure at least one row exists on render
-  const productContents = product.product_contents && product.product_contents.length > 0
-    ? product.product_contents
-    : [{ content_type: "", content_value: "" }];
+  // const productContents = product.product_contents && product.product_contents.length > 0
+  //   ? product.product_contents
+  //   : [{ content_type: "", content_value: "" }];
 
-  // Initialize with one row if empty
-  useEffect(() => {
-    if (!product.product_contents || product.product_contents.length === 0) {
-      setGeneratedProducts(prev =>
-        prev.map((p, i) =>
-          i === index
-            ? { ...p, product_contents: [{ content_type: "", content_value: "" }] }
-            : p
-        )
-      );
-    }
-  }, []);
+  // // Initialize with one row if empty
+  // useEffect(() => {
+  //   if (!product.product_contents || product.product_contents.length === 0) {
+  //     setGeneratedProducts(prev =>
+  //       prev.map((p, i) =>
+  //         i === index
+  //           ? { ...p, product_contents: [{ content_type: "", content_value: "" }] }
+  //           : p
+  //       )
+  //     );
+  //   }
+  // }, []);
 
-  const setProductContents = (updater) => {
-    setGeneratedProducts(prev =>
-      prev.map((p, i) =>
-        i === index
-          ? {
-            ...p,
-            product_contents:
-              typeof updater === "function"
-                ? updater(p.product_contents || [{ content_type: "", content_value: "" }])
-                : updater
-          }
-          : p
-      )
-    );
-  };
+  // const setProductContents = (updater) => {
+  //   setGeneratedProducts(prev =>
+  //     prev.map((p, i) =>
+  //       i === index
+  //         ? {
+  //           ...p,
+  //           product_contents:
+  //             typeof updater === "function"
+  //               ? updater(p.product_contents || [{ content_type: "", content_value: "" }])
+  //               : updater
+  //         }
+  //         : p
+  //     )
+  //   );
+  // };
 
   const handleAddRow = () => {
     setProductContents(prev => [
@@ -1444,24 +1485,29 @@ function ProductContentSection({ product, index, setGeneratedProducts }) {
 }
 
 
-function ProductMediaSection({ product, index, setGeneratedProducts, uploadMediaFiles, setMediaPopup }) {
-  const productMedia = product.content_media || [];
+function ProductMediaSection({
+  productMedia,
+  setProductMedia,
+  uploadMediaFiles,
+  setMediaPopup
+}) {
+  // const productMedia = product.content_media || [];
 
-  const setProductMedia = (updater) => {
-    setGeneratedProducts(prev =>
-      prev.map((p, i) =>
-        i === index
-          ? {
-            ...p,
-            content_media:
-              typeof updater === "function"
-                ? updater(p.content_media || [])
-                : updater
-          }
-          : p
-      )
-    );
-  };
+  // const setProductMedia = (updater) => {
+  //   setGeneratedProducts(prev =>
+  //     prev.map((p, i) =>
+  //       i === index
+  //         ? {
+  //           ...p,
+  //           content_media:
+  //             typeof updater === "function"
+  //               ? updater(p.content_media || [])
+  //               : updater
+  //         }
+  //         : p
+  //     )
+  //   );
+  // };
 
   // Make selected image primary
   const setPrimary = (id) => {
