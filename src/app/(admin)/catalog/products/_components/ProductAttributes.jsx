@@ -102,7 +102,11 @@ export default function ProductAttributes({
   uploadMediaFiles,
   isCreateNew,
   pricingMode,
-  globalPricing
+  globalPricing,
+  productContents,
+  setProductContents,
+  productMedia,
+  setProductMedia
 }) {
 
   const [properties, setProperties] = useState([
@@ -125,12 +129,6 @@ export default function ProductAttributes({
     }
   ]
   */
-  const [productContents, setProductContents] = useState([
-    { content_type: "", content_value: "" }
-  ]);
-
-  const [productMedia, setProductMedia] = useState([]);
-
 
   //  THIS useEffect to disable property/option editing in edit mode
   useEffect(() => {
@@ -458,10 +456,10 @@ export default function ProductAttributes({
             weight: "",
             conversion_factor: 1,
             multiplication_factor: 1,
-            uom: "pcs",
+            uom: "piece",
             threshold_quantity: 1,
             status: "active",
-            master: !hasMaster && idx === 0, // ✅ Only first SKU is master if none exists
+            master: !hasMaster && idx === 0, //  Only first SKU is master if none exists
             option_type_values: newSku.option_type_values ?? [],
             sku_media: []
           };
@@ -1134,7 +1132,7 @@ export default function ProductAttributes({
                                         if (!response.ok) throw new Error('Upload failed');
 
                                         const result = await response.json();
-                                        const uploadedUrls = result.data || [];
+                                        const uploadedUrls = result.data?.media_url ? [result.data.media_url] : [];
 
                                         // Update with uploaded URLs
                                         setProducts(prev =>
@@ -1340,7 +1338,7 @@ export default function ProductAttributes({
                                           if (!response.ok) throw new Error('Upload failed');
 
                                           const result = await response.json();
-                                          const uploadedUrls = result.data || [];
+                                          const uploadedUrls = result.data?.media_url ? [result.data.media_url] : [];
 
                                           // Replace loading items with uploaded media
                                           setProducts(prev =>
@@ -1712,37 +1710,37 @@ function ProductMediaSection({
     setUploading(true);
 
     try {
-      const formData = new FormData();
+      const uploadedUrls = [];
 
-      files.forEach(file => {
+      for (const file of files) {
+        const formData = new FormData();
         formData.append('file', file);
-      });
+        formData.append('media_for', 'product');
 
-      formData.append('media_for', 'product');
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/upload_media`,
+          {
+            method: 'POST',
+            body: formData
+          }
+        );
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/upload_media`,
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
+        if (!response.ok) throw new Error('Upload failed');
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(errText);
+        const result = await response.json();
+
+        // ✅ CHANGE: result.data.url → result.data.media_url
+        uploadedUrls.push(result.data.media_url);
       }
 
-      const result = await response.json();
-      const uploadedUrls = result.data || [];
-
+      // ✅ Store ONLY the uploaded URLs
       setProductMedia(prev => [
         ...prev,
         ...files.map((file, idx) => ({
-          id: Date.now() + Math.random(),
-          file,
-          previewUrl: URL.createObjectURL(file),
-          uploadedUrl: uploadedUrls[idx] || null,
+          id: Date.now() + idx,
+          name: file.name,
+          url: uploadedUrls[idx],
+          uploadedUrl: uploadedUrls[idx], // ✅ This is critical
           sequence: prev.length + idx + 1,
           active: true
         }))
@@ -1756,7 +1754,6 @@ function ProductMediaSection({
       setUploading(false);
     }
   };
-
 
   // Make selected image primary
   const setPrimary = (id) => {

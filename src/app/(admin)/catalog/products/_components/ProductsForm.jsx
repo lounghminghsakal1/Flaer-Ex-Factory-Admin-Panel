@@ -40,10 +40,18 @@ export default function ProductsForm() {
     {
       id: "base",
       name: "",
-      product_contents: [{ content_type: "", content_value: "" }],
+      product_contents: [],
       content_media: []
     }
   ]);
+
+  // ✅ At the top of ProductsForm component
+  const [productContents, setProductContents] = useState([
+    { content_type: "", content_value: "" }
+  ]);
+
+  const [productMedia, setProductMedia] = useState([]);
+
 
   const [createFormData, setCreateFormData] = useState({
     name: "",
@@ -197,7 +205,7 @@ export default function ProductsForm() {
           weight: sku.weight || "",
           conversion_factor: sku.conversion_factor || 1,
           multiplication_factor: sku.multiplication_factor || 1,
-          uom: sku.uom || "pcs",
+          uom: sku.uom || "piece",
           threshold_quantity: sku.threshold_quantity || 1,
           status: sku.status || "active",
           master: sku.master || false,
@@ -340,7 +348,6 @@ export default function ProductsForm() {
 
     return null;
   }
-
   async function handleSubmit() {
     try {
       setLoading(true);
@@ -351,16 +358,34 @@ export default function ProductsForm() {
         return;
       }
 
-      // ✅ EXTRACT AND UPLOAD MEDIA
-      const { product_contents, product_media } = await extractAndUploadContentsAndMedia(generatedProducts);
+      // ✅ CHECK: Ensure productMedia has uploadedUrl
+      const product_media = productMedia
+        .filter(m => m.uploadedUrl) // ✅ Only include successfully uploaded media
+        .map((m, idx) => ({
+          media_type: "image",
+          media_url: m.uploadedUrl, // ✅ Use uploadedUrl, not url
+          active: true,
+          sequence: idx + 1
+        }));
+
+      // ✅ CHECK: Ensure productContents are not empty
+      const product_contents = productContents
+        .filter(c => c.content_type?.trim() && c.content_value?.trim()) // ✅ Validate both fields
+        .map(c => ({
+          content_type: c.content_type,
+          content_value: c.content_value
+        }));
+
+      console.log("=== DEBUG: Product Media ===", product_media);
+      console.log("=== DEBUG: Product Contents ===", product_contents);
 
       const basePayload = buildCreateProductPayload(formData, products);
 
       const payload = {
         product: {
           ...basePayload.product,
-          product_contents,
-          product_media
+          product_contents, // ✅ This should now have data
+          product_media // ✅ This should now have data
         }
       };
 
@@ -372,6 +397,12 @@ export default function ProductsForm() {
       const url = isCreateNew
         ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products`
         : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/${productId}`;
+
+      console.log("=== CHECKING STATES BEFORE SUBMIT ===");
+      console.log("productContents:", productContents);
+      console.log("productMedia:", productMedia);
+      console.log("product_contents (filtered):", product_contents);
+      console.log("product_media (filtered):", product_media);
 
       const response = await fetch(url, {
         method: method,
@@ -422,47 +453,31 @@ export default function ProductsForm() {
     const product_media = [];
 
     for (const p of generatedProducts) {
-      // Extract contents
-      if (p.content_type && p.content_values?.length) {
-        p.content_values.forEach(val => {
-          product_contents.push({
-            content_type: p.content_type,
-            content_value: val
-          });
+
+      // ✅ CONTENTS
+      if (p.product_contents?.length) {
+        p.product_contents.forEach(c => {
+          if (c.content_type && c.content_value) {
+            product_contents.push({
+              content_type: c.content_type,
+              content_value: c.content_value
+            });
+          }
         });
       }
 
-      // Upload and extract media
+      // ✅ MEDIA
       if (p.content_media?.length) {
-        const filesToUpload = p.content_media
-          .filter(m => !m.uploadedUrl && m.file)
-          .map(m => m.file);
-
-        if (filesToUpload.length > 0) {
-          const uploadedUrls = await uploadMediaFiles(filesToUpload, 'product');
-
-          // Add uploaded URLs to product_media
-          uploadedUrls.forEach((url, i) => {
+        for (const m of p.content_media) {
+          if (m.uploadedUrl) {
             product_media.push({
               media_type: "image",
-              media_url: url,
-              active: true,
-              sequence: product_media.length + i + 1
-            });
-          });
-        }
-
-        // Also include already uploaded media
-        p.content_media
-          .filter(m => m.uploadedUrl)   // 🚨 REQUIRED
-          .forEach((m, i) => {
-            product_media.push({
-              media_type: "image",
-              media_url: m.uploadedUrl,  // ✅ S3 URL
+              media_url: m.uploadedUrl,
               active: true,
               sequence: product_media.length + 1
             });
-          });
+          }
+        }
       }
     }
 
@@ -561,6 +576,10 @@ export default function ProductsForm() {
               isCreateNew={isCreateNew}
               pricingMode={pricingMode}
               globalPricing={globalPricing}
+              productContents={productContents}
+              setProductContents={setProductContents}
+              productMedia={productMedia}
+              setProductMedia={setProductMedia}
             />
           </div>
         </div>
