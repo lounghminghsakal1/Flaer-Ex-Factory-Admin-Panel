@@ -541,6 +541,7 @@ export default function ProductsForm() {
               setPricingMode={setPricingMode}
               globalPricing={globalPricing}
               setGlobalPricing={setGlobalPricing}
+              setProducts={setProducts}
             />
           </div>
           <div className="col-span-4">
@@ -574,7 +575,8 @@ function MainProductInformation({
   pricingMode,
   setPricingMode,
   globalPricing,
-  setGlobalPricing
+  setGlobalPricing,
+  setProducts
 }) {
   const [tagInput, setTagInput] = useState("");
   const [displayNameTouched, setDisplayNameTouched] = useState(false);
@@ -596,6 +598,21 @@ function MainProductInformation({
       tags: prev.tags.filter((_, i) => i !== index)
     }));
   };
+
+  const [globalUom, setGlobalUom] = useState("piece");
+
+  const UOM_OPTIONS = [
+    { id: 'sq_ft', name: 'Sq ft' },
+    { id: 'ml', name: 'Ml' },
+    { id: 'l', name: 'L' },
+    { id: 'gm', name: 'Gm' },
+    { id: 'kg', name: 'Kg' },
+    { id: 'm', name: 'Mm' },
+    { id: 'packet', name: 'Packet' },
+    { id: 'unit', name: 'Unit' },
+    { id: 'piece', name: 'Piece' },
+  ];
+
 
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-2">
@@ -753,6 +770,27 @@ function MainProductInformation({
               setGlobalPricing(p => ({ ...p, threshold_quantity: value }))
             }
           />
+
+          <SearchableDropdown
+            label="UOM"
+            options={UOM_OPTIONS}
+            value={globalUom}
+            placeholder="Select UOM"
+            onChange={(value) => {
+              setGlobalUom(value);
+
+              setProducts(prev =>
+                prev.map(product => ({
+                  ...product,
+                  product_skus: product.product_skus.map(sku => ({
+                    ...sku,
+                    uom: value
+                  }))
+                }))
+              );
+            }}
+          />
+
         </div>
 
         <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
@@ -821,7 +859,7 @@ function ProductSettings({ formData, setFormData }) {
   ];
 
   const [categoryOptions, setCategoryOptions] = useState(CATEGORY_OPTIONS);
-  
+
   const [taxOptions, setTaxoptions] = useState([]);
   const [showCategoryPopup, setShowCategoryPopup] = useState(false);
 

@@ -411,10 +411,9 @@ export default function ProductAttributes({
   function handleCreateSkus() {
     if (!generatedProducts.length) return;
 
-    // ✅ Use current options state
     const currentOptions = options.filter(o => o.type && o.values.length > 0);
 
-    console.log("Creating SKUs with options:", currentOptions); // ✅ Debug
+    console.log("Creating SKUs with options:", currentOptions);
 
     setProducts(prev => {
       const safePrev = Array.isArray(prev) ? prev : [];
@@ -424,17 +423,30 @@ export default function ProductAttributes({
           p => p.name === genProd.name
         );
 
-        // ✅ Pass current options explicitly
         const newSkus = generateSkus(genProd.name, currentOptions);
 
-        console.log(`Product: ${genProd.name}, SKUs:`, newSkus); // ✅ Debug
+        console.log(`Product: ${genProd.name}, New SKUs:`, newSkus);
+
+        // ✅ PRESERVE EXISTING SKUs AND ADD NEW ONES
+        const existingSkuMap = new Map(
+          (existingProduct?.product_skus || []).map(sku => [sku.sku_name, sku])
+        );
 
         const mergedSkus = newSkus.map((newSku, idx) => {
-          const existingSku = existingProduct?.product_skus?.find(
-            old => old.sku_name === newSku.sku_name
-          );
+          // Check if SKU already exists
+          if (existingSkuMap.has(newSku.sku_name)) {
+            const existing = existingSkuMap.get(newSku.sku_name);
+            console.log(`Preserving existing SKU: ${newSku.sku_name}`);
+            return existing; // ✅ Keep all existing data
+          }
 
-          return existingSku ?? {
+          // Create new SKU only if it doesn't exist
+          console.log(`Creating new SKU: ${newSku.sku_name}`);
+
+          // ✅ Check if this should be master (only if no master exists yet)
+          const hasMaster = existingProduct?.product_skus?.some(s => s.master === true);
+
+          return {
             sku_name: newSku.sku_name,
             display_name: newSku.sku_name,
             display_name_edited: false,
@@ -449,7 +461,7 @@ export default function ProductAttributes({
             uom: "pcs",
             threshold_quantity: 1,
             status: "active",
-            master: idx === 0 && !(existingProduct?.product_skus ?? []).some(s => s.master),
+            master: !hasMaster && idx === 0, // ✅ Only first SKU is master if none exists
             option_type_values: newSku.option_type_values ?? [],
             sku_media: []
           };
@@ -737,8 +749,6 @@ export default function ProductAttributes({
                             <th className="px-2 py-2 w-[90px] font-medium">Selling</th>
                           </>
                         )}
-
-                        <th className="px-2 py-2 w-[90px] font-medium">UOM</th>
                         <th className="px-2 py-2 w-[120px] font-medium">Status</th>
                         <th className="px-2 py-2 w-[70px] text-center font-medium">Master</th>
                         <th className="px-2 py-2 w-[80px] font-medium">Media</th>
@@ -1012,35 +1022,6 @@ export default function ProductAttributes({
                             </>
                           )}
 
-                          {/* UOM */}
-                          <td className="px-2 py-1" style={{ position: 'relative', zIndex: 9999 }}>
-                            <SearchableDropdown
-                              options={[
-                                { id: 'pcs', name: 'Pcs' },
-                                { id: 'kg', name: 'Kg' },
-                                { id: 'ltr', name: 'Ltr' }
-                              ]}
-                              value={sku.uom ?? "pcs"}
-                              onChange={(value) =>
-                                setProducts(prev =>
-                                  prev.map((p, pIdx) =>
-                                    pIdx === productIndex
-                                      ? {
-                                        ...p,
-                                        product_skus: p.product_skus.map((s, sIdx) =>
-                                          sIdx === skuIndex
-                                            ? { ...s, uom: value }
-                                            : s
-                                        )
-                                      }
-                                      : p
-                                  )
-                                )
-                              }
-                              placeholder="Select UOM"
-                            />
-                          </td>
-
                           {/* STATUS */}
                           <td className="px-2 py-1" style={{ position: 'relative', zIndex: 9999 }}>
                             <SearchableDropdown
@@ -1095,73 +1076,23 @@ export default function ProductAttributes({
                           </td>
 
                           {/* MEDIA */}
-                          <td className="pl-6 py-1">
-                            <div className="flex flex-col items-center gap-2">
-                              {/* Upload Icon */}
-                              <label className="cursor-pointer text-blue-600 hover:text-blue-700">
-                                <Upload size={16} />
-                                <input
-                                  type="file"
-                                  multiple
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const files = Array.from(e.target.files || []);
-                                    if (!files.length) return;
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              {/* EMPTY STATE - Show upload icon when no media */}
+                              {(!sku.sku_media || sku.sku_media.length === 0) && (
+                                <label className="cursor-pointer p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                  <Upload size={18} className="text-blue-600" />
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const files = Array.from(e.target.files || []);
+                                      if (!files.length) return;
 
-                                    setProducts(prev =>
-                                      prev.map((p, pIdx) =>
-                                        pIdx === productIndex
-                                          ? {
-                                            ...p,
-                                            product_skus: p.product_skus.map((s, sIdx) =>
-                                              sIdx === skuIndex
-                                                ? {
-                                                  ...s,
-                                                  sku_media: [
-                                                    ...(s.sku_media || []),
-                                                    ...files.map(file => ({
-                                                      id: Date.now() + Math.random(),
-                                                      name: file.name,
-                                                      url: URL.createObjectURL(file),
-                                                      file: file,  // ✅ Store file
-                                                      active: true
-                                                    }))
-                                                  ]
-                                                }
-                                                : s
-                                            )
-                                          }
-                                          : p
-                                      )
-                                    );
-
-                                    e.target.value = "";
-                                  }}
-                                />
-                              </label>
-
-                              {/* File Count */}
-                              {sku.sku_media?.length > 0 && (
-                                <span className="text-xs text-green-600">{sku.sku_media.length}</span>
-                              )}
-
-                              {/* ✅ Upload Button */}
-                              {sku.sku_media?.some(m => !m.uploadedUrl) && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    const filesToUpload = sku.sku_media
-                                      .filter(m => !m.uploadedUrl && m.file)
-                                      .map(m => m.file);
-
-                                    if (filesToUpload.length === 0) return;
-
-                                    toast.loading('Uploading SKU media...');
-                                    const uploadedUrls = await uploadMediaFiles(filesToUpload, 'sku');
-                                    toast.dismiss();
-
-                                    if (uploadedUrls.length > 0) {
+                                      // Show loading state
+                                      const tempId = Date.now();
                                       setProducts(prev =>
                                         prev.map((p, pIdx) =>
                                           pIdx === productIndex
@@ -1171,12 +1102,13 @@ export default function ProductAttributes({
                                                 sIdx === skuIndex
                                                   ? {
                                                     ...s,
-                                                    sku_media: s.sku_media.map((m, mIdx) => {
-                                                      if (!m.uploadedUrl && uploadedUrls[mIdx]) {
-                                                        return { ...m, uploadedUrl: uploadedUrls[mIdx] };
+                                                    sku_media: [
+                                                      {
+                                                        id: tempId,
+                                                        uploading: true,
+                                                        name: 'Uploading...'
                                                       }
-                                                      return m;
-                                                    })
+                                                    ]
                                                   }
                                                   : s
                                               )
@@ -1184,32 +1116,291 @@ export default function ProductAttributes({
                                             : p
                                         )
                                       );
-                                      toast.success('SKU media uploaded');
-                                    }
-                                  }}
-                                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                  Upload
-                                </button>
+
+                                      try {
+                                        // Upload to S3 immediately
+                                        const formData = new FormData();
+                                        files.forEach(file => formData.append('file', file));
+                                        formData.append('media_for', 'sku');
+
+                                        const response = await fetch(
+                                          `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/upload_media`,
+                                          {
+                                            method: 'POST',
+                                            body: formData
+                                          }
+                                        );
+
+                                        if (!response.ok) throw new Error('Upload failed');
+
+                                        const result = await response.json();
+                                        const uploadedUrls = result.data || [];
+
+                                        // Update with uploaded URLs
+                                        setProducts(prev =>
+                                          prev.map((p, pIdx) =>
+                                            pIdx === productIndex
+                                              ? {
+                                                ...p,
+                                                product_skus: p.product_skus.map((s, sIdx) =>
+                                                  sIdx === skuIndex
+                                                    ? {
+                                                      ...s,
+                                                      sku_media: files.map((file, idx) => ({
+                                                        id: Date.now() + idx,
+                                                        name: file.name,
+                                                        url: uploadedUrls[idx] || URL.createObjectURL(file),
+                                                        uploadedUrl: uploadedUrls[idx],
+                                                        sequence: idx + 1,
+                                                        active: true
+                                                      }))
+                                                    }
+                                                    : s
+                                                )
+                                              }
+                                              : p
+                                          )
+                                        );
+
+                                        toast.success(`${files.length} image(s) uploaded`);
+                                      } catch (error) {
+                                        console.error('Upload error:', error);
+                                        toast.error('Upload failed');
+
+                                        // Remove loading state on error
+                                        setProducts(prev =>
+                                          prev.map((p, pIdx) =>
+                                            pIdx === productIndex
+                                              ? {
+                                                ...p,
+                                                product_skus: p.product_skus.map((s, sIdx) =>
+                                                  sIdx === skuIndex
+                                                    ? { ...s, sku_media: [] }
+                                                    : s
+                                                )
+                                              }
+                                              : p
+                                          )
+                                        );
+                                      }
+
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
                               )}
 
-                              {/* View Button */}
-                              {sku.sku_media?.length > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setMediaPopup({
-                                      productIndex,
-                                      skuIndex,
-                                      media: sku.sku_media,
-                                      isProductLevel: false
-                                    })
-                                  }
-                                  className="flex items-center gap-1 text-green-600 hover:text-green-700"
-                                >
-                                  <Image size={14} />
-                                  <span className="text-xs">View</span>
-                                </button>
+                              {/* UPLOADING STATE */}
+                              {sku.sku_media?.some(m => m.uploading) && (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-12 h-12 border border-gray-300 rounded flex items-center justify-center bg-gray-50">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                                  </div>
+                                  <span className="text-xs text-gray-500">Uploading...</span>
+                                </div>
+                              )}
+
+                              {/* MEDIA PREVIEW (When media exists and not uploading) */}
+                              {sku.sku_media?.length > 0 && !sku.sku_media.some(m => m.uploading) && (
+                                <div className="flex items-center gap-2">
+                                  {/* PRIMARY IMAGE (First image, bigger) */}
+                                  {(() => {
+                                    const primary = sku.sku_media.find(m => m.sequence === 1) || sku.sku_media[0];
+                                    return (
+                                      <div className="relative group">
+                                        <img
+                                          src={primary.url || primary.uploadedUrl}
+                                          alt="Primary"
+                                          className="w-16 h-16 object-cover rounded border-2 border-blue-500"
+                                        />
+                                        <span className="absolute bottom-0 left-0 right-0 bg-blue-600/90 text-white text-[10px] text-center py-0.5 rounded-b">
+                                          Primary
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* VIEW ALL BUTTON (if more than 1 image) */}
+                                  {sku.sku_media.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setMediaPopup({
+                                          productIndex,
+                                          skuIndex,
+                                          media: sku.sku_media,
+                                          isProductLevel: false,
+                                          onSetPrimary: (id) => {
+                                            setProducts(prev =>
+                                              prev.map((p, pIdx) =>
+                                                pIdx === productIndex
+                                                  ? {
+                                                    ...p,
+                                                    product_skus: p.product_skus.map((s, sIdx) =>
+                                                      sIdx === skuIndex
+                                                        ? {
+                                                          ...s,
+                                                          sku_media: s.sku_media.map(m => ({
+                                                            ...m,
+                                                            sequence: m.id === id ? 1 : m.sequence > 1 ? m.sequence : m.sequence + 1
+                                                          }))
+                                                        }
+                                                        : s
+                                                    )
+                                                  }
+                                                  : p
+                                              )
+                                            );
+                                          },
+                                          onRemove: (id) => {
+                                            setProducts(prev =>
+                                              prev.map((p, pIdx) =>
+                                                pIdx === productIndex
+                                                  ? {
+                                                    ...p,
+                                                    product_skus: p.product_skus.map((s, sIdx) =>
+                                                      sIdx === skuIndex
+                                                        ? {
+                                                          ...s,
+                                                          sku_media: s.sku_media
+                                                            .filter(m => m.id !== id)
+                                                            .map((m, idx) => ({ ...m, sequence: idx + 1 }))
+                                                        }
+                                                        : s
+                                                    )
+                                                  }
+                                                  : p
+                                              )
+                                            );
+                                          }
+                                        })
+                                      }
+                                      className="flex flex-col items-center justify-center w-12 h-12 border border-gray-300 rounded hover:border-blue-500 transition-colors"
+                                    >
+                                      <Image size={16} className="text-gray-600" />
+                                      <span className="text-[10px] font-semibold text-gray-700">
+                                        +{sku.sku_media.length - 1}
+                                      </span>
+                                    </button>
+                                  )}
+
+                                  {/* ADD MORE BUTTON */}
+                                  <label className="cursor-pointer flex items-center justify-center w-12 h-12 border-2 border-dashed border-gray-300 rounded hover:border-blue-500 transition-colors">
+                                    <Plus size={18} className="text-gray-400" />
+                                    <input
+                                      type="file"
+                                      multiple
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const files = Array.from(e.target.files || []);
+                                        if (!files.length) return;
+
+                                        // Show loading state
+                                        const loadingIds = files.map((_, idx) => Date.now() + idx);
+                                        setProducts(prev =>
+                                          prev.map((p, pIdx) =>
+                                            pIdx === productIndex
+                                              ? {
+                                                ...p,
+                                                product_skus: p.product_skus.map((s, sIdx) =>
+                                                  sIdx === skuIndex
+                                                    ? {
+                                                      ...s,
+                                                      sku_media: [
+                                                        ...(s.sku_media || []),
+                                                        ...loadingIds.map(id => ({
+                                                          id,
+                                                          uploading: true,
+                                                          name: 'Uploading...'
+                                                        }))
+                                                      ]
+                                                    }
+                                                    : s
+                                                )
+                                              }
+                                              : p
+                                          )
+                                        );
+
+                                        try {
+                                          // Upload to S3
+                                          const formData = new FormData();
+                                          files.forEach(file => formData.append('file', file));
+                                          formData.append('media_for', 'sku');
+
+                                          const response = await fetch(
+                                            `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/upload_media`,
+                                            {
+                                              method: 'POST',
+                                              body: formData
+                                            }
+                                          );
+
+                                          if (!response.ok) throw new Error('Upload failed');
+
+                                          const result = await response.json();
+                                          const uploadedUrls = result.data || [];
+
+                                          // Replace loading items with uploaded media
+                                          setProducts(prev =>
+                                            prev.map((p, pIdx) =>
+                                              pIdx === productIndex
+                                                ? {
+                                                  ...p,
+                                                  product_skus: p.product_skus.map((s, sIdx) =>
+                                                    sIdx === skuIndex
+                                                      ? {
+                                                        ...s,
+                                                        sku_media: [
+                                                          ...(s.sku_media?.filter(m => !m.uploading) || []),
+                                                          ...files.map((file, idx) => ({
+                                                            id: Date.now() + idx + 1000,
+                                                            name: file.name,
+                                                            url: uploadedUrls[idx] || URL.createObjectURL(file),
+                                                            uploadedUrl: uploadedUrls[idx],
+                                                            sequence: (s.sku_media?.filter(m => !m.uploading).length || 0) + idx + 1,
+                                                            active: true
+                                                          }))
+                                                        ]
+                                                      }
+                                                      : s
+                                                  )
+                                                }
+                                                : p
+                                            )
+                                          );
+
+                                          toast.success(`${files.length} image(s) uploaded`);
+                                        } catch (error) {
+                                          console.error('Upload error:', error);
+                                          toast.error('Upload failed');
+
+                                          // Remove loading items on error
+                                          setProducts(prev =>
+                                            prev.map((p, pIdx) =>
+                                              pIdx === productIndex
+                                                ? {
+                                                  ...p,
+                                                  product_skus: p.product_skus.map((s, sIdx) =>
+                                                    sIdx === skuIndex
+                                                      ? {
+                                                        ...s,
+                                                        sku_media: s.sku_media?.filter(m => !m.uploading) || []
+                                                      }
+                                                      : s
+                                                  )
+                                                }
+                                                : p
+                                            )
+                                          );
+                                        }
+
+                                        e.target.value = "";
+                                      }}
+                                    />
+                                  </label>
+                                </div>
                               )}
                             </div>
                           </td>
@@ -1240,6 +1431,7 @@ export default function ProductAttributes({
                       ))}
                     </tbody>
                   </table>
+
                 </div>
               </div>
             </div>
@@ -1247,83 +1439,104 @@ export default function ProductAttributes({
         )
       }
 
-      {/* Media Popup */}
       {mediaPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">
                 {mediaPopup.isProductLevel ? 'Product Media' : 'SKU Media'}
               </h3>
               <button
                 onClick={() => setMediaPopup(null)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X size={24} />
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              {mediaPopup.media.map((item, idx) => (
-                <div key={item.id} className="relative group">
-                  <img
-                    src={item.url}
-                    alt={item.name}
-                    className="w-full h-32 object-cover rounded border border-gray-200"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                    <button
-                      onClick={() => {
-                        // ✅ Handle removal for both product and SKU media
-                        if (mediaPopup.isProductLevel) {
-                          setGeneratedProducts(prev =>
-                            prev.map((p, i) =>
-                              i === mediaPopup.productIndex
-                                ? {
-                                  ...p,
-                                  content_media: p.content_media.filter(m => m.id !== item.id)
-                                }
-                                : p
-                            )
-                          );
-                        } else {
-                          setProducts(prev =>
-                            prev.map((p, pIdx) =>
-                              pIdx === mediaPopup.productIndex
-                                ? {
-                                  ...p,
-                                  product_skus: p.product_skus.map((s, sIdx) =>
-                                    sIdx === mediaPopup.skuIndex
-                                      ? {
-                                        ...s,
-                                        sku_media: s.sku_media.filter(m => m.id !== item.id)
-                                      }
-                                      : s
-                                  )
-                                }
-                                : p
-                            )
-                          );
-                        }
-
-                        // Update popup
-                        setMediaPopup(prev => ({
-                          ...prev,
-                          media: prev.media.filter(m => m.id !== item.id)
-                        }));
-                      }}
-                      className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1 truncate">{item.name}</p>
+            {/* Media Grid */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {mediaPopup.media?.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  No media uploaded
                 </div>
-              ))}
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {mediaPopup.media
+                    ?.filter(m => !m.uploading)
+                    .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
+                    .map((media) => {
+                      const isPrimary = media.sequence === 1;
+                      return (
+                        <div
+                          key={media.id}
+                          className={`relative group rounded-lg overflow-hidden ${isPrimary ? 'ring-2 ring-blue-500' : 'border border-gray-200'
+                            }`}
+                        >
+                          <img
+                            src={media.url || media.uploadedUrl || media.previewUrl}
+                            alt={media.name}
+                            className="w-full h-48 object-cover"
+                          />
+
+                          {/* Overlay with actions */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                            {!isPrimary && (
+                              <button
+                                onClick={() => {
+                                  mediaPopup.onSetPrimary?.(media.id);
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                              >
+                                Set as Primary
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                mediaPopup.onRemove?.(media.id);
+                                // Close popup if no media left
+                                if (mediaPopup.media.filter(m => !m.uploading).length <= 1) {
+                                  setMediaPopup(null);
+                                }
+                              }}
+                              className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          {/* Primary badge */}
+                          {isPrimary && (
+                            <span className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                              Primary
+                            </span>
+                          )}
+
+                          {/* Sequence number */}
+                          <span className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                            {media.sequence || 1}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-200 px-6 py-4">
+              <button
+                onClick={() => setMediaPopup(null)}
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
+
 
       {/* {generatedProducts.map((p, index) => (
         <div key={p.id} className="border rounded-lg p-4 mt-6">
@@ -1488,26 +1701,62 @@ function ProductContentSection({ productContents, setProductContents }) {
 function ProductMediaSection({
   productMedia,
   setProductMedia,
-  uploadMediaFiles,
   setMediaPopup
 }) {
-  // const productMedia = product.content_media || [];
+  const [uploading, setUploading] = useState(false);
 
-  // const setProductMedia = (updater) => {
-  //   setGeneratedProducts(prev =>
-  //     prev.map((p, i) =>
-  //       i === index
-  //         ? {
-  //           ...p,
-  //           content_media:
-  //             typeof updater === "function"
-  //               ? updater(p.content_media || [])
-  //               : updater
-  //         }
-  //         : p
-  //     )
-  //   );
-  // };
+  // Upload media to S3 immediately
+  const handleMediaUpload = async (files) => {
+    if (!files.length) return;
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+
+      files.forEach(file => {
+        formData.append('file', file);
+      });
+
+      formData.append('media_for', 'product');
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/upload_media`,
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText);
+      }
+
+      const result = await response.json();
+      const uploadedUrls = result.data || [];
+
+      setProductMedia(prev => [
+        ...prev,
+        ...files.map((file, idx) => ({
+          id: Date.now() + Math.random(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+          uploadedUrl: uploadedUrls[idx] || null,
+          sequence: prev.length + idx + 1,
+          active: true
+        }))
+      ]);
+
+      toast.success(`${files.length} image(s) uploaded successfully`);
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload images');
+    } finally {
+      setUploading(false);
+    }
+  };
+
 
   // Make selected image primary
   const setPrimary = (id) => {
@@ -1527,159 +1776,156 @@ function ProductMediaSection({
     );
   };
 
-  // Upload to S3
-  const uploadToS3 = async () => {
-    const files = productMedia
-      .filter(m => !m.uploadedUrl)
-      .map(m => m.file);
-
-    if (!files.length) return;
-
-    toast.loading("Uploading media...");
-    const urls = await uploadMediaFiles(files, "product");
-    toast.dismiss();
-
-    setProductMedia(prev =>
-      prev.map((m, i) => ({
-        ...m,
-        uploadedUrl: urls[i] || m.uploadedUrl
-      }))
-    );
-
-    toast.success("Media uploaded");
+  // Show all images in popup
+  const showAllImages = () => {
+    setMediaPopup({
+      media: productMedia,
+      isProductLevel: true,
+      onSetPrimary: setPrimary,
+      onRemove: removeMedia
+    });
   };
 
   const primary = productMedia.find(m => m.sequence === 1);
-  const thumbnails = productMedia.filter(m => m.sequence !== 1);
+  const otherImages = productMedia.filter(m => m.sequence !== 1);
+  const visibleImages = otherImages.slice(0, 3); // Show max 3 after primary
+  const hiddenCount = otherImages.length - 3;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Product Media</h3>
-        <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer">
-          <Plus size={16} />
-          Add Media
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const files = Array.from(e.target.files || []);
-              if (!files.length) return;
-
-              setProductMedia(prev => [
-                ...prev,
-                ...files.map((file, idx) => ({
-                  id: Date.now() + Math.random(),
-                  file,
-                  previewUrl: URL.createObjectURL(file),
-                  uploadedUrl: null,
-                  sequence: prev.length + idx + 1,
-                  active: true
-                }))
-              ]);
-
-              e.target.value = "";
-            }}
-          />
-        </label>
       </div>
 
       {productMedia.length === 0 ? (
+        // Empty state with upload
         <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-          <p className="text-sm text-gray-500">No media added yet. Click "Add Media" to upload images.</p>
+          <label className="cursor-pointer">
+            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+            <p className="text-sm text-gray-500 mb-2">Click to upload images</p>
+            {uploading && <p className="text-xs text-blue-600">Uploading...</p>}
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length) handleMediaUpload(files);
+                e.target.value = "";
+              }}
+            />
+          </label>
         </div>
       ) : (
+        // Images grid
         <div className="space-y-4">
-          {/* Primary Image Section */}
-          {primary && (
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-2">Primary Image</p>
-              <div className="relative inline-block">
+          <div className="flex items-center gap-3 overflow-x-auto">
+            {/* PRIMARY IMAGE */}
+            {primary && (
+              <div className="relative group flex-shrink-0 w-56 h-40">
                 <img
                   src={primary.previewUrl || primary.uploadedUrl}
-                  className="w-64 h-48 object-cover rounded-lg border-2 border-blue-500"
+                  className="w-full h-full object-cover rounded-lg border-2 border-blue-500"
                   alt="Primary"
                 />
-                <button
-                  onClick={() => removeMedia(primary.id)}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                  title="Remove"
-                >
-                  <X size={16} />
-                </button>
-                <div className="absolute bottom-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
-                  Primary
+
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center">
+                  <button
+                    onClick={() => removeMedia(primary.id)}
+                    className="px-3 py-1 bg-red-500 text-white text-xs rounded"
+                  >
+                    Remove
+                  </button>
                 </div>
+
+                <span className="absolute bottom-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs">
+                  Primary
+                </span>
               </div>
-            </div>
-          )}
-
-          {/* Thumbnails */}
-          {thumbnails.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-2">Other Images</p>
-              <div className="flex flex-wrap gap-3">
-                {thumbnails.map(m => (
-                  <div key={m.id} className="relative group">
-                    <img
-                      src={m.previewUrl || m.uploadedUrl}
-                      className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors"
-                      alt="Thumbnail"
-                    />
-
-                    {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black bg-opacity-60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-2">
-                      <button
-                        onClick={() => setPrimary(m.id)}
-                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                      >
-                        Set Primary
-                      </button>
-                      <button
-                        onClick={() => removeMedia(m.id)}
-                        className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200">
-            {productMedia.some(m => !m.uploadedUrl) && (
-              <button
-                onClick={uploadToS3}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-              >
-                <Upload size={16} />
-                Upload Media
-              </button>
             )}
 
-            {productMedia.length > 0 && (
+            {/* OTHER IMAGES */}
+            {visibleImages.map(m => (
+              <div key={m.id} className="relative group flex-shrink-0 w-24 h-24">
+                <img
+                  src={m.previewUrl || m.uploadedUrl}
+                  className="w-full h-full object-cover rounded-lg border border-gray-300"
+                  alt="Product"
+                />
+
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex flex-col items-center justify-center gap-1">
+                  <button
+                    onClick={() => setPrimary(m.id)}
+                    className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded"
+                  >
+                    Primary
+                  </button>
+                  <button
+                    onClick={() => removeMedia(m.id)}
+                    className="px-2 py-0.5 bg-red-500 text-white text-[10px] rounded"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* ADD MORE */}
+            {productMedia.length < 4 && (
+              <label className="flex-shrink-0 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500">
+                <Upload className="h-5 w-5 text-gray-400" />
+                <span className="text-[10px] text-gray-500">Add</span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length) handleMediaUpload(files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+
+            {/* VIEW ALL */}
+            {hiddenCount > 0 && (
               <button
-                type="button"
-                onClick={() =>
-                  setMediaPopup({
-                    productIndex: index,
-                    media: productMedia,
-                    isProductLevel: true
-                  })
-                }
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                onClick={showAllImages}
+                className="flex-shrink-0 w-24 h-24 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500"
               >
-                <Image size={16} />
-                View All ({productMedia.length})
+                <Image className="h-5 w-5 text-gray-600" />
+                <span className="text-xs font-semibold">+{hiddenCount}</span>
+                <span className="text-[10px] text-gray-500">View</span>
               </button>
             )}
           </div>
+
+          {/* Add more button below grid (if 4+ images) */}
+          {productMedia.length >= 4 && (
+            <label className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer">
+              <Plus size={16} />
+              Add More Images
+              {uploading && <span className="text-xs">(Uploading...)</span>}
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length) handleMediaUpload(files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
         </div>
       )}
     </div>

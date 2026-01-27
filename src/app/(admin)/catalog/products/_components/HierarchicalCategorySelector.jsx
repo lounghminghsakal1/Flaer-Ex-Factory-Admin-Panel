@@ -1,5 +1,8 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Plus, Circle, X } from 'lucide-react';
+import { ChevronDown, Plus, Minus, X } from 'lucide-react';
+import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
 
 const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,8 +13,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
   const [selectedParent, setSelectedParent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showCreatePopup, setShowCreatePopup] = useState(false);
-  const [createMode, setCreateMode] = useState(null); // 'parent' or 'child'
-  const [selectedParentForChild, setSelectedParentForChild] = useState(null);
+  const [lockedParentForChild, setLockedParentForChild] = useState(null);
   const [isParentToggle, setIsParentToggle] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const dropdownRef = useRef(null);
@@ -41,6 +43,12 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      // Auto-expand selected parent category when dropdown opens
+      if (selectedParent && !expandedCategories.has(selectedParent.id)) {
+        const newExpanded = new Set(expandedCategories);
+        newExpanded.add(selectedParent.id);
+        setExpandedCategories(newExpanded);
+      }
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
@@ -108,17 +116,24 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
     }
   };
 
-  const handleCategorySelect = (category, parent = null) => {
-    setSelectedCategory(category);
+  const handleSubcategorySelect = (child, parent) => {
+    setSelectedCategory(child);
     setSelectedParent(parent);
-    onCategorySelect?.(category);
+    onCategorySelect?.(child);
     setIsOpen(false);
   };
 
-  const openCreatePopup = (mode, parentCategory = null) => {
-    setCreateMode(mode);
-    setSelectedParentForChild(parentCategory);
-    setIsParentToggle(mode === 'parent');
+  const openCreatePopup = (mode = 'general', parentCategory = null) => {
+    if (mode === 'child') {
+      // Creating subcategory from link under parent
+      setLockedParentForChild(parentCategory);
+      setIsParentToggle(false);
+    } else {
+      // General create button
+      setLockedParentForChild(null);
+      setIsParentToggle(true);
+    }
+    
     setFormData({
       name: '',
       title: '',
@@ -143,7 +158,8 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
         title: formData.title,
         priority: formData.priority,
         meta: formData.meta,
-        ...(!isParentToggle && selectedParentForChild ? { parent_id: selectedParentForChild.id } : {})
+        ...(!isParentToggle && lockedParentForChild ? { parent_id: lockedParentForChild.id } : {}),
+        ...(!isParentToggle && !lockedParentForChild && formData.parent_id ? { parent_id: formData.parent_id } : {})
       };
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories`, {
@@ -155,16 +171,37 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const newCategory = result.data;
+        
         setShowCreatePopup(false);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
-        fetchRootCategories();
-        // Reset expanded categories if needed
-        if (!isParentToggle && selectedParentForChild) {
+        
+        // Refresh categories
+        await fetchRootCategories();
+        
+        // If it's a subcategory, expand its parent and auto-select the new subcategory
+        if (!isParentToggle && (lockedParentForChild || formData.parent_id)) {
+          const parentId = lockedParentForChild?.id || formData.parent_id;
+          const parent = categories.find(c => c.id === parentId) || lockedParentForChild;
+          
           const newExpanded = new Set(expandedCategories);
-          newExpanded.delete(selectedParentForChild.id);
+          newExpanded.add(parentId);
           setExpandedCategories(newExpanded);
+          
+          // Auto-select the newly created subcategory
+          setSelectedCategory(newCategory);
+          setSelectedParent(parent);
+          onCategorySelect?.(newCategory);
+        } else {
+          // Auto-select the newly created parent category
+          setSelectedCategory(newCategory);
+          setSelectedParent(null);
+          onCategorySelect?.(newCategory);
         }
+        
+        setLockedParentForChild(null);
       }
     } catch (error) {
       console.error('Error creating category:', error);
@@ -172,111 +209,98 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
   };
 
   const getDisplayValue = () => {
-    if (!selectedCategory) return 'Coffee';
+    if (!selectedCategory) return 'Select a category';
     if (selectedParent) {
       return `${selectedParent.name} >> ${selectedCategory.name}`;
     }
     return selectedCategory.name;
   };
 
-  const renderCategory = (category, level = 0, parent = null) => {
+  const isParentSelected = (categoryId) => {
+    return selectedCategory?.id === categoryId && !selectedParent;
+  };
+
+  const isChildSelected = (childId, parentId) => {
+    return selectedCategory?.id === childId && selectedParent?.id === parentId;
+  };
+
+  const renderCategory = (category) => {
     const isExpanded = expandedCategories.has(category.id);
     const hasChildren = category.children && category.children.length > 0;
     const filtered = searchQuery ? category.name.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+    const parentSelected = isParentSelected(category.id);
     
     if (!filtered) return null;
 
     return (
-      <div key={category.id}>
-        <div 
-          className="flex items-center hover:bg-gray-50 group relative"
-          style={{ paddingLeft: `${level * 20 + 8}px` }}
-        >
-          {/* Vertical connecting line for children */}
-          {level > 0 && (
-            <div 
-              className="absolute border-l border-gray-300"
-              style={{ 
-                left: `${(level - 1) * 20 + 18}px`,
-                top: 0,
-                height: '50%'
-              }}
-            />
-          )}
-          
-          {/* Horizontal connecting line for children */}
-          {level > 0 && (
-            <div 
-              className="absolute border-t border-gray-300"
-              style={{ 
-                left: `${(level - 1) * 20 + 18}px`,
-                top: '50%',
-                width: '12px'
-              }}
-            />
-          )}
-
-          {/* Expand/Collapse Icon */}
+      <div key={category.id} className="border-b border-gray-100 last:border-b-0">
+        {/* Parent Category Row */}
+        <div className="flex items-center hover:bg-gray-50 transition-colors">
+          {/* Expand/Collapse Button with Plus/Minus */}
           <button
             onClick={(e) => toggleCategory(category, e)}
-            className="p-1 hover:bg-gray-100 rounded mr-1 z-10 bg-white"
+            className="p-3 hover:bg-gray-100 transition-colors"
           >
-            {hasChildren || (level === 0 && category.hasChildren) ? (
-              <ChevronDown 
-                className={`w-3 h-3 text-gray-400 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
-              />
+            {isExpanded ? (
+              <Minus className="w-4 h-4 text-gray-600" />
             ) : (
-              <div className="w-3 h-3" />
+              <Plus className="w-4 h-4 text-gray-600" />
             )}
           </button>
 
-          {/* Category Icon */}
-          <Circle className={`w-3 h-3 mr-2 z-10 bg-white ${level === 0 ? 'fill-gray-300' : 'fill-none'} text-gray-400`} />
-
-          {/* Category Name */}
-          <button
-            onClick={() => handleCategorySelect(category, parent)}
-            className="flex-1 text-left py-1.5 text-sm text-gray-700 hover:text-blue-600"
-          >
+          {/* Parent Category Name (No radio button) */}
+          <div className={`flex-1 py-3 pr-3 text-sm font-medium ${parentSelected ? 'text-blue-600' : 'text-gray-900'}`}>
             {category.name}
-          </button>
+          </div>
         </div>
 
-        {/* Show "No subcategories" message when expanded but empty */}
-        {isExpanded && !hasChildren && level === 0 && (
-          <div style={{ paddingLeft: `${(level + 1) * 20 + 8}px` }} className="relative">
-            <div 
-              className="absolute border-l border-gray-300"
-              style={{ 
-                left: `${level * 20 + 18}px`,
-                top: 0,
-                bottom: 0
-              }}
-            />
-            <div className="py-2 text-xs text-gray-500 italic">
-              No subcategories.{' '}
-              <button 
-                onClick={() => openCreatePopup('child', category)}
-                className="text-teal-600 hover:text-teal-700 underline"
-              >
-                Create subcategory
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Render Children */}
-        {isExpanded && hasChildren && (
-          <div className="relative">
-            <div 
-              className="absolute border-l border-gray-300"
-              style={{ 
-                left: `${level * 20 + 18}px`,
-                top: 0,
-                bottom: '12px'
-              }}
-            />
-            {category.children.map(child => renderCategory(child, level + 1, category))}
+        {/* Subcategories Section */}
+        {isExpanded && (
+          <div className="bg-gray-50 border-t border-gray-200">
+            {hasChildren ? (
+              <div className="py-1.5">
+                {category.children.map(child => {
+                  const childSelected = isChildSelected(child.id, category.id);
+                  return (
+                    <label
+                      key={child.id}
+                      className="flex items-center px-10 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="radio"
+                        name="category"
+                        checked={childSelected}
+                        onChange={() => handleSubcategorySelect(child, category)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className={`ml-3 text-sm ${childSelected ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
+                        {child.name}
+                      </span>
+                    </label>
+                  );
+                })}
+                <div className="px-10 py-2 mt-0.5">
+                  <button
+                    onClick={() => openCreatePopup('child', category)}
+                    className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                  >
+                    + Create subcategory
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-10 py-2.5">
+                <p className="text-sm text-gray-500 italic mb-2">
+                  No subcategories yet.
+                </p>
+                <button
+                  onClick={() => openCreatePopup('child', category)}
+                  className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                >
+                  + Create subcategory
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -296,7 +320,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
           </label>
           <button
             type="button"
-            onClick={() => openCreatePopup('parent')}
+            onClick={() => openCreatePopup('general')}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
             + Create Category
@@ -319,29 +343,25 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
           </button>
 
           {isOpen && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-hidden flex flex-col">
               <div className="p-2 border-b border-gray-200">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Search categories..."
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
-              <div className="max-h-64 overflow-y-auto py-1">
+              <div className="overflow-y-auto flex-1">
                 {loading ? (
                   <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
                 ) : filteredCategories.length === 0 ? (
                   <div className="p-4 text-center text-sm text-gray-500">No categories found</div>
                 ) : (
                   <div>
-                    <div className="px-2 py-1 flex items-center">
-                      <Circle className="w-3 h-3 fill-gray-300 text-gray-400 mr-2" />
-                      <span className="text-xs font-medium text-gray-500">ROOT</span>
-                    </div>
-                    {filteredCategories.map(cat => renderCategory(cat, 0))}
+                    {filteredCategories.map(cat => renderCategory(cat))}
                   </div>
                 )}
               </div>
@@ -349,8 +369,8 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
               <div className="border-t border-gray-200 p-2">
                 <button
                   type="button"
-                  onClick={() => openCreatePopup('parent')}
-                  className="w-full flex items-center justify-center gap-1 px-3 py-1.5 text-sm text-teal-600 hover:bg-teal-50 rounded transition-colors"
+                  onClick={() => openCreatePopup('general')}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-teal-600 hover:bg-teal-50 rounded transition-colors font-medium"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add New Category</span>
@@ -366,11 +386,14 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-base font-semibold text-gray-900">
                 Create Category
               </h3>
               <button
-                onClick={() => setShowCreatePopup(false)}
+                onClick={() => {
+                  setShowCreatePopup(false);
+                  setLockedParentForChild(null);
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />
@@ -383,13 +406,17 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                 <span className="text-sm font-medium text-gray-700">Is Parent Category</span>
                 <button
                   onClick={() => {
-                    setIsParentToggle(!isParentToggle);
-                    if (!isParentToggle) {
-                      setSelectedParentForChild(null);
+                    if (!lockedParentForChild) {
+                      setIsParentToggle(!isParentToggle);
                     }
                   }}
+                  disabled={!!lockedParentForChild}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                    isParentToggle ? 'bg-blue-600' : 'bg-gray-300'
+                    lockedParentForChild 
+                      ? 'bg-gray-300 cursor-not-allowed' 
+                      : isParentToggle 
+                        ? 'bg-blue-600' 
+                        : 'bg-gray-300'
                   }`}
                 >
                   <span
@@ -400,26 +427,28 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                 </button>
               </div>
 
-              {/* Parent Category Dropdown (for subcategory) */}
-              {!isParentToggle && (
+              {/* Parent Category Dropdown (when not parent and locked) */}
+              {lockedParentForChild ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Parent Category *
+                    Parent Category
                   </label>
-                  <select
-                    value={selectedParentForChild?.id || ''}
-                    onChange={(e) => {
-                      const parent = categories.find(cat => cat.id === Number(e.target.value));
-                      setSelectedParentForChild(parent);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select parent category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
+                  <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700">
+                    {lockedParentForChild.name}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Parent category is locked for this subcategory</p>
                 </div>
+              ) : !isParentToggle && (
+                <SearchableDropdown
+                  label="Parent Category"
+                  required
+                  options={categories}
+                  value={formData.parent_id}
+                  onChange={(value) => setFormData({ ...formData, parent_id: value })}
+                  placeholder="Select parent category"
+                  searchPlaceholder="Search parent categories..."
+                  emptyMessage="No parent categories found"
+                />
               )}
 
               {/* Category Name */}
@@ -431,7 +460,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="e.g., Wood"
                 />
               </div>
@@ -445,7 +474,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="e.g., Wood Products"
                 />
               </div>
@@ -488,7 +517,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   placeholder="e.g., All wood based products"
                 />
               </div>
@@ -496,14 +525,18 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4">
                 <button
-                  onClick={() => setShowCreatePopup(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium"
+                  onClick={() => {
+                    setShowCreatePopup(false);
+                    setLockedParentForChild(null);
+                  }}
+                  className="flex-1 px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateCategory}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                  disabled={!formData.name || !formData.title || (!isParentToggle && !lockedParentForChild && !formData.parent_id)}
+                  className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Create Category
                 </button>
@@ -519,7 +552,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
           <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
             <div className="w-2 h-3 border-r-2 border-b-2 border-green-500 transform rotate-45"></div>
           </div>
-          <span className="font-medium">Category created successfully!</span>
+          <span className="text-sm font-medium">Category created successfully!</span>
         </div>
       )}
 
