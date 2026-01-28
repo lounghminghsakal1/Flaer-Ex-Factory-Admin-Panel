@@ -47,7 +47,7 @@ function generateProducts(baseName, properties) {
 
   if (!validProps.length) return [];
 
-  // ✅ FIX: Generate one product per property value (not cartesian)
+  //  FIX: Generate one product per property value (not cartesian)
   const allProducts = [];
   let productId = 1;
 
@@ -74,7 +74,7 @@ function generateSkus(productName, options) {
   );
 
   if (!validOpts.length) {
-    // ✅ If no options, create one default SKU
+    //  If no options, create one default SKU
     return [{
       sku_name: productName,
       option_type_values: []
@@ -117,18 +117,7 @@ export default function ProductAttributes({
     { type: "", values: [], input: "" }
   ]);
 
-  /*
-  productMedia = [
-    {
-      id,
-      file,          // File (before upload)
-      previewUrl,    // URL.createObjectURL
-      uploadedUrl,   // S3 URL (after upload)
-      sequence,      // 1 = primary
-      active: true
-    }
-  ]
-  */
+  const [pendingCascadeDelete, setPendingCascadeDelete] = useState(null);
 
   //  THIS useEffect to disable property/option editing in edit mode
   useEffect(() => {
@@ -220,62 +209,6 @@ export default function ProductAttributes({
     }
   }
 
-  const handleRemoveMedia = (productId, skuIndex, mediaId) => {
-    setProducts(prev => {
-      return prev.map(product => {
-        if (product.id === productId) {
-          return {
-            ...product,
-            skus: product.skus.map((sku, i) => {
-              if (i === skuIndex) {
-                return {
-                  ...sku,
-                  media: sku.media.filter(m => m.id !== mediaId)
-                };
-              }
-              return sku;
-            })
-          };
-        }
-        return product;
-      });
-    });
-  };
-
-  const handleCopyToAll = (productId, field, value) => {
-    setGeneratedSkus(prev => {
-      return prev.map(product => {
-        if (product.id === productId) {
-          return {
-            ...product,
-            skus: product.skus.map(sku => ({
-              ...sku,
-              [field]: value
-            }))
-          };
-        }
-        return product;
-      });
-    });
-  };
-
-  const selectedPropertyNames = properties
-    .map(p => p.name)
-    .filter(Boolean);
-
-  const selectedOptionTypes = options
-    .map(o => o.type)
-    .filter(Boolean);
-
-  function handleCreateProducts() {
-    const products = generateProducts(formData.name, properties);
-
-    if (products.length > 0) {
-      setGeneratedProducts(products);
-    }
-  }
-
-
   /* ================= PROPERTY HANDLERS ================= */
 
   const addPropertyRow = () => {
@@ -299,7 +232,7 @@ export default function ProductAttributes({
       return;
     }
 
-    // ✅ CHECK IF PRODUCT NAME EXISTS
+    // CHECK IF PRODUCT NAME EXISTS
     if (!formData.name || !formData.name.trim()) {
       alert("Please enter Product Name first in Main Product Information");
       return;
@@ -314,26 +247,88 @@ export default function ProductAttributes({
 
     //  AUTO-GENERATE PRODUCTS
     const newProducts = generateProducts(formData.name, updated);
-    setGeneratedProducts(newProducts);
 
-    // ✅ ALWAYS generate SKUs for new products (even if no options yet)
+    setGeneratedProducts(prev =>
+      newProducts.map(np => {
+        const currentOptions = options.filter(
+          o => o.type && o.values.length > 0
+        );
+
+        return {
+          ...np,
+          skuCount:
+            currentOptions.length === 0
+              ? 0
+              : generateSkus(np.name, currentOptions).length
+        };
+      })
+    );
+
+    //  Always regenerate products + SKUs together
     setTimeout(() => {
-      if (options.some(o => o.type && o.values.length > 0)) {
-        handleCreateSkus();
-      } else {
-        // Create products with empty SKUs array if no options exist yet
-        setProducts(
-          newProducts.map(gp => ({
-            name: gp.name,
-            display_name: gp.name,
-            product_properties: gp.properties.map(prop => ({
+      const currentOptions = options.filter(
+        o => o.type && o.values.length > 0
+      );
+
+      setProducts(prev => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+
+        return newProducts.map(genProd => {
+          const existingProduct = safePrev.find(
+            p => p.name === genProd.name
+          );
+
+          // Generate SKUs even if options exist already
+          const newSkus =
+            currentOptions.length > 0
+              ? generateSkus(genProd.name, currentOptions)
+              : [];
+
+          const existingSkuMap = new Map(
+            (existingProduct?.product_skus || []).map(s => [
+              s.sku_name,
+              s
+            ])
+          );
+
+          const mergedSkus = newSkus.map((newSku, idx) => {
+            if (existingSkuMap.has(newSku.sku_name)) {
+              return existingSkuMap.get(newSku.sku_name);
+            }
+
+            const hasMaster =
+              existingProduct?.product_skus?.some(s => s.master);
+
+            return {
+              sku_name: newSku.sku_name,
+              display_name: newSku.sku_name,
+              display_name_edited: false,
+              sku_code: "",
+              mrp: "",
+              selling_price: "",
+              unit_price: "",
+              conversion_factor: 1,
+              multiplication_factor: 1,
+              uom: "piece",
+              threshold_quantity: 1,
+              status: "active",
+              master: !hasMaster && idx === 0,
+              option_type_values: newSku.option_type_values ?? [],
+              sku_media: []
+            };
+          });
+
+          return {
+            name: genProd.name,
+            display_name: genProd.name,
+            product_properties: genProd.properties.map(prop => ({
               property_name: prop.name,
               property_value: prop.value
             })),
-            product_skus: []
-          }))
-        );
-      }
+            product_skus: mergedSkus
+          };
+        });
+      });
     }, 0);
   };
 
@@ -373,7 +368,7 @@ export default function ProductAttributes({
     updated[index].input = "";
     setOptions(updated);
 
-    // ✅ AUTO-GENERATE/UPDATE SKUs for ALL products immediately
+    // AUTO-GENERATE/UPDATE SKUs for ALL products immediately
     setTimeout(() => {
       if (generatedProducts.length > 0) {
         const tempSkus = generatedProducts.map(gp => ({
@@ -381,7 +376,7 @@ export default function ProductAttributes({
           skus: generateSkus(gp.name, updated)
         }));
 
-        console.log("Generated SKUs:", tempSkus); // ✅ Debug log
+        console.log("Generated SKUs:", tempSkus);
         handleCreateSkus();
       }
     }, 0);
@@ -395,16 +390,39 @@ export default function ProductAttributes({
 
   // General
   function deleteGeneratedProduct(productId) {
+    const deleted = generatedProducts.find(p => p.id === productId);
+    if (!deleted) return;
+
+    const deletedProductName = deleted.name;
+
+    // 1️⃣ Remove generated product
     setGeneratedProducts(prev =>
       prev.filter(p => p.id !== productId)
     );
 
-    setGeneratedSkus(prev =>
-      prev.filter(p => p.id !== productId)
+    // 2️⃣ Remove SKU table
+    setProducts(prev =>
+      prev.filter(p => p.name !== deletedProductName)
+    );
+
+    // 3️⃣ Remove the originating property value
+    setProperties(prev =>
+      prev
+        .map(prop => {
+          // Remove only the value that created this product
+          const updatedValues = prop.values.filter(
+            val => `${formData.name} ${val}` !== deletedProductName
+          );
+
+          return {
+            ...prop,
+            values: updatedValues
+          };
+        })
+      // remove empty property rows
+      // .filter(prop => prop.values.length > 0 || prop.name === "")
     );
   }
-
-  const baseProductName = formData.name.trim();
 
   function handleCreateSkus() {
     if (!generatedProducts.length) return;
@@ -416,70 +434,69 @@ export default function ProductAttributes({
     setProducts(prev => {
       const safePrev = Array.isArray(prev) ? prev : [];
 
-      const newProducts = generatedProducts.map(genProd => {
-        const existingProduct = safePrev.find(
-          p => p.name === genProd.name
-        );
+      const newProducts = safePrev
+        .filter(p =>
+          generatedProducts.some(gp => gp.name === p.name)
+        )
+        .map(existingProduct => {
+          const genProd = generatedProducts.find(
+            gp => gp.name === existingProduct.name
+          );
 
-        const newSkus = generateSkus(genProd.name, currentOptions);
+          const newSkus = generateSkus(genProd.name, currentOptions);
 
-        console.log(`Product: ${genProd.name}, New SKUs:`, newSkus);
+          console.log(`Product: ${genProd.name}, New SKUs:`, newSkus);
 
-        // ✅ PRESERVE EXISTING SKUs AND ADD NEW ONES
-        const existingSkuMap = new Map(
-          (existingProduct?.product_skus || []).map(sku => [sku.sku_name, sku])
-        );
+          //  PRESERVE EXISTING SKUs AND ADD NEW ONES
+          const existingSkuMap = new Map(
+            (existingProduct?.product_skus || []).map(sku => [sku.sku_name, sku])
+          );
 
-        const mergedSkus = newSkus.map((newSku, idx) => {
-          // Check if SKU already exists
-          if (existingSkuMap.has(newSku.sku_name)) {
-            const existing = existingSkuMap.get(newSku.sku_name);
-            console.log(`Preserving existing SKU: ${newSku.sku_name}`);
-            return existing; // ✅ Keep all existing data
-          }
+          const mergedSkus = newSkus.map((newSku, idx) => {
+            // Check if SKU already exists
+            if (existingSkuMap.has(newSku.sku_name)) {
+              const existing = existingSkuMap.get(newSku.sku_name);
+              console.log(`Preserving existing SKU: ${newSku.sku_name}`);
+              return existing; //  Keep all existing data
+            }
 
-          // Create new SKU only if it doesn't exist
-          console.log(`Creating new SKU: ${newSku.sku_name}`);
+            // Create new SKU only if it doesn't exist
+            console.log(`Creating new SKU: ${newSku.sku_name}`);
 
-          // ✅ Check if this should be master (only if no master exists yet)
-          const hasMaster = existingProduct?.product_skus?.some(s => s.master === true);
+            //  Check if this should be master (only if no master exists yet)
+            const hasMaster = existingProduct?.product_skus?.some(s => s.master === true);
+
+            return {
+              sku_name: newSku.sku_name,
+              display_name: newSku.sku_name,
+              display_name_edited: false,
+              sku_code: "",
+              mrp: "",
+              selling_price: "",
+              unit_price: "",
+              dimension: "",
+              weight: "",
+              conversion_factor: 1,
+              multiplication_factor: 1,
+              uom: "piece",
+              threshold_quantity: 1,
+              status: "active",
+              master: !hasMaster && idx === 0, //  Only first SKU is master if none exists
+              option_type_values: newSku.option_type_values ?? [],
+              sku_media: []
+            };
+          });
 
           return {
-            sku_name: newSku.sku_name,
-            display_name: newSku.sku_name,
-            display_name_edited: false,
-            sku_code: "",
-            mrp: "",
-            selling_price: "",
-            unit_price: "",
-            dimension: "",
-            weight: "",
-            conversion_factor: 1,
-            multiplication_factor: 1,
-            uom: "piece",
-            threshold_quantity: 1,
-            status: "active",
-            master: !hasMaster && idx === 0, //  Only first SKU is master if none exists
-            option_type_values: newSku.option_type_values ?? [],
-            sku_media: []
+            ...existingProduct,
+            product_skus: mergedSkus
           };
         });
-
-        return {
-          name: genProd.name,
-          display_name: genProd.name,
-          product_properties: genProd.properties.map(prop => ({
-            property_name: prop.name,
-            property_value: prop.value
-          })),
-          product_skus: mergedSkus
-        };
-      });
 
       return newProducts;
     });
 
-    // ✅ Update SKU count
+    //  Update SKU count
     setGeneratedProducts(prev =>
       prev.map(gp => ({
         ...gp,
@@ -487,6 +504,32 @@ export default function ProductAttributes({
       }))
     );
   }
+
+  useEffect(() => {
+    if (!pendingCascadeDelete) return;
+
+    const deletedProductName = pendingCascadeDelete;
+
+    // 1️⃣ Remove from generated products
+    setGeneratedProducts(prev =>
+      prev.filter(p => p.name !== deletedProductName)
+    );
+
+    // 2️⃣ Remove originating property value
+    setProperties(prev =>
+      prev
+        .map(prop => ({
+          ...prop,
+          values: prop.values.filter(
+            val => `${formData.name} ${val}` !== deletedProductName
+          )
+        }))
+        // .filter(prop => prop.values.length > 0 || prop.name === "")
+    );
+
+    // 3️⃣ Reset flag
+    setPendingCascadeDelete(null);
+  }, [pendingCascadeDelete, formData.name]);
 
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm p-6 space-y-8">
@@ -516,9 +559,17 @@ export default function ProductAttributes({
 
               <div className="grid grid-cols-[1fr_2fr_auto] gap-2 items-start">
 
-                {/* Property Name */}
+                {/* Property Name-  */}
                 <SearchableDropdown
-                  options={propertyNames.map(name => ({ id: name, name: name }))}
+                  options={propertyNames
+                    .filter(name => {
+                      // Exclude already selected properties (except current row)
+                      const selectedNames = properties
+                        .map((p, idx) => idx !== i ? p.name : null)
+                        .filter(Boolean);
+                      return !selectedNames.includes(name);
+                    })
+                    .map(name => ({ id: name, name: name }))}
                   value={prop.name}
                   onChange={(value) => {
                     const updated = [...properties];
@@ -536,7 +587,7 @@ export default function ProductAttributes({
                     <input
                       value={prop.input}
                       placeholder="Enter value"
-                      disabled={!isCreateNew}  // ✅ ADD THIS LINE
+                      disabled={!isCreateNew}
                       onChange={e => {
                         const updated = [...properties];
                         updated[i].input = e.target.value;
@@ -547,7 +598,7 @@ export default function ProductAttributes({
                     />
                     <button
                       onClick={() => addPropertyValue(i)}
-                      disabled={!isCreateNew}  // ✅ ADD THIS LINE
+                      disabled={!isCreateNew}
                       className="h-11 px-2 border border-l-0 border-gray-300
              rounded-r-md bg-gray-50
              hover:bg-blue-600 hover:text-white transition"
@@ -571,7 +622,7 @@ export default function ProductAttributes({
                     ))}
                   </div>
                 </div>
-                {isCreateNew && (  // ✅ ADD THIS WRAPPER
+                {isCreateNew && (
                   <button onClick={() => deletePropertyRow(i)}>
                     <Trash2 className="text-red-500 hover:text-red-700" />
                   </button>
@@ -580,7 +631,7 @@ export default function ProductAttributes({
             </div>
           ))}
 
-          {isCreateNew && (  // ✅ ADD THIS WRAPPER
+          {isCreateNew && (
             <div className="flex justify-center">
               <button
                 onClick={addPropertyRow}
@@ -600,8 +651,17 @@ export default function ProductAttributes({
             <div key={i} className="border border-gray-300 rounded-lg p-2 space-y-1">
 
               <div className="grid grid-cols-[1fr_2fr_auto] gap-3 items-start">
+                {/* Option Type */}
                 <SearchableDropdown
-                  options={optionTypes.map(option => ({ id: option.name, name: option.name }))}
+                  options={optionTypes
+                    .filter(option => {
+                      // Exclude already selected option types (except current row)
+                      const selectedTypes = options
+                        .map((o, idx) => idx !== i ? o.type : null)
+                        .filter(Boolean);
+                      return !selectedTypes.includes(option.name);
+                    })
+                    .map(option => ({ id: option.name, name: option.name }))}
                   value={opt.type}
                   onChange={(value) => {
                     const updated = [...options];
@@ -733,7 +793,7 @@ export default function ProductAttributes({
                         <th className="px-2 py-2 w-[160px] font-medium">Display Name</th>
                         <th className="px-2 py-2 w-[120px] font-medium">SKU Code</th>
 
-                        {/* ✅ DYNAMIC COLUMN ORDER BASED ON PRICING MODE */}
+                        {/*  DYNAMIC COLUMN ORDER BASED ON PRICING MODE */}
                         {pricingMode === "conversion" ? (
                           <>
                             <th className="px-2 py-2 w-[90px] font-medium">MRP</th>
@@ -760,89 +820,146 @@ export default function ProductAttributes({
 
                           {/* SKU NAME */}
                           <td className="px-2 py-1">
-                            <input
-                              className={inputCell}
-                              value={sku.sku_name ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setProducts(prev =>
-                                  prev.map((p, pIdx) =>
-                                    pIdx === productIndex
-                                      ? {
-                                        ...p,
-                                        product_skus: p.product_skus.map((s, sIdx) =>
-                                          sIdx === skuIndex
-                                            ? {
-                                              ...s,
-                                              sku_name: val,
-                                              display_name: s.display_name_edited
-                                                ? s.display_name
-                                                : val
-                                            }
-                                            : s
-                                        )
-                                      }
-                                      : p
-                                  )
-                                );
-                              }}
-                            />
+                            <div className="relative group">
+                              <input
+                                className={`${inputCell} truncate`}
+                                value={sku.sku_name ?? ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setProducts(prev =>
+                                    prev.map((p, pIdx) =>
+                                      pIdx === productIndex
+                                        ? {
+                                          ...p,
+                                          product_skus: p.product_skus.map((s, sIdx) =>
+                                            sIdx === skuIndex
+                                              ? {
+                                                ...s,
+                                                sku_name: val,
+                                                display_name: s.display_name_edited
+                                                  ? s.display_name
+                                                  : val
+                                              }
+                                              : s
+                                          )
+                                        }
+                                        : p
+                                    )
+                                  );
+                                }}
+                              />
+
+                              {/* TOOLTIP */}
+                              {sku.sku_name && sku.sku_name.length > 15 && (
+                                <div className={`pointer-events-none absolute z-[9999] left-0 ${skuIndex >= product.product_skus.length - 2 ? 'bottom-full mb-2' : 'top-full mt-2'
+                                  } opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out`}>
+                                  <div className="relative">
+                                    {/* Tooltip Arrow */}
+                                    <div className={`absolute ${skuIndex >= product.product_skus.length - 2 ? 'bottom-0 -mb-1' : '-top-1'
+                                      } left-4 w-2 h-2 bg-gray-900 transform rotate-45`}></div>
+
+                                    {/* Tooltip Content */}
+                                    <div className="relative bg-gray-900 text-white text-sm px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
+                                      {sku.sku_name}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </td>
 
                           {/* DISPLAY NAME */}
                           <td className="px-2 py-1">
-                            <input
-                              className={inputCell}
-                              value={sku.display_name ?? ""}
-                              onChange={(e) => {
-                                setProducts(prev =>
-                                  prev.map((p, pIdx) =>
-                                    pIdx === productIndex
-                                      ? {
-                                        ...p,
-                                        product_skus: p.product_skus.map((s, sIdx) =>
-                                          sIdx === skuIndex
-                                            ? {
-                                              ...s,
-                                              display_name: e.target.value,
-                                              display_name_edited: true
-                                            }
-                                            : s
-                                        )
-                                      }
-                                      : p
-                                  )
-                                );
-                              }}
-                            />
+                            <div className="relative group">
+                              <input
+                                className={`${inputCell} truncate`}
+                                value={sku.display_name ?? ""}
+                                onChange={(e) => {
+                                  setProducts(prev =>
+                                    prev.map((p, pIdx) =>
+                                      pIdx === productIndex
+                                        ? {
+                                          ...p,
+                                          product_skus: p.product_skus.map((s, sIdx) =>
+                                            sIdx === skuIndex
+                                              ? {
+                                                ...s,
+                                                display_name: e.target.value,
+                                                display_name_edited: true
+                                              }
+                                              : s
+                                          )
+                                        }
+                                        : p
+                                    )
+                                  );
+                                }}
+                              />
+
+                              {/* TOOLTIP */}
+                              {sku.display_name && sku.display_name.length > 15 && (
+                                <div className={`pointer-events-none absolute z-[9999] left-0 ${skuIndex >= product.product_skus.length - 2 ? 'bottom-full mb-2' : 'top-full mt-2'
+                                  } opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out`}>
+                                  <div className="relative">
+                                    {/* Tooltip Arrow */}
+                                    <div className={`absolute ${skuIndex >= product.product_skus.length - 2 ? 'bottom-0 -mb-1' : '-top-1'
+                                      } left-4 w-2 h-2 bg-gray-900 transform rotate-45`}></div>
+
+                                    {/* Tooltip Content */}
+                                    <div className="relative bg-gray-900 text-white text-sm px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
+                                      {sku.display_name}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </td>
 
                           {/* SKU CODE */}
                           <td className="px-2 py-1">
-                            <input
-                              className={inputCell}
-                              value={sku.sku_code ?? ""}
-                              onChange={(e) =>
-                                setProducts(prev =>
-                                  prev.map((p, pIdx) =>
-                                    pIdx === productIndex
-                                      ? {
-                                        ...p,
-                                        product_skus: p.product_skus.map((s, sIdx) =>
-                                          sIdx === skuIndex
-                                            ? { ...s, sku_code: e.target.value }
-                                            : s
-                                        )
-                                      }
-                                      : p
+                            <div className="relative group">
+                              <input
+                                className={`${inputCell} truncate`}
+                                value={sku.sku_code ?? ""}
+                                onChange={(e) =>
+                                  setProducts(prev =>
+                                    prev.map((p, pIdx) =>
+                                      pIdx === productIndex
+                                        ? {
+                                          ...p,
+                                          product_skus: p.product_skus.map((s, sIdx) =>
+                                            sIdx === skuIndex
+                                              ? { ...s, sku_code: e.target.value }
+                                              : s
+                                          )
+                                        }
+                                        : p
+                                    )
                                   )
-                                )
-                              }
-                            />
+                                }
+                              />
+
+                              {/* TOOLTIP */}
+                              {sku.sku_code && sku.sku_code.length > 15 && (
+                                <div className={`pointer-events-none absolute z-[9999] left-0 ${skuIndex >= product.product_skus.length - 2 ? 'bottom-full mb-2' : 'top-full mt-2'
+                                  } opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out`}>
+                                  <div className="relative">
+                                    {/* Tooltip Arrow */}
+                                    <div className={`absolute ${skuIndex >= product.product_skus.length - 2 ? 'bottom-0 -mb-1' : '-top-1'
+                                      } left-4 w-2 h-2 bg-gray-900 transform rotate-45`}></div>
+
+                                    {/* Tooltip Content */}
+                                    <div className="relative bg-gray-900 text-white text-sm px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
+                                      {sku.sku_code}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </td>
 
                           {/* MRP / SELLING / UNIT */}
-                          {/* ✅ DYNAMIC PRICING INPUTS WITH AUTO-CALCULATION */}
+                          {/*  DYNAMIC PRICING INPUTS WITH AUTO-CALCULATION */}
                           {pricingMode === "conversion" ? (
                             <>
                               {/* MRP (User enters) */}
@@ -1022,20 +1139,12 @@ export default function ProductAttributes({
 
                           {/* STATUS */}
                           <td className="px-2 py-1">
-                            {/* <select name="status" id="">
-                              <option value="active" selected>Active</option>
-                              <option value="inactive">In active</option>
-                              <option value="deleted">Deleted</option>
-                            </select> */}
-                            
-                            <SearchableDropdown
-                              options={[
-                                { id: 'active', name: 'Active' },
-                                { id: 'inactive', name: 'Inactive' },
-                                { id: 'deleted', name: 'Deleted' }
-                              ]}
+                            <select
+                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                               value={sku.status ?? "active"}
-                              onChange={(value) =>
+                              onChange={(e) => {
+                                const value = e.target.value;
+
                                 setProducts(prev =>
                                   prev.map((p, pIdx) =>
                                     pIdx === productIndex
@@ -1049,10 +1158,13 @@ export default function ProductAttributes({
                                       }
                                       : p
                                   )
-                                )
-                              }
-                              placeholder="Select status"
-                            />
+                                );
+                              }}
+                            >
+                              <option value="active">Active</option>
+                              <option value="inactive">Inactive</option>
+                              <option value="deleted">Deleted</option>
+                            </select>
                           </td>
 
                           {/* MASTER */}
@@ -1279,7 +1391,7 @@ export default function ProductAttributes({
                                           }
                                         })
                                       }
-                                      className="flex flex-col items-center justify-center w-12 h-12 border border-gray-300 rounded hover:border-blue-500 transition-colors"
+                                      className="flex flex-col items-center justify-center w-12 h-12 border border-gray-300 rounded hover:border-blue-500 transition-colors cursor-pointer"
                                     >
                                       <Image size={16} className="text-gray-600" />
                                       <span className="text-[10px] font-semibold text-gray-700">
@@ -1412,9 +1524,9 @@ export default function ProductAttributes({
                           {/* DELETE */}
                           <td className="px-2 py-1 text-center">
                             <button
-                              onClick={() =>
-                                setProducts(prev =>
-                                  prev.map((p, pIdx) =>
+                              onClick={() => {
+                                setProducts(prev => {
+                                  const updated = prev.map((p, pIdx) =>
                                     pIdx === productIndex
                                       ? {
                                         ...p,
@@ -1423,9 +1535,20 @@ export default function ProductAttributes({
                                         )
                                       }
                                       : p
-                                  )
-                                )
-                              }
+                                  );
+
+                                  const productAfterDelete = updated[productIndex];
+
+                                  if (productAfterDelete.product_skus.length === 0) {
+                                    // 👇 mark for cascade, but DO NOT cascade here
+                                    setPendingCascadeDelete(productAfterDelete.name);
+
+                                    return updated.filter((_, idx) => idx !== productIndex);
+                                  }
+
+                                  return updated;
+                                });
+                              }}
                             >
                               <Trash2 size={16} className="text-red-500 hover:text-red-700" />
                             </button>
@@ -1453,7 +1576,7 @@ export default function ProductAttributes({
               </h3>
               <button
                 onClick={() => setMediaPopup(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 border-2 p-1 rounded-md hover:text-gray-50 hover:bg-red-500 cursor-pointer"
               >
                 <X size={24} />
               </button>
@@ -1490,8 +1613,9 @@ export default function ProductAttributes({
                               <button
                                 onClick={() => {
                                   mediaPopup.onSetPrimary?.(media.id);
+                                  setMediaPopup(null);
                                 }}
-                                className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                                className="px-4 py-2 bg-blue-600 text-gray-200 text-sm rounded hover:bg-blue-800 cursor-pointer"
                               >
                                 Set as Primary
                               </button>
@@ -1503,8 +1627,9 @@ export default function ProductAttributes({
                                 if (mediaPopup.media.filter(m => !m.uploading).length <= 1) {
                                   setMediaPopup(null);
                                 }
+                                setMediaPopup(null);
                               }}
-                              className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                              className="px-4 py-2 bg-red-500 text-gray-200 text-sm rounded hover:bg-red-800 cursor-pointer"
                             >
                               Remove
                             </button>
@@ -1512,13 +1637,13 @@ export default function ProductAttributes({
 
                           {/* Primary badge */}
                           {isPrimary && (
-                            <span className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                            <span className="absolute top-2 left-2 bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium">
                               Primary
                             </span>
                           )}
 
                           {/* Sequence number */}
-                          <span className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                          <span className="absolute top-2 right-2 bg-black/70 text-white px-3 py-1 rounded text-xs">
                             {media.sequence || 1}
                           </span>
                         </div>
@@ -1532,7 +1657,7 @@ export default function ProductAttributes({
             <div className="border-t border-gray-200 px-6 py-4">
               <button
                 onClick={() => setMediaPopup(null)}
-                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-400 hover:text-gray-100 transition-colors font-medium cursor-pointer"
               >
                 Close
               </button>
@@ -1541,32 +1666,13 @@ export default function ProductAttributes({
         </div>
       )}
 
-
-      {/* {generatedProducts.map((p, index) => (
-        <div key={p.id} className="border rounded-lg p-4 mt-6">
-          <ProductContentSection
-            product={p}
-            index={index}
-            setGeneratedProducts={setGeneratedProducts}
-          />
-
-          <ProductMediaSection
-            product={p}
-            index={index}
-            setGeneratedProducts={setGeneratedProducts}
-            uploadMediaFiles={uploadMediaFiles}
-            setMediaPopup={setMediaPopup}
-          />
-        </div>
-      ))} */}
-
-      {/* ================= GLOBAL PRODUCT CONTENT ================= */}
+      {/* GLOBAL PRODUCT CONTENT */}
       <ProductContentSection
         productContents={productContents}
         setProductContents={setProductContents}
       />
 
-      {/* ================= GLOBAL PRODUCT MEDIA ================= */}
+      {/* GLOBAL PRODUCT MEDIA */}
       <ProductMediaSection
         productMedia={productMedia}
         setProductMedia={setProductMedia}
@@ -1574,45 +1680,11 @@ export default function ProductAttributes({
         setMediaPopup={setMediaPopup}
       />
 
-
     </div>
   );
 }
 
 function ProductContentSection({ productContents, setProductContents }) {
-  // Ensure at least one row exists on render
-  // const productContents = product.product_contents && product.product_contents.length > 0
-  //   ? product.product_contents
-  //   : [{ content_type: "", content_value: "" }];
-
-  // // Initialize with one row if empty
-  // useEffect(() => {
-  //   if (!product.product_contents || product.product_contents.length === 0) {
-  //     setGeneratedProducts(prev =>
-  //       prev.map((p, i) =>
-  //         i === index
-  //           ? { ...p, product_contents: [{ content_type: "", content_value: "" }] }
-  //           : p
-  //       )
-  //     );
-  //   }
-  // }, []);
-
-  // const setProductContents = (updater) => {
-  //   setGeneratedProducts(prev =>
-  //     prev.map((p, i) =>
-  //       i === index
-  //         ? {
-  //           ...p,
-  //           product_contents:
-  //             typeof updater === "function"
-  //               ? updater(p.product_contents || [{ content_type: "", content_value: "" }])
-  //               : updater
-  //         }
-  //         : p
-  //     )
-  //   );
-  // };
 
   const handleAddRow = () => {
     setProductContents(prev => [
@@ -1734,19 +1806,17 @@ function ProductMediaSection({
         if (!response.ok) throw new Error('Upload failed');
 
         const result = await response.json();
-
-        // ✅ CHANGE: result.data.url → result.data.media_url
         uploadedUrls.push(result.data.media_url);
       }
 
-      // ✅ Store ONLY the uploaded URLs
+      //  Store ONLY the uploaded URLs
       setProductMedia(prev => [
         ...prev,
         ...files.map((file, idx) => ({
           id: Date.now() + idx,
           name: file.name,
           url: uploadedUrls[idx],
-          uploadedUrl: uploadedUrls[idx], // ✅ This is critical
+          uploadedUrl: uploadedUrls[idx],
           sequence: prev.length + idx + 1,
           active: true
         }))
@@ -1893,6 +1963,7 @@ function ProductMediaSection({
                     e.target.value = "";
                   }}
                 />
+                {uploading && <p className="text-xs text-blue-600">Uploading...</p>}
               </label>
             )}
 
@@ -1900,7 +1971,7 @@ function ProductMediaSection({
             {hiddenCount > 0 && (
               <button
                 onClick={showAllImages}
-                className="shrink-0 w-24 h-24 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500"
+                className="shrink-0 w-24 h-24 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 cursor-pointer"
               >
                 <Image className="h-5 w-5 text-gray-600" />
                 <span className="text-xs font-semibold">+{hiddenCount}</span>
@@ -1911,7 +1982,7 @@ function ProductMediaSection({
 
           {/* Add more button below grid (if 4+ images) */}
           {productMedia.length >= 4 && (
-            <label className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer">
+            <label className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-blue-700 text-white rounded-md hover:bg-blue-900 transition-colors cursor-pointer">
               <Plus size={16} />
               Add More Images
               {uploading && <span className="text-xs">(Uploading...)</span>}

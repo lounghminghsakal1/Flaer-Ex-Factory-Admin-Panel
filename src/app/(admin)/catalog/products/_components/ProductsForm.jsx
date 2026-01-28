@@ -9,24 +9,6 @@ import HierarchicalCategorySelector from "./HierarchicalCategorySelector";
 import BrandSelector from "./BrandSelector";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 
-function applyConversionPricing(sku, conv) {
-  if (!sku.mrp || !conv) return sku;
-  return {
-    ...sku,
-    unit_price: Number((sku.mrp / conv).toFixed(2))
-  };
-}
-
-function applyMultiplicationPricing(sku, mult) {
-  if (!sku.unit_price || !mult) return sku;
-  const price = Number((sku.unit_price * mult).toFixed(2));
-  return {
-    ...sku,
-    mrp: price,
-    selling_price: price
-  };
-}
-
 export default function ProductsForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,7 +27,7 @@ export default function ProductsForm() {
     }
   ]);
 
-  // ✅ At the top of ProductsForm component
+  //  At the top of ProductsForm component
   const [productContents, setProductContents] = useState([
     { content_type: "", content_value: "" }
   ]);
@@ -134,7 +116,7 @@ export default function ProductsForm() {
       requires_inventory: data.requires_inventory,
       tags: data.tags || [],
 
-      // ✅ ADD THESE LINES
+      //  ADD THESE LINES
       products: data.products || [],
       product_contents: data.product_contents || [],
       product_media: data.product_media || []
@@ -161,8 +143,9 @@ export default function ProductsForm() {
     }
   }
 
-  // ✅ ADD THIS ENTIRE useEffect
+
   useEffect(() => {
+    if (isCreateNew) return;
     if (!isCreateNew && editAndViewFormData.id) {
       // Populate generatedProducts from backend data
       const backendProducts = editAndViewFormData.products || [];
@@ -224,7 +207,7 @@ export default function ProductsForm() {
     }
   }, [isCreateNew, editAndViewFormData.id]);
 
-  // ✅ UPLOAD MEDIA HELPER FUNCTION
+  //  UPLOAD MEDIA HELPER FUNCTION
   async function uploadMediaFiles(files, mediaFor = "product") {
     if (!files || files.length === 0) return [];
 
@@ -233,7 +216,7 @@ export default function ProductsForm() {
     for (const file of files) {
       try {
         const formData = new FormData();
-        // ✅ Handle both File objects and objects with .file property
+        //  Handle both File objects and objects with .file property
         const actualFile = file instanceof File ? file : file.file;
         if (!actualFile) continue;
 
@@ -358,19 +341,19 @@ export default function ProductsForm() {
         return;
       }
 
-      // ✅ CHECK: Ensure productMedia has uploadedUrl
+      //  CHECK: Ensure productMedia has uploadedUrl
       const product_media = productMedia
-        .filter(m => m.uploadedUrl) // ✅ Only include successfully uploaded media
+        .filter(m => m.uploadedUrl) //  Only include successfully uploaded media
         .map((m, idx) => ({
           media_type: "image",
-          media_url: m.uploadedUrl, // ✅ Use uploadedUrl, not url
+          media_url: m.uploadedUrl, //  Use uploadedUrl, not url
           active: true,
           sequence: idx + 1
         }));
 
-      // ✅ CHECK: Ensure productContents are not empty
+      //  CHECK: Ensure productContents are not empty
       const product_contents = productContents
-        .filter(c => c.content_type?.trim() && c.content_value?.trim()) // ✅ Validate both fields
+        .filter(c => c.content_type?.trim() && c.content_value?.trim()) //  Validate both fields
         .map(c => ({
           content_type: c.content_type,
           content_value: c.content_value
@@ -384,15 +367,15 @@ export default function ProductsForm() {
       const payload = {
         product: {
           ...basePayload.product,
-          product_contents, // ✅ This should now have data
-          product_media // ✅ This should now have data
+          product_contents, //  This should now have data
+          product_media //  This should now have data
         }
       };
 
       console.log("=== FINAL PAYLOAD ===");
       console.log(JSON.stringify(payload, null, 2));
 
-      // ✅ DETERMINE METHOD AND URL
+      //  DETERMINE METHOD AND URL
       const method = isCreateNew ? "POST" : "PUT";
       const url = isCreateNew
         ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products`
@@ -447,14 +430,14 @@ export default function ProductsForm() {
     }
   }
 
-  // ✅ UPDATED TO UPLOAD MEDIA
+  //  UPDATED TO UPLOAD MEDIA
   async function extractAndUploadContentsAndMedia(generatedProducts) {
     const product_contents = [];
     const product_media = [];
 
     for (const p of generatedProducts) {
 
-      // ✅ CONTENTS
+      //  CONTENTS
       if (p.product_contents?.length) {
         p.product_contents.forEach(c => {
           if (c.content_type && c.content_value) {
@@ -466,7 +449,7 @@ export default function ProductsForm() {
         });
       }
 
-      // ✅ MEDIA
+      //  MEDIA
       if (p.content_media?.length) {
         for (const m of p.content_media) {
           if (m.uploadedUrl) {
@@ -1006,28 +989,6 @@ function ProductSettings({ formData, setFormData }) {
       />
 
       {/* Brand */}
-      {/* <FieldWithAction
-        label="Brand"
-        actionLabel="+ Create Brand"
-      >
-        <select
-          value={formData.brand_id ?? ""}
-          onChange={(e) =>
-            setFormData(p => ({
-              ...p,
-              brand_id: Number(e.target.value) || null
-            }))
-          }
-          className="input bg-white"
-        >
-          <option value="">Select brand</option>
-          {brandOptions.map(brand => (
-            <option key={brand.id} value={brand.id}>
-              {brand.name}
-            </option>
-          ))}
-        </select>
-      </FieldWithAction> */}
       <BrandSelector
         selectedBrandId={formData.brand_id}
         onBrandSelect={(brand) => {
@@ -1084,7 +1045,6 @@ function ProductSettings({ formData, setFormData }) {
         </div>
 
         {/* Tax Type Dropdown (shown when taxable is enabled) */}
-        {/* Tax Type - Using SearchableDropdown */}
         {formData.taxable && (
           <SearchableDropdown
             label="Tax Type"
