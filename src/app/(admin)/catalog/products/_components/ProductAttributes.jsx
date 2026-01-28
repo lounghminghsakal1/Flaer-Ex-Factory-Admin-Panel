@@ -1021,7 +1021,13 @@ export default function ProductAttributes({
                           )}
 
                           {/* STATUS */}
-                          <td className="px-2 py-1" style={{ position: 'relative', zIndex: 9999 }}>
+                          <td className="px-2 py-1">
+                            {/* <select name="status" id="">
+                              <option value="active" selected>Active</option>
+                              <option value="inactive">In active</option>
+                              <option value="deleted">Deleted</option>
+                            </select> */}
+                            
                             <SearchableDropdown
                               options={[
                                 { id: 'active', name: 'Active' },
@@ -1821,7 +1827,7 @@ function ProductMediaSection({
           <div className="flex items-center gap-3 overflow-x-auto">
             {/* PRIMARY IMAGE */}
             {primary && (
-              <div className="relative group flex-shrink-0 w-56 h-40">
+              <div className="relative group shrink-0 w-56 h-40">
                 <img
                   src={primary.previewUrl || primary.uploadedUrl}
                   className="w-full h-full object-cover rounded-lg border-2 border-blue-500"
@@ -1872,7 +1878,7 @@ function ProductMediaSection({
 
             {/* ADD MORE */}
             {productMedia.length < 4 && (
-              <label className="flex-shrink-0 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500">
+              <label className="shrink-0 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500">
                 <Upload className="h-5 w-5 text-gray-400" />
                 <span className="text-[10px] text-gray-500">Add</span>
                 <input
@@ -1894,7 +1900,7 @@ function ProductMediaSection({
             {hiddenCount > 0 && (
               <button
                 onClick={showAllImages}
-                className="flex-shrink-0 w-24 h-24 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500"
+                className="shrink-0 w-24 h-24 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500"
               >
                 <Image className="h-5 w-5 text-gray-600" />
                 <span className="text-xs font-semibold">+{hiddenCount}</span>

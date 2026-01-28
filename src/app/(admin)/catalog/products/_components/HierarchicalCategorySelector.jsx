@@ -56,7 +56,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
   const fetchRootCategories = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?only_names=true`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`);
       const result = await response.json();
       const categoriesWithChildren = (result.data || []).map(cat => ({
         ...cat,

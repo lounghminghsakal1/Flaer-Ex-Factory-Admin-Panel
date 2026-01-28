@@ -103,10 +103,10 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
   const handleCreateBrand = async () => {
     try {
       const body = {
-        brand_name: formDataPopup.brand_name,
-        brand_code: formDataPopup.brand_code,
-        brand_description: formDataPopup.brand_description,
-        brand_slug: formDataPopup.brand_slug,
+        name: formDataPopup.brand_name,
+        code: formDataPopup.brand_code,
+        description: formDataPopup.brand_description,
+        slug: formDataPopup.brand_slug,
         priority: formDataPopup.priority,
         status: formDataPopup.status,
         image_url: formDataPopup.image_url,
