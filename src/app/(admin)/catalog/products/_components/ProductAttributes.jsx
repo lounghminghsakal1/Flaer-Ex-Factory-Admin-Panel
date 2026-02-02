@@ -11,24 +11,6 @@ import {
 import toast from "react-hot-toast";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 
-/* ================= DUMMY OPTIONS ================= */
-
-const PROPERTY_NAME_OPTIONS = [
-  "Size",
-  "Material",
-  "Finish",
-  "Grade",
-  "Color"
-];
-
-const OPTION_TYPE_OPTIONS = [
-  "Thickness",
-  "Length",
-  "Width",
-  "Weight"
-];
-
-
 function cartesian(arrays) {
   return arrays.reduce(
     (acc, curr) =>
@@ -47,7 +29,6 @@ function generateProducts(baseName, properties) {
 
   if (!validProps.length) return [];
 
-  //  FIX: Generate one product per property value (not cartesian)
   const allProducts = [];
   let productId = 1;
 
@@ -332,11 +313,47 @@ export default function ProductAttributes({
     }, 0);
   };
 
-  const removePropertyValue = (row, valueIndex) => {
-    const updated = [...properties];
-    updated[row].values.splice(valueIndex, 1);
-    setProperties(updated);
+  const removePropertyValue = (propIndex, valueIndex) => {
+    const prop = properties[propIndex];
+    const valueToDelete = prop.values[valueIndex];
+
+    const productNameToDelete = `${formData.name} ${valueToDelete}`;
+
+    // Check if this value actually generated products
+    const hasProduct = generatedProducts.some(
+      p => p.name === productNameToDelete
+    );
+
+    // Confirm ONLY if destructive
+    if (hasProduct) {
+      const ok = window.confirm(
+        `Removing "${valueToDelete}" will delete:\n\n` +
+        `• Product: ${productNameToDelete}\n` +
+        `• All its SKUs\n\nDo you want to continue?`
+      );
+
+      if (!ok) return;
+    }
+
+    //Remove property value
+    setProperties(prev =>
+      prev.map((p, i) =>
+        i === propIndex
+          ? { ...p, values: p.values.filter((_, vi) => vi !== valueIndex) }
+          : p
+      )
+    );
+
+    // Remove generated product row
+    setGeneratedProducts(prev =>
+      prev.filter(p => p.name !== productNameToDelete)
+    );
+    // Remove SKU table (products)
+    setProducts(prev =>
+      prev.filter(p => p.name !== productNameToDelete)
+    );
   };
+
 
   /* ================= OPTION HANDLERS ================= */
 
@@ -382,11 +399,76 @@ export default function ProductAttributes({
     }, 0);
   };
 
-  const removeOptionValue = (row, valueIndex) => {
-    const updated = [...options];
-    updated[row].values.splice(valueIndex, 1);
-    setOptions(updated);
+  const removeOptionValue = (optIndex, valueIndex) => {
+    const option = options[optIndex];
+    const valueToRemove = option.values[valueIndex];
+
+    const ok = window.confirm(
+        `Removing "${valueToRemove}" can delete corressponding skus also, do you want to delete it ??`
+      );
+
+    if (!ok) return;
+    
+    // Remove option value
+    const updatedOptions = options.map((o, i) =>
+      i === optIndex
+        ? { ...o, values: o.values.filter((_, vi) => vi !== valueIndex) }
+        : o
+    );
+
+    setOptions(updatedOptions);
+
+    //Re-generate SKUs for products
+    setProducts(prevProducts =>
+      prevProducts.map(product => {
+        // Re-generate SKUs based on updated options
+        const newSkus = generateSkus(product.name, updatedOptions);
+
+        // Preserve existing SKU data where possible
+        const existingSkuMap = new Map(
+          product.product_skus.map(sku => [sku.sku_name, sku])
+        );
+
+        const mergedSkus = newSkus.map((newSku, idx) => {
+          if (existingSkuMap.has(newSku.sku_name)) {
+            return existingSkuMap.get(newSku.sku_name);
+          }
+
+          return {
+            sku_name: newSku.sku_name,
+            display_name: newSku.sku_name,
+            display_name_edited: false,
+            sku_code: "",
+            mrp: "",
+            selling_price: "",
+            unit_price: "",
+            conversion_factor: 1,
+            multiplication_factor: 1,
+            uom: "piece",
+            threshold_quantity: 1,
+            status: "active",
+            master: idx === 0,
+            option_type_values: newSku.option_type_values ?? [],
+            sku_media: []
+          };
+        });
+
+        return {
+          ...product,
+          product_skus: mergedSkus
+        };
+      })
+    );
+
+    //Update SKU counts
+    setGeneratedProducts(prev =>
+      prev.map(gp => ({
+        ...gp,
+        skuCount: generateSkus(gp.name, updatedOptions).length
+      }))
+    );
   };
+
 
   // General
   function deleteGeneratedProduct(productId) {
@@ -524,7 +606,7 @@ export default function ProductAttributes({
             val => `${formData.name} ${val}` !== deletedProductName
           )
         }))
-        // .filter(prop => prop.values.length > 0 || prop.name === "")
+      // .filter(prop => prop.values.length > 0 || prop.name === "")
     );
 
     // 3️⃣ Reset flag
@@ -557,7 +639,7 @@ export default function ProductAttributes({
           {properties.map((prop, i) => (
             <div key={i} className="border border-gray-300 rounded-lg p-2 space-y-1">
 
-              <div className="grid grid-cols-[1fr_2fr_auto] gap-2 items-start">
+              <div className="grid grid-cols-[1.2fr_2fr_auto] gap-2 items-start">
 
                 {/* Property Name-  */}
                 <SearchableDropdown
@@ -571,14 +653,24 @@ export default function ProductAttributes({
                     })
                     .map(name => ({ id: name, name: name }))}
                   value={prop.name}
+                  creatable
                   onChange={(value) => {
                     const updated = [...properties];
                     updated[i].name = value;
                     setProperties(updated);
                   }}
-                  placeholder="Select property"
+                  placeholder="Search or type to add"
                   disabled={!isCreateNew}
                   emptyMessage="No properties available"
+                  onCreateOption={(newProp) => {
+                    // Add locally
+                    setPropertyNames(prev => [...prev, newProp]);
+
+                    // Auto-select
+                    const updated = [...properties];
+                    updated[i].name = newProp;
+                    setProperties(updated);
+                  }}
                 />
 
                 {/* Property Values */}
@@ -615,7 +707,7 @@ export default function ProductAttributes({
                                    text-blue-700 bg-blue-50 rounded-md text-xs"
                       >
                         {val}
-                        <button onClick={() => removePropertyValue(i, vi)} className="cursor-pointer">
+                        <button onClick={() => removePropertyValue(i, vi)} className="cursor-pointer" title="Remove value (this will delete the product and its SKUs)">
                           <X size={12} className="text-red-500" />
                         </button>
                       </span>
@@ -650,7 +742,7 @@ export default function ProductAttributes({
           {options.map((opt, i) => (
             <div key={i} className="border border-gray-300 rounded-lg p-2 space-y-1">
 
-              <div className="grid grid-cols-[1fr_2fr_auto] gap-3 items-start">
+              <div className="grid grid-cols-[1.2fr_2fr_auto] gap-3 items-start">
                 {/* Option Type */}
                 <SearchableDropdown
                   options={optionTypes
@@ -663,6 +755,7 @@ export default function ProductAttributes({
                     })
                     .map(option => ({ id: option.name, name: option.name }))}
                   value={opt.type}
+                  creatable
                   onChange={(value) => {
                     const updated = [...options];
                     updated[i].type = value;
@@ -673,8 +766,15 @@ export default function ProductAttributes({
                       }, 0);
                     }
                   }}
-                  placeholder="Select option"
+                  placeholder="Search or type to add"
                   emptyMessage="No option types available"
+                  onCreateOption={(newOption) => {
+                    setOptionTypes(prev => [...prev, { name: newOption }]);
+
+                    const updated = [...options];
+                    updated[i].type = newOption;
+                    setOptions(updated);
+                  }}
                 />
 
                 <div className="space-y-2">
@@ -708,7 +808,7 @@ export default function ProductAttributes({
                                    text-green-700 bg-green-50 rounded-md text-xs"
                       >
                         {val}
-                        <button onClick={() => removeOptionValue(i, vi)}>
+                        <button onClick={() => removeOptionValue(i, vi)} title="Remove option value(this will delete corressponding skus also)" >
                           <X size={12} className="text-red-500" />
                         </button>
                       </span>
@@ -757,7 +857,10 @@ export default function ProductAttributes({
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className={tdBase}>{p.name}</td>
                     <td className={`${tdBase} text-center font-medium`}>
-                      {p.skuCount}
+                      {
+                        products.find(prod => prod.name === p.name)
+                          ?.product_skus.length || 0
+                      }
                     </td>
                     <td className={`${tdBase} text-right`}>
                       <button
@@ -1252,7 +1355,6 @@ export default function ProductAttributes({
                                         const result = await response.json();
                                         const uploadedUrls = result.data?.media_url ? [result.data.media_url] : [];
 
-                                        // Update with uploaded URLs
                                         setProducts(prev =>
                                           prev.map((p, pIdx) =>
                                             pIdx === productIndex
@@ -1525,14 +1627,14 @@ export default function ProductAttributes({
                           <td className="px-2 py-1 text-center">
                             <button
                               onClick={() => {
+                                let cascadeProductName = null;
+
                                 setProducts(prev => {
                                   const updated = prev.map((p, pIdx) =>
                                     pIdx === productIndex
                                       ? {
                                         ...p,
-                                        product_skus: p.product_skus.filter(
-                                          (_, idx) => idx !== skuIndex
-                                        )
+                                        product_skus: p.product_skus.filter((_, idx) => idx !== skuIndex)
                                       }
                                       : p
                                   );
@@ -1540,15 +1642,18 @@ export default function ProductAttributes({
                                   const productAfterDelete = updated[productIndex];
 
                                   if (productAfterDelete.product_skus.length === 0) {
-                                    // 👇 mark for cascade, but DO NOT cascade here
-                                    setPendingCascadeDelete(productAfterDelete.name);
-
+                                    cascadeProductName = productAfterDelete.name;
                                     return updated.filter((_, idx) => idx !== productIndex);
                                   }
 
                                   return updated;
                                 });
+
+                                if (cascadeProductName) {
+                                  setPendingCascadeDelete(cascadeProductName);
+                                }
                               }}
+
                             >
                               <Trash2 size={16} className="text-red-500 hover:text-red-700" />
                             </button>
@@ -1627,7 +1732,6 @@ export default function ProductAttributes({
                                 if (mediaPopup.media.filter(m => !m.uploading).length <= 1) {
                                   setMediaPopup(null);
                                 }
-                                setMediaPopup(null);
                               }}
                               className="px-4 py-2 bg-red-500 text-gray-200 text-sm rounded hover:bg-red-800 cursor-pointer"
                             >
@@ -1772,6 +1876,33 @@ function ProductContentSection({ productContents, setProductContents }) {
     </div>
   );
 }
+
+function removeMediaWithPrimaryFix(mediaList, removeId) {
+  const removed = mediaList.find(m => m.id === removeId);
+  const remaining = mediaList.filter(m => m.id !== removeId);
+
+  // If nothing left
+  if (remaining.length === 0) return [];
+
+  // If removed image was primary
+  if (removed?.sequence === 1) {
+    return remaining.map((m, idx) => ({
+      ...m,
+      sequence: idx === 0 ? 1 : idx + 1
+    }));
+  }
+
+  // If removed image was NOT primary
+  return remaining.map(m => ({
+    ...m,
+    // keep original sequence, just normalize gaps
+    sequence:
+      m.sequence > removed.sequence
+        ? m.sequence - 1
+        : m.sequence
+  }));
+}
+
 
 
 function ProductMediaSection({

@@ -152,7 +152,7 @@ export default function ProductsForm() {
 
       const transformedGeneratedProducts = backendProducts.map((prod, idx) => ({
         id: idx + 1,
-        name: prod.name.replace(editAndViewFormData.name + " ", ""), // Remove base product name
+        name: prod.name.replace(editAndViewFormData.name + " ", ""),
         properties: prod.product_properties?.map(p => ({
           name: p.property_name,
           value: p.property_value
@@ -313,24 +313,44 @@ export default function ProductsForm() {
   function validateBeforeSubmit(formData, products) {
     if (!formData.hsn_code?.trim()) return "HSN code is required";
     if (!formData.category_id) return "Category is required";
-
+    if (formData.taxable && !formData.tax_type_id) {
+      return "Select tax type";
+    }
     if (!products || products.length === 0) {
       return "At least one product variant is required";
     }
 
-    for (const p of products) {
+    for (let pIndex = 0; pIndex < products.length; pIndex++) {
+      const p = products[pIndex];
+
       if (!p.product_skus || p.product_skus.length === 0) {
         return `Product "${p.name}" must have at least one SKU`;
       }
 
-      const hasValidSku = p.product_skus.some(sku => sku.sku_name?.trim());
-      if (!hasValidSku) {
-        return `Product "${p.name}" must have at least one valid SKU with a name`;
+      for (let sIndex = 0; sIndex < p.product_skus.length; sIndex++) {
+        const sku = p.product_skus[sIndex];
+
+        if (!sku.sku_name?.trim()) {
+          return `SKU name is required (Product: ${p.name}, SKU #${sIndex + 1})`;
+        }
+
+        if (!sku.sku_code?.trim()) {
+          return `SKU code is required (Product: ${p.name}, SKU #${sIndex + 1})`;
+        }
+
+        if (sku.mrp <= 0 || sku.selling_price <= 0 || sku.unit_price <= 0) {
+          return `Please enter all prices for product: ${p.name}, sku #${sIndex + 1}`
+        }
+
+        if (!sku.uom) {
+          return `UOM is required (Product: ${p.name}, SKU #${sIndex + 1})`;
+        }
       }
     }
 
-    return null;
+    return null; // All validations passed
   }
+
   async function handleSubmit() {
     try {
       setLoading(true);
@@ -343,17 +363,17 @@ export default function ProductsForm() {
 
       //  CHECK: Ensure productMedia has uploadedUrl
       const product_media = productMedia
-        .filter(m => m.uploadedUrl) //  Only include successfully uploaded media
+        .filter(m => m.uploadedUrl)
         .map((m, idx) => ({
           media_type: "image",
-          media_url: m.uploadedUrl, //  Use uploadedUrl, not url
+          media_url: m.uploadedUrl,
           active: true,
           sequence: idx + 1
         }));
 
       //  CHECK: Ensure productContents are not empty
       const product_contents = productContents
-        .filter(c => c.content_type?.trim() && c.content_value?.trim()) //  Validate both fields
+        .filter(c => c.content_type?.trim() && c.content_value?.trim())
         .map(c => ({
           content_type: c.content_type,
           content_value: c.content_value
@@ -367,8 +387,8 @@ export default function ProductsForm() {
       const payload = {
         product: {
           ...basePayload.product,
-          product_contents, //  This should now have data
-          product_media //  This should now have data
+          product_contents,
+          product_media
         }
       };
 
@@ -396,24 +416,18 @@ export default function ProductsForm() {
       const result = await response.json();
 
       if (!response.ok) {
-        console.error("=== BACKEND ERROR ===", result);
-
-        let errorMessage = isCreateNew ? "Failed to create product" : "Failed to update product";
-
+        let errorMessage = "Something went wrong";
         if (Array.isArray(result?.errors)) {
           errorMessage = result.errors.join(", ");
         } else if (typeof result?.errors === "object") {
-          errorMessage = Object.entries(result.errors)
-            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
-            .join("; ");
-        } else if (typeof result?.message === "string") {
+          errorMessage = Object.values(result.errors).flat().join(", ");
+        } else if (result?.message) {
           errorMessage = result.message;
-        } else if (typeof result?.error === "string") {
-          errorMessage = result.error;
         }
-
-        throw new Error(errorMessage);
+        errorToast(errorMessage);
+        return;
       }
+
 
       toast.success(isCreateNew ? "Product created successfully" : "Product updated successfully");
 
@@ -428,43 +442,6 @@ export default function ProductsForm() {
     } finally {
       setLoading(false);
     }
-  }
-
-  //  UPDATED TO UPLOAD MEDIA
-  async function extractAndUploadContentsAndMedia(generatedProducts) {
-    const product_contents = [];
-    const product_media = [];
-
-    for (const p of generatedProducts) {
-
-      //  CONTENTS
-      if (p.product_contents?.length) {
-        p.product_contents.forEach(c => {
-          if (c.content_type && c.content_value) {
-            product_contents.push({
-              content_type: c.content_type,
-              content_value: c.content_value
-            });
-          }
-        });
-      }
-
-      //  MEDIA
-      if (p.content_media?.length) {
-        for (const m of p.content_media) {
-          if (m.uploadedUrl) {
-            product_media.push({
-              media_type: "image",
-              media_url: m.uploadedUrl,
-              active: true,
-              sequence: product_media.length + 1
-            });
-          }
-        }
-      }
-    }
-
-    return { product_contents, product_media };
   }
 
   return (
@@ -853,17 +830,8 @@ function MainProductInformation({
 }
 
 function ProductSettings({ formData, setFormData }) {
-  const CATEGORY_OPTIONS = [
-    { id: 1, name: "Plywood" },
-    { id: 2, name: "Laminates" },
-    { id: 3, name: "Furniture Boards" },
-    { id: 4, name: "Hardware" }
-  ];
-
-  const [categoryOptions, setCategoryOptions] = useState(CATEGORY_OPTIONS);
 
   const [taxOptions, setTaxoptions] = useState([]);
-  const [showCategoryPopup, setShowCategoryPopup] = useState(false);
 
   useEffect(() => {
     fetchCategoryOptions();
@@ -998,7 +966,7 @@ function ProductSettings({ formData, setFormData }) {
         setFormData={setFormData}
       />
 
-      {/* Tracking Type - Using SearchableDropdown */}
+      {/* Tracking Type*/}
       <SearchableDropdown
         label="Tracking Type"
         options={[
@@ -1011,7 +979,7 @@ function ProductSettings({ formData, setFormData }) {
         placeholder="Select tracking type"
       />
 
-      {/* Selection Type - Using SearchableDropdown */}
+      {/* Selection Type */}
       <SearchableDropdown
         label="Selection Type"
         options={[

@@ -151,7 +151,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
           <button
             type="button"
             onClick={openCreatePopup}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="text-sm text-blue-600 hover:text-blue-900 font-medium cursor-pointer"
           >
             + Create Brand
           </button>
@@ -226,7 +226,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
 
       {/* Create Brand Popup */}
       {showCreatePopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -234,7 +234,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
               </h3>
               <button
                 onClick={() => setShowCreatePopup(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -255,7 +255,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                 />
               </div>
 
-              {/* Brand Code */}
+              {/* Brand Code
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Brand Code *
@@ -268,7 +268,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                   placeholder="e.g., HAF"
                   maxLength="10"
                 />
-              </div>
+              </div> */}
 
               {/* Status */}
               <div>
@@ -282,7 +282,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                       value="active"
                       checked={formDataPopup.status === 'active'}
                       onChange={(e) => setFormDataPopup({ ...formDataPopup, status: e.target.value })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 cursor-pointer accent-green-600 focus:ring-green-500"
                     />
                     <span className="ml-2 text-sm text-gray-700">Active</span>
                   </label>
@@ -292,7 +292,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                       value="inactive"
                       checked={formDataPopup.status === 'inactive'}
                       onChange={(e) => setFormDataPopup({ ...formDataPopup, status: e.target.value })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 cursor-pointer accent-gray-600 focus:ring-gray-500"
                     />
                     <span className="ml-2 text-sm text-gray-700">Inactive</span>
                   </label>
@@ -327,7 +327,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                 />
               </div>
 
-              {/* Image URL */}
+              {/* Image URL
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Image URL
@@ -339,15 +339,15 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="https://example.com/logo.png"
                 />
-              </div>
+              </div> */}
 
               {/* Meta Information Section */}
-              <div className="border-t border-gray-200 pt-4">
+              {/* <div className="border-t border-gray-200 pt-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">Additional Information</h4>
 
-                <div className="space-y-3">
+                <div className="space-y-3"> */}
                   {/* Country */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Country
                     </label>
@@ -361,10 +361,10 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g., Germany"
                     />
-                  </div>
+                  </div> */}
 
                   {/* Founded Year */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Founded Year
                     </label>
@@ -380,10 +380,10 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                       min="1800"
                       max={new Date().getFullYear()}
                     />
-                  </div>
+                  </div> */}
 
                   {/* Specialization */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Specialization
                     </label>
@@ -397,21 +397,21 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g., Furniture Fittings"
                     />
-                  </div>
-                </div>
-              </div>
+                  </div> */}
+                {/* </div>
+              </div> */}
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => setShowCreatePopup(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium"
+                  className="flex-1 px-4 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-800 hover:text-gray-100 transition-colors font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateBrand}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                  className="flex-1 px-4 py-2 text-sm bg-blue-400 text-white rounded-md hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
                 >
                   Create Brand
                 </button>

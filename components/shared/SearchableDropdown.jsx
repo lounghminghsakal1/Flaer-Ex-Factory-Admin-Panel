@@ -28,7 +28,10 @@ const SearchableDropdown = ({
   emptyMessage = "No options found",
   required = false,
   valueKey = "id",
-  labelKey = "name"
+  labelKey = "name",
+  creatable = false,
+  onCreateOption = (value) => { }
+
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,6 +59,16 @@ const SearchableDropdown = ({
   const selectedOption = options.find(option => option[valueKey] === value);
   const displayLabel = selectedOption ? selectedOption[labelKey] : placeholder;
 
+
+  const exactMatch = filteredOptions.some(
+    opt => opt[labelKey]?.toLowerCase() === searchQuery.toLowerCase()
+  );
+
+  const canCreate =
+    creatable &&
+    searchQuery.trim() &&
+    !exactMatch;
+
   const handleSelect = (option) => {
     onChange?.(option[valueKey]);
     setIsOpen(false);
@@ -75,16 +88,15 @@ const SearchableDropdown = ({
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
-          className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${
-            disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer'
-          }`}
+          className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer'
+            }`}
         >
           <div className="flex items-center justify-between">
             <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
               {displayLabel}
             </span>
-            <ChevronDown 
-              className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+            <ChevronDown
+              className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
             />
           </div>
         </button>
@@ -108,25 +120,36 @@ const SearchableDropdown = ({
 
             {/* Options List */}
             <div className="max-h-64 overflow-y-auto py-1">
-              {filteredOptions.length === 0 ? (
+              {filteredOptions.length === 0 && !canCreate ? (
                 <div className="p-4 text-center text-sm text-gray-500">
                   {emptyMessage}
                 </div>
               ) : (
                 <div>
-                  {filteredOptions.map((option) => (
+                  {filteredOptions.map(option => (
                     <button
                       key={option[valueKey]}
                       onClick={() => handleSelect(option)}
-                      className={`w-full px-3 py-2 text-left text-sm transition-colors ${
-                        option[valueKey] === value
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                      }`}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                     >
                       {option[labelKey]}
                     </button>
                   ))}
+
+                  {canCreate && (
+                    <button
+                      onClick={() => {
+                        onCreateOption(searchQuery);
+                        setIsOpen(false);
+                        setSearchQuery('');
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm
+                   bg-blue-50 text-blue-700
+                   hover:bg-blue-100 flex items-center gap-2"
+                    >
+                      ➕ Add “{searchQuery}”
+                    </button>
+                  )}
                 </div>
               )}
             </div>

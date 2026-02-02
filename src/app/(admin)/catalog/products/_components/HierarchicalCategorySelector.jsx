@@ -30,9 +30,16 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
     }
   });
 
+  const [isCreated, setIsCreated] = useState(false);
+
   useEffect(() => {
     fetchRootCategories();
   }, []);
+
+  useEffect(() => {
+    fetchRootCategories();
+    fetchSubCategories();
+  },[isCreated])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -88,7 +95,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
 
   const toggleCategory = async (category, event) => {
     event.stopPropagation();
-    
+
     if (expandedCategories.has(category.id)) {
       const newExpanded = new Set(expandedCategories);
       newExpanded.delete(category.id);
@@ -97,21 +104,37 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
       const newExpanded = new Set(expandedCategories);
       newExpanded.add(category.id);
       setExpandedCategories(newExpanded);
-      
+
       const updateChildren = async (cats) => {
         for (let cat of cats) {
-          if (cat.id === category.id && cat.children.length === 0) {
-            cat.children = await fetchSubCategories(category.id);
-            setCategories([...categories]);
+          if (cat.id === category.id && cat.children?.length === 0) {
+            const updateChildren = async (cats) => {
+              return Promise.all(
+                cats.map(async (cat) => {
+                  if (cat.id === category.id && cat.children?.length === 0) {
+                    const children = await fetchSubCategories(category.id);
+                    return { ...cat, children };
+                  }
+                  if (cat.children?.length > 0) {
+                    return { ...cat, children: await updateChildren(cat.children) };
+                  }
+                  return cat;
+                })
+              );
+            };
+
+            const updated = await updateChildren(categories);
+            setCategories(updated);
+
             return true;
           }
-          if (cat.children.length > 0) {
+          if (cat.children?.length > 0) {
             if (await updateChildren(cat.children)) return true;
           }
         }
         return false;
       };
-      
+
       await updateChildren(categories);
     }
   };
@@ -133,7 +156,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
       setLockedParentForChild(null);
       setIsParentToggle(true);
     }
-    
+
     setFormData({
       name: '',
       title: '',
@@ -173,36 +196,54 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
       if (response.ok) {
         const result = await response.json();
         const newCategory = result.data;
-        
+
+        const parentId = lockedParentForChild?.id || formData.parent_id;
+
         setShowCreatePopup(false);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
-        
-        // Refresh categories
-        await fetchRootCategories();
-        
-        // If it's a subcategory, expand its parent and auto-select the new subcategory
-        if (!isParentToggle && (lockedParentForChild || formData.parent_id)) {
-          const parentId = lockedParentForChild?.id || formData.parent_id;
+
+        setCategories(prev => {
+          // Parent category creation
+          if (isParentToggle) {
+            return [
+              ...prev,
+              { ...newCategory, children: [], hasChildren: true }
+            ];
+          }
+
+          // Subcategory creation
+          return prev.map(cat => {
+            if (cat.id === parentId) {
+              return {
+                ...cat,
+                children: [...(cat.children || []), newCategory]
+              };
+            }
+            return cat;
+          });
+        });
+
+        // Expand parent immediately
+        if (!isParentToggle && parentId) {
+          setExpandedCategories(prev => new Set([...prev, parentId]));
+        }
+
+        // Auto select
+        if (!isParentToggle && parentId) {
           const parent = categories.find(c => c.id === parentId) || lockedParentForChild;
-          
-          const newExpanded = new Set(expandedCategories);
-          newExpanded.add(parentId);
-          setExpandedCategories(newExpanded);
-          
-          // Auto-select the newly created subcategory
           setSelectedCategory(newCategory);
           setSelectedParent(parent);
           onCategorySelect?.(newCategory);
         } else {
-          // Auto-select the newly created parent category
           setSelectedCategory(newCategory);
           setSelectedParent(null);
           onCategorySelect?.(newCategory);
         }
-        
+
         setLockedParentForChild(null);
       }
+      setIsCreated(true);
     } catch (error) {
       console.error('Error creating category:', error);
     }
@@ -226,16 +267,16 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
 
   const renderCategory = (category) => {
     const isExpanded = expandedCategories.has(category.id);
-    const hasChildren = category.children && category.children.length > 0;
+    const hasChildren = category.children && category.children?.length > 0;
     const filtered = searchQuery ? category.name.toLowerCase().includes(searchQuery.toLowerCase()) : true;
     const parentSelected = isParentSelected(category.id);
-    
+
     if (!filtered) return null;
 
     return (
       <div key={category.id} className="border-b border-gray-100 last:border-b-0">
         {/* Parent Category Row */}
-        <div className="flex items-center hover:bg-gray-50 transition-colors">
+        <div className="flex items-center hover:bg-gray-200 transition-colors">
           {/* Expand/Collapse Button with Plus/Minus */}
           <button
             onClick={(e) => toggleCategory(category, e)}
@@ -282,7 +323,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                 <div className="px-10 py-2 mt-0.5">
                   <button
                     onClick={() => openCreatePopup('child', category)}
-                    className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                    className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium cursor-pointer"
                   >
                     + Create subcategory
                   </button>
@@ -295,7 +336,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                 </p>
                 <button
                   onClick={() => openCreatePopup('child', category)}
-                  className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                  className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium cursor-pointer"
                 >
                   + Create subcategory
                 </button>
@@ -307,7 +348,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
     );
   };
 
-  const filteredCategories = categories.filter(cat => 
+  const filteredCategories = categories.filter(cat =>
     searchQuery ? cat.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
   );
 
@@ -321,12 +362,12 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
           <button
             type="button"
             onClick={() => openCreatePopup('general')}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="text-sm text-blue-600 hover:text-blue-900 font-medium cursor-pointer "
           >
             + Create Category
           </button>
         </div>
-        <p className="text-xs text-gray-500 mb-2">Choose a category for your product.</p>
+        <p className="text-xs text-gray-500 mb-2">Choose a category </p>
 
         <div className="relative" ref={dropdownRef}>
           <button
@@ -383,7 +424,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
 
       {/* Create Category Popup */}
       {showCreatePopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-900">
@@ -394,7 +435,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                   setShowCreatePopup(false);
                   setLockedParentForChild(null);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -411,18 +452,16 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                     }
                   }}
                   disabled={!!lockedParentForChild}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                    lockedParentForChild 
-                      ? 'bg-gray-300 cursor-not-allowed' 
-                      : isParentToggle 
-                        ? 'bg-blue-600' 
-                        : 'bg-gray-300'
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${lockedParentForChild
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : isParentToggle
+                      ? 'bg-blue-600 hover:bg-blue-800 cursor-pointer'
+                      : 'bg-gray-300 hover:bg-gray-500 cursor-pointer'
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isParentToggle ? 'translate-x-6' : 'translate-x-1'
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isParentToggle ? 'translate-x-6' : 'translate-x-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -484,26 +523,31 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Status *
                 </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center cursor-pointer">
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
                     <input
                       type="radio"
                       value="active"
                       checked={formData.status === 'active'}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 cursor-pointer accent-green-600 focus:ring-green-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Active</span>
+                    <span className={`text-sm font-medium ${formData.status === 'active' ? 'text-green-700' : 'text-gray-700'}`}>
+                      Active
+                    </span>
                   </label>
-                  <label className="flex items-center cursor-pointer">
+
+                  <label className="flex items-center gap-2 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 has-[:checked]:border-gray-500 has-[:checked]:bg-gray-50">
                     <input
                       type="radio"
                       value="inactive"
                       checked={formData.status === 'inactive'}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 cursor-pointer accent-gray-600 focus:ring-gray-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Inactive</span>
+                    <span className={`text-sm font-medium ${formData.status === 'inactive' ? 'text-gray-700' : 'text-gray-700'}`}>
+                      Inactive
+                    </span>
                   </label>
                 </div>
               </div>
@@ -529,16 +573,16 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
                     setShowCreatePopup(false);
                     setLockedParentForChild(null);
                   }}
-                  className="flex-1 px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium"
+                  className="flex-1 px-4 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-800 hover:text-gray-100 transition-colors font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateCategory}
                   disabled={!formData.name || !formData.title || (!isParentToggle && !lockedParentForChild && !formData.parent_id)}
-                  className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 text-sm bg-blue-400 text-white rounded-md hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  Create Category
+                  {!isParentToggle ? 'Create Subcategory' : 'Create Category'}
                 </button>
               </div>
             </div>

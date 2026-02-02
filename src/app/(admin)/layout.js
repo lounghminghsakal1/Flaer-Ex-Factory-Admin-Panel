@@ -87,7 +87,7 @@ const SidebarItem = ({
       {hasSubmenu && isOpen && (
         <div
           className={`
-            fixed z-50
+            fixed z-20
             ${isCollapsed ? 'left-20' : 'left-64'}
             bg-linear-to-br from-gray-900 to-gray-800
             border border-gray-700/50 rounded-xl shadow-2xl
