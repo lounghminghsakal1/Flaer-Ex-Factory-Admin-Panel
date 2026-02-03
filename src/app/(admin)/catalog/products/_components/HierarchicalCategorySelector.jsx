@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Minus, X } from 'lucide-react';
 import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
+import { DM_Sans } from 'next/font/google';
 
-const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) => {
+const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState([]);
@@ -39,7 +40,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
   useEffect(() => {
     fetchRootCategories();
     fetchSubCategories();
-  },[isCreated])
+  }, [isCreated])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -362,7 +363,9 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
           <button
             type="button"
             onClick={() => openCreatePopup('general')}
-            className="text-sm text-blue-600 hover:text-blue-900 font-medium cursor-pointer "
+            disabled={disabled}
+            className={`text-sm text-blue-600 hover:text-blue-900 font-medium ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+              }`}
           >
             + Create Category
           </button>
@@ -372,8 +375,10 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            className="w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+            onClick={() => !disabled && setIsOpen(!isOpen)}
+            disabled={disabled}
+            className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+              }`}
           >
             <div className="flex items-center justify-between">
               <span className={selectedCategory ? 'text-gray-900' : 'text-gray-400'}>
@@ -383,7 +388,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect }) 
             </div>
           </button>
 
-          {isOpen && (
+          {isOpen && !disabled && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-hidden flex flex-col">
               <div className="p-2 border-b border-gray-200">
                 <input

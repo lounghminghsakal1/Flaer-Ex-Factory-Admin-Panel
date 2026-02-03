@@ -74,7 +74,7 @@ function generateSkus(productName, options) {
   }));
 }
 
-export default function ProductAttributes({
+export default function ProductCreationAttributes({
   formData,
   products,
   setProducts,

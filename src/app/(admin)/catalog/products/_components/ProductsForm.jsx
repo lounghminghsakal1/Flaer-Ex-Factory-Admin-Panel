@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 import { Loader2, Save, Edit2, ArrowLeft, Plus, X } from 'lucide-react';
-import ProductAttributes from "./ProductAttributes";
+import ProductCreationAttributes from "./ProductCreationAttributes";
+import ProductUpdationAttributes from "./ProductUpdationAttributes";
 import HierarchicalCategorySelector from "./HierarchicalCategorySelector";
 import BrandSelector from "./BrandSelector";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
+import { successToast, errorToast } from "../../../../../../components/ui/toast";
 
 export default function ProductsForm() {
   const router = useRouter();
@@ -144,68 +146,68 @@ export default function ProductsForm() {
   }
 
 
-  useEffect(() => {
-    if (isCreateNew) return;
-    if (!isCreateNew && editAndViewFormData.id) {
-      // Populate generatedProducts from backend data
-      const backendProducts = editAndViewFormData.products || [];
+  // useEffect(() => {
+  //   if (isCreateNew) return;
+  //   if (!isCreateNew && editAndViewFormData.id) {
+  //     // Populate generatedProducts from backend data
+  //     const backendProducts = editAndViewFormData.products || [];
 
-      const transformedGeneratedProducts = backendProducts.map((prod, idx) => ({
-        id: idx + 1,
-        name: prod.name.replace(editAndViewFormData.name + " ", ""),
-        properties: prod.product_properties?.map(p => ({
-          name: p.property_name,
-          value: p.property_value
-        })) || [],
-        skuCount: prod.product_skus?.length || 0,
-        content_type: prod.product_contents?.[0]?.content_type || "",
-        content_values: prod.product_contents?.map(c => c.content_value) || [],
-        content_media: prod.product_media?.map((m, i) => ({
-          id: Date.now() + i,
-          name: `media-${i}`,
-          url: m.media_url,
-          uploadedUrl: m.media_url,
-          active: m.active
-        })) || []
-      }));
+  //     const transformedGeneratedProducts = backendProducts.map((prod, idx) => ({
+  //       id: idx + 1,
+  //       name: prod.name.replace(editAndViewFormData.name + " ", ""),
+  //       properties: prod.product_properties?.map(p => ({
+  //         name: p.property_name,
+  //         value: p.property_value
+  //       })) || [],
+  //       skuCount: prod.product_skus?.length || 0,
+  //       content_type: prod.product_contents?.[0]?.content_type || "",
+  //       content_values: prod.product_contents?.map(c => c.content_value) || [],
+  //       content_media: prod.product_media?.map((m, i) => ({
+  //         id: Date.now() + i,
+  //         name: `media-${i}`,
+  //         url: m.media_url,
+  //         uploadedUrl: m.media_url,
+  //         active: m.active
+  //       })) || []
+  //     }));
 
-      setGeneratedProducts(transformedGeneratedProducts);
+  //     setGeneratedProducts(transformedGeneratedProducts);
 
-      // Populate products (SKUs)
-      const transformedProducts = backendProducts.map(prod => ({
-        name: prod.name,
-        display_name: prod.display_name,
-        product_properties: prod.product_properties || [],
-        product_skus: prod.product_skus?.map(sku => ({
-          sku_name: sku.sku_name,
-          sku_code: sku.sku_code || "",
-          display_name: sku.display_name,
-          display_name_edited: sku.display_name !== sku.sku_name,
-          mrp: sku.mrp || "",
-          selling_price: sku.selling_price || "",
-          unit_price: sku.unit_price || "",
-          dimension: sku.dimension || "",
-          weight: sku.weight || "",
-          conversion_factor: sku.conversion_factor || 1,
-          multiplication_factor: sku.multiplication_factor || 1,
-          uom: sku.uom || "piece",
-          threshold_quantity: sku.threshold_quantity || 1,
-          status: sku.status || "active",
-          master: sku.master || false,
-          option_type_values: sku.option_type_values || [],
-          sku_media: sku.sku_media?.map((m, i) => ({
-            id: Date.now() + i,
-            name: `sku-media-${i}`,
-            url: m.media_url,
-            uploadedUrl: m.media_url,
-            active: m.active
-          })) || []
-        })) || []
-      }));
+  //     // Populate products (SKUs)
+  //     const transformedProducts = backendProducts.map(prod => ({
+  //       name: prod.name,
+  //       display_name: prod.display_name,
+  //       product_properties: prod.product_properties || [],
+  //       product_skus: prod.product_skus?.map(sku => ({
+  //         sku_name: sku.sku_name,
+  //         sku_code: sku.sku_code || "",
+  //         display_name: sku.display_name,
+  //         display_name_edited: sku.display_name !== sku.sku_name,
+  //         mrp: sku.mrp || "",
+  //         selling_price: sku.selling_price || "",
+  //         unit_price: sku.unit_price || "",
+  //         dimension: sku.dimension || "",
+  //         weight: sku.weight || "",
+  //         conversion_factor: sku.conversion_factor || 1,
+  //         multiplication_factor: sku.multiplication_factor || 1,
+  //         uom: sku.uom || "piece",
+  //         threshold_quantity: sku.threshold_quantity || 1,
+  //         status: sku.status || "active",
+  //         master: sku.master || false,
+  //         option_type_values: sku.option_type_values || [],
+  //         sku_media: sku.sku_media?.map((m, i) => ({
+  //           id: Date.now() + i,
+  //           name: `sku-media-${i}`,
+  //           url: m.media_url,
+  //           uploadedUrl: m.media_url,
+  //           active: m.active
+  //         })) || []
+  //       })) || []
+  //     }));
 
-      setProducts(transformedProducts);
-    }
-  }, [isCreateNew, editAndViewFormData.id]);
+  //     setProducts(transformedProducts);
+  //   }
+  // }, [isCreateNew, editAndViewFormData.id]);
 
   //  UPLOAD MEDIA HELPER FUNCTION
   async function uploadMediaFiles(files, mediaFor = "product") {
@@ -268,9 +270,7 @@ export default function ProductsForm() {
         products: products
           .filter(p => p.product_skus?.length > 0)
           .map(p => ({
-            name: `${p.name}-${p.product_properties
-              .map(pp => pp.property_value)
-              .join("-")}`.toLowerCase().replace(/\s+/g, "_"),
+            name: p.name,
             display_name: p.display_name || p.name,
 
             product_properties: p.product_properties || [],
@@ -342,6 +342,10 @@ export default function ProductsForm() {
           return `Please enter all prices for product: ${p.name}, sku #${sIndex + 1}`
         }
 
+        if (sku.selling_price > sku.mrp) {
+          return `Selling price cannot be greater than mrp (change -> ${p.name}'s prices)`
+        }
+
         if (!sku.uom) {
           return `UOM is required (Product: ${p.name}, SKU #${sIndex + 1})`;
         }
@@ -361,7 +365,7 @@ export default function ProductsForm() {
         return;
       }
 
-      //  CHECK: Ensure productMedia has uploadedUrl
+      //  Ensure productMedia has uploadedUrl
       const product_media = productMedia
         .filter(m => m.uploadedUrl)
         .map((m, idx) => ({
@@ -371,7 +375,7 @@ export default function ProductsForm() {
           sequence: idx + 1
         }));
 
-      //  CHECK: Ensure productContents are not empty
+      //  Ensure productContents are not empty
       const product_contents = productContents
         .filter(c => c.content_type?.trim() && c.content_value?.trim())
         .map(c => ({
@@ -472,7 +476,7 @@ export default function ProductsForm() {
           </div>
 
           <button
-            onClick={isCreateNew ? handleSubmit : () => setIsEditing(!isEditing)}
+            onClick={isCreateNew ? handleSubmit : isEditing ? handleSubmit : () => setIsEditing(true)}
             disabled={loading}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg ${isCreateNew
               ? 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -517,30 +521,43 @@ export default function ProductsForm() {
               globalPricing={globalPricing}
               setGlobalPricing={setGlobalPricing}
               setProducts={setProducts}
+              isCreateNew={isCreateNew}
+              isEditing={isEditing}
             />
           </div>
           <div className="col-span-4">
             <ProductSettings
               formData={formData}
               setFormData={setFormData}
+              isCreateNew={isCreateNew}
+              isEditing={isEditing}
             />
           </div>
           <div className="col-span-12">
-            <ProductAttributes
-              formData={formData}
-              products={products}
-              setProducts={setProducts}
-              generatedProducts={generatedProducts}
-              setGeneratedProducts={setGeneratedProducts}
-              uploadMediaFiles={uploadMediaFiles}
-              isCreateNew={isCreateNew}
-              pricingMode={pricingMode}
-              globalPricing={globalPricing}
-              productContents={productContents}
-              setProductContents={setProductContents}
-              productMedia={productMedia}
-              setProductMedia={setProductMedia}
-            />
+            {isCreateNew ? (
+              <ProductCreationAttributes
+                formData={formData}
+                products={products}
+                setProducts={setProducts}
+                generatedProducts={generatedProducts}
+                setGeneratedProducts={setGeneratedProducts}
+                uploadMediaFiles={uploadMediaFiles}
+                isCreateNew={isCreateNew}
+                pricingMode={pricingMode}
+                globalPricing={globalPricing}
+                productContents={productContents}
+                setProductContents={setProductContents}
+                productMedia={productMedia}
+                setProductMedia={setProductMedia}
+              />
+            ) : (
+              <ProductUpdationAttributes
+                productId={productId}
+                formData={formData}
+                products={products}
+                setProducts={setProducts}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -555,7 +572,9 @@ function MainProductInformation({
   setPricingMode,
   globalPricing,
   setGlobalPricing,
-  setProducts
+  setProducts,
+  isCreateNew,
+  isEditing
 }) {
   const [tagInput, setTagInput] = useState("");
   const [displayNameTouched, setDisplayNameTouched] = useState(false);
@@ -592,6 +611,8 @@ function MainProductInformation({
     { id: 'piece', name: 'Piece' },
   ];
 
+  // Determine if fields should be disabled
+  const fieldsDisabled = !isCreateNew && !isEditing;
 
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-2">
@@ -616,6 +637,7 @@ function MainProductInformation({
                 onChange={() =>
                   setFormData(p => ({ ...p, product_type: type }))
                 }
+                disabled={fieldsDisabled}
               />
               {type.charAt(0).toUpperCase() + type.slice(1)}
             </label>
@@ -637,6 +659,7 @@ function MainProductInformation({
               display_name: displayNameTouched ? p.display_name : e.target.value
             }));
           }}
+          disabled={fieldsDisabled}
         />
         <Input
           label="Display Name"
@@ -646,6 +669,7 @@ function MainProductInformation({
             setDisplayNameTouched(true);
             setFormData(p => ({ ...p, display_name: e.target.value }));
           }}
+          disabled={fieldsDisabled}
         />
       </div>
 
@@ -657,6 +681,7 @@ function MainProductInformation({
         onChange={e =>
           setFormData(p => ({ ...p, description: e.target.value }))
         }
+        disabled={fieldsDisabled}
       />
 
       {/* HSN */}
@@ -669,6 +694,7 @@ function MainProductInformation({
         onChange={e =>
           setFormData(p => ({ ...p, hsn_code: e.target.value }))
         }
+        disabled={fieldsDisabled}
       />
 
       {/* Quantities */}
@@ -687,6 +713,7 @@ function MainProductInformation({
               onChange={value =>
                 setFormData(p => ({ ...p, [key]: value }))
               }
+              disabled={fieldsDisabled}
             />
           ))}
         </div>
@@ -705,6 +732,7 @@ function MainProductInformation({
               checked={pricingMode === "conversion"}
               onChange={(e) => setPricingMode(e.target.value)}
               className="accent-blue-600"
+              disabled={fieldsDisabled}
             />
             <span className="text-sm font-medium">Conversion Factor (MRP → Unit Price)</span>
           </label>
@@ -717,6 +745,7 @@ function MainProductInformation({
               checked={pricingMode === "multiplication"}
               onChange={(e) => setPricingMode(e.target.value)}
               className="accent-green-600"
+              disabled={fieldsDisabled}
             />
             <span className="text-sm font-medium">Multiplication Factor (Unit Price → MRP)</span>
           </label>
@@ -731,6 +760,7 @@ function MainProductInformation({
               onChange={value =>
                 setGlobalPricing(p => ({ ...p, conversion_factor: value }))
               }
+              disabled={fieldsDisabled}
             />
           ) : (
             <NumberInput
@@ -739,6 +769,7 @@ function MainProductInformation({
               onChange={value =>
                 setGlobalPricing(p => ({ ...p, multiplication_factor: value }))
               }
+              disabled={fieldsDisabled}
             />
           )}
 
@@ -748,6 +779,7 @@ function MainProductInformation({
             onChange={value =>
               setGlobalPricing(p => ({ ...p, threshold_quantity: value }))
             }
+            disabled={fieldsDisabled}
           />
 
           <SearchableDropdown
@@ -768,6 +800,7 @@ function MainProductInformation({
                 }))
               );
             }}
+            disabled={fieldsDisabled}
           />
 
         </div>
@@ -792,12 +825,14 @@ function MainProductInformation({
             placeholder="Enter tag"
             className="input flex-1"
             onKeyDown={e => e.key === "Enter" && addTag()}
+            disabled={fieldsDisabled}
           />
           <button
             type="button"
             onClick={addTag}
             className="h-11 w-11 border border-gray-300 rounded-md
-                       text-lg hover:bg-gray-100"
+                       text-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={fieldsDisabled}
           >
             +
           </button>
@@ -815,7 +850,8 @@ function MainProductInformation({
                 {tag}
                 <button
                   onClick={() => removeTag(i)}
-                  className="text-blue-500 hover:text-blue-700"
+                  className="text-blue-500 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={fieldsDisabled}
                 >
                   ×
                 </button>
@@ -829,7 +865,7 @@ function MainProductInformation({
   );
 }
 
-function ProductSettings({ formData, setFormData }) {
+function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
 
   const [taxOptions, setTaxoptions] = useState([]);
 
@@ -862,6 +898,8 @@ function ProductSettings({ formData, setFormData }) {
     }
   }
 
+  // Determine if fields should be disabled
+  const fieldsDisabled = !isCreateNew && !isEditing;
 
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-3">
@@ -884,7 +922,7 @@ function ProductSettings({ formData, setFormData }) {
         ${formData.status === "active"
                 ? "border-green-500 bg-green-50 text-green-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              }`}
+              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <input
               type="radio"
@@ -895,6 +933,7 @@ function ProductSettings({ formData, setFormData }) {
                 setFormData(p => ({ ...p, status: "active" }))
               }
               className="accent-green-600"
+              disabled={fieldsDisabled}
             />
             <span className="text-sm font-medium">Active</span>
           </label>
@@ -905,7 +944,7 @@ function ProductSettings({ formData, setFormData }) {
         ${formData.status === "inactive"
                 ? "border-gray-500 bg-gray-100 text-gray-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              }`}
+              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <input
               type="radio"
@@ -916,6 +955,7 @@ function ProductSettings({ formData, setFormData }) {
                 setFormData(p => ({ ...p, status: "inactive" }))
               }
               className="accent-gray-600"
+              disabled={fieldsDisabled}
             />
             <span className="text-sm font-medium">Inactive</span>
           </label>
@@ -926,7 +966,7 @@ function ProductSettings({ formData, setFormData }) {
         ${formData.status === "deleted"
                 ? "border-red-600 bg-gray-100 text-red-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              }`}
+              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <input
               type="radio"
@@ -937,6 +977,7 @@ function ProductSettings({ formData, setFormData }) {
                 setFormData(p => ({ ...p, status: "deleted" }))
               }
               className="accent-red-600"
+              disabled={fieldsDisabled}
             />
             <span className="text-sm font-medium">Deleted</span>
           </label>
@@ -954,6 +995,7 @@ function ProductSettings({ formData, setFormData }) {
         }}
         formData={formData}
         setFormData={setFormData}
+        disabled={fieldsDisabled}
       />
 
       {/* Brand */}
@@ -964,6 +1006,7 @@ function ProductSettings({ formData, setFormData }) {
         }}
         formData={formData}
         setFormData={setFormData}
+        disabled={fieldsDisabled}
       />
 
       {/* Tracking Type*/}
@@ -977,6 +1020,7 @@ function ProductSettings({ formData, setFormData }) {
         value={formData.tracking_type}
         onChange={(value) => setFormData(p => ({ ...p, tracking_type: value }))}
         placeholder="Select tracking type"
+        disabled={fieldsDisabled}
       />
 
       {/* Selection Type */}
@@ -990,6 +1034,7 @@ function ProductSettings({ formData, setFormData }) {
         value={formData.selection_type}
         onChange={(value) => setFormData(p => ({ ...p, selection_type: value }))}
         placeholder="Select selection type"
+        disabled={fieldsDisabled}
       />
 
       {/* Toggle Fields */}
@@ -1003,7 +1048,8 @@ function ProductSettings({ formData, setFormData }) {
               setFormData(p => ({ ...p, taxable: !p.taxable }))
             }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.taxable ? "bg-blue-600" : "bg-gray-300"
-              }`}
+              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={fieldsDisabled}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.taxable ? "translate-x-6" : "translate-x-1"
@@ -1020,6 +1066,7 @@ function ProductSettings({ formData, setFormData }) {
             value={formData.tax_type_id}
             onChange={(value) => setFormData(p => ({ ...p, tax_type_id: value }))}
             placeholder="Select tax type"
+            disabled={fieldsDisabled}
           />
         )}
 
@@ -1032,7 +1079,8 @@ function ProductSettings({ formData, setFormData }) {
               setFormData(p => ({ ...p, returnable: !p.returnable }))
             }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.returnable ? "bg-blue-600" : "bg-gray-300"
-              }`}
+              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={fieldsDisabled}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.returnable ? "translate-x-6" : "translate-x-1"
@@ -1050,7 +1098,8 @@ function ProductSettings({ formData, setFormData }) {
               setFormData(p => ({ ...p, requires_inventory: !p.requires_inventory }))
             }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.requires_inventory ? "bg-blue-600" : "bg-gray-300"
-              }`}
+              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={fieldsDisabled}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.requires_inventory ? "translate-x-6" : "translate-x-1"
@@ -1064,7 +1113,7 @@ function ProductSettings({ formData, setFormData }) {
 }
 
 
-function Input({ label, required, ...props }) {
+function Input({ label, required, disabled, ...props }) {
   return (
     <div className="space-y-1">
       {label && (
@@ -1072,12 +1121,16 @@ function Input({ label, required, ...props }) {
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
-      <input {...props} className="input" />
+      <input
+        {...props}
+        className={`input ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+        disabled={disabled}
+      />
     </div>
   );
 }
 
-function NumberInput({ label, value, onChange, min = 1 }) {
+function NumberInput({ label, value, onChange, min = 1, disabled }) {
   return (
     <div className="space-y-1">
       <label className="label">{label}</label>
@@ -1088,14 +1141,15 @@ function NumberInput({ label, value, onChange, min = 1 }) {
         value={value ?? ""}
         min={min}
         step="any"
-        className="input"
+        className={`input ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+        disabled={disabled}
 
-        // ✔ allow typing freely (string)
+        //  allow typing freely (string)
         onChange={(e) => {
           onChange(e.target.value);
         }}
 
-        // ✔ normalize ONLY on blur
+        // normalize ONLY on blur
         onBlur={(e) => {
           const num = Number(e.target.value);
 
@@ -1111,11 +1165,16 @@ function NumberInput({ label, value, onChange, min = 1 }) {
 }
 
 
-function Textarea({ label, ...props }) {
+function Textarea({ label, disabled, ...props }) {
   return (
     <div className="space-y-1">
       <label className="label">{label}</label>
-      <textarea {...props} rows={4} className="input resize-none h-20" />
+      <textarea
+        {...props}
+        rows={4}
+        className={`input resize-none h-20 ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+        disabled={disabled}
+      />
     </div>
   );
 }
