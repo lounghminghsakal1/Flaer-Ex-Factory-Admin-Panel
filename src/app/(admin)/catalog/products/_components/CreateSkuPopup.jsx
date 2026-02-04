@@ -15,7 +15,7 @@ function CreateSkuPopup({
 }) {
   const [loading, setLoading] = useState(false);
   const [pricingMode, setPricingMode] = useState(initialPricingMode || "conversion");
-  const [options, setOptions] = useState(initialOptions);
+  const [options, setOptions] = useState([{}]);
   const [optionTypes, setOptionTypes] = useState([]);
   const [skuMedia, setSkuMedia] = useState([]);
 
@@ -29,6 +29,8 @@ function CreateSkuPopup({
     sku_name: "",
     display_name: "",
     sku_code: "",
+    dimension: "",
+    weight: "",
     unit_price: "",
     mrp: "",
     selling_price: "",
@@ -64,12 +66,12 @@ function CreateSkuPopup({
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      errorToast(err.message);
+      toast.error("Failed to load option types");
     }
   }
 
   function updateForm(next) {
-    setForm(prev => ({ ...prev, ...next }));
+    setForm(prev => { return { ...prev, ...next } });
   }
 
   function updateGlobalPricing(next) {
@@ -82,7 +84,7 @@ function CreateSkuPopup({
     const unitPrice = mrpValue && conversionFactor
       ? Number((Number(mrpValue) / conversionFactor).toFixed(2))
       : "";
-    updateForm({ mrp: mrpValue, unit_price: unitPrice });
+    updateForm({ mrp: mrpValue, unit_price: unitPrice, selling_price: mrpValue });
   }
 
   function handleUnitPriceChange(value) {
@@ -126,50 +128,40 @@ function CreateSkuPopup({
     }
   }
 
-  function addOption() {
-    setOptions([...options, { type: "", values: [], input: "" }]);
+  // Add a new empty option row
+  function addOptionRow() {
+    setOptions([...options, { type: "", value: "" }]);
   }
 
-  function removeOption(optionIndex) {
-    const updatedOptions = options.filter((_, idx) => idx !== optionIndex);
-    setOptions(updatedOptions);
+  // Delete an option row
+  function deleteOptionRow(index) {
+    const updated = options.filter((_, i) => i !== index);
+    setOptions(updated);
+  }
+  // Update option type
+  function updateOptionType(index, type) {
+    const updated = [...options];
+    updated[index].type = type;
+    setOptions(updated);
   }
 
-  function updateOptionType(optionIndex, type) {
-    const updatedOptions = [...options];
-    updatedOptions[optionIndex].type = type;
-    setOptions(updatedOptions);
+  // Update option value
+  function updateOptionValue(index, value) {
+    const updated = [...options];
+    updated[index].value = value;
+    setOptions(updated);
   }
 
-  function addValueToOption(optionIndex) {
-    const option = options[optionIndex];
-    const value = option.input?.trim();
-
-    if (!value) {
-      errorToast("Please enter a value");
-      return;
-    }
-
-    if (!option.type) {
-      errorToast("Please select option type first");
-      return;
-    }
-
-    if (option.values.includes(value)) {
-      errorToast("Value already exists");
-      return;
-    }
-
-    const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.push(value);
-    updatedOptions[optionIndex].input = "";
-    setOptions(updatedOptions);
+  // Create new option type
+  function createNewOptionType(newOptionName) {
+    setOptionTypes(prev => [...prev, { name: newOptionName }]);
   }
 
-  function removeValueFromOption(optionIndex, valueIndex) {
-    const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.splice(valueIndex, 1);
-    setOptions(updatedOptions);
+  // Get selected types (except current row)
+  function getSelectedTypes(currentIndex) {
+    return options
+      .map((o, idx) => idx !== currentIndex ? o.type : null)
+      .filter(Boolean);
   }
 
   function validateForm() {
@@ -236,15 +228,13 @@ function CreateSkuPopup({
     setLoading(true);
 
     try {
-      // Build option_type_values array from options
+      // Build option_type_values array from options (new structure)
       const option_type_values = options
-        .filter(opt => opt.type && opt.values.length > 0)
-        .flatMap(opt =>
-          opt.values.map(value => ({
-            option_type: opt.type,
-            option_value: value
-          }))
-        );
+        .filter(opt => opt.type && opt.value) // Only include options with both type and value
+        .map(opt => ({
+          option_type: opt.type,
+          option_value: opt.value
+        }));
 
       // Build sku_media array from skuMedia state
       const sku_media = skuMedia.map(media => ({
@@ -260,6 +250,8 @@ function CreateSkuPopup({
           sku_name: form.sku_name.trim(),
           display_name: form.display_name.trim(),
           sku_code: form.sku_code.trim(),
+          dimension: form.dimension.trim(),
+          weight: form.weight.trim(),
           unit_price: Number(form.unit_price),
           mrp: Number(form.mrp),
           selling_price: Number(form.selling_price),
@@ -522,6 +514,27 @@ function CreateSkuPopup({
                   <option value="deleted">Deleted</option>
                 </select>
               </div>
+
+              <div>
+                <label className={labelClass}>Dimension</label>
+                <input
+                  className={inputClass}
+                  value={form.dimension}
+                  onChange={(e) => updateForm({ dimension: e.target.value })}
+                  placeholder="Enter dimension"
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Weight</label>
+                <input
+                  className={inputClass}
+                  value={form.weight}
+                  onChange={(e) => updateForm({ weight: e.target.value })}
+                  placeholder="Enter weight"
+                />
+              </div>
+
             </div>
           </div>
 
@@ -561,12 +574,12 @@ function CreateSkuPopup({
                   </div>
 
                   <div>
-                    <label className={labelClass}>Selling Price *</label>
+                    <label className={labelClass}>Selling Price (Auto)</label>
                     <input
                       type="number"
                       min="1"
                       step="any"
-                      className={inputClass}
+                      className={`${inputClass} bg-blue-50`}
                       value={form.selling_price}
                       onChange={(e) => updateForm({ selling_price: e.target.value })}
                       onWheel={(e) => e.target.blur()}
@@ -626,46 +639,40 @@ function CreateSkuPopup({
           <div className="border border-gray-200 rounded p-4 space-y-3">
             <h4 className="text-xs font-semibold text-gray-900">Option Values</h4>
 
+            {/* ================= OPTIONS ================= */}
             <div className="space-y-3">
               {options.map((opt, i) => (
                 <OptionRow
                   key={i}
                   option={opt}
                   optionTypes={optionTypes}
-                  selectedTypes={options.map((o, idx) => idx !== i ? o.type : null).filter(Boolean)}
+                  selectedTypes={getSelectedTypes(i)}
                   onTypeChange={(type) => updateOptionType(i, type)}
-                  onAddValue={() => addValueToOption(i)}
-                  onRemoveValue={(valueIndex) => removeValueFromOption(i, valueIndex)}
-                  onRemoveOption={() => removeOption(i)}
-                  onInputChange={(value) => {
-                    const updatedOptions = [...options];
-                    updatedOptions[i].input = value;
-                    setOptions(updatedOptions);
-                  }}
-                  onCreateNewOption={(newOptionName) => {
-                    // Add the new option to the optionTypes list
-                    setOptionTypes(prev => [...prev, { name: newOptionName }]);
-                  }}
+                  onValueChange={(value) => updateOptionValue(i, value)}
+                  onRemoveOption={() => deleteOptionRow(i)}
+                  onCreateNewOption={createNewOptionType}
                 />
               ))}
-            </div>
 
-            <div className="flex justify-center pt-2">
-              <button
-                onClick={addOption}
-                className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-              >
-                <Plus size={16} className="text-gray-600" />
-              </button>
+              <div className="flex justify-center">
+                <button
+                  onClick={addOptionRow}
+                  className="h-10 w-10 rounded-full border border-gray-400
+                       flex items-center justify-center
+                       hover:bg-green-600 hover:text-white transition"
+                >
+                  <Plus />
+                </button>
+              </div>
             </div>
           </div>
 
+          <SkuMediaSection
+            skuMedia={skuMedia}
+            setSkuMedia={setSkuMedia}
+          />
         </div>
 
-        <SkuMediaSection
-          skuMedia={skuMedia}
-          setSkuMedia={setSkuMedia}
-        />
 
         {/* Footer */}
         <div className="border-t px-5 py-3 flex gap-2 bg-gray-50">
@@ -688,16 +695,13 @@ function CreateSkuPopup({
   );
 }
 
-
 function OptionRow({
   option,
   optionTypes,
   selectedTypes,
   onTypeChange,
-  onAddValue,
-  onRemoveValue,
+  onValueChange,
   onRemoveOption,
-  onInputChange,
   onCreateNewOption
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -725,31 +729,29 @@ function OptionRow({
     opt => opt.name.toLowerCase() === searchTerm.toLowerCase()
   );
 
-  const inputClass = "w-full h-9 px-3 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500";
-
   return (
-    <div className="border border-gray-200 rounded p-3">
-      <div className="grid grid-cols-[1fr_2fr_auto] gap-3 items-start">
+    <div className="border border-gray-300 rounded-lg p-1">
+      <div className="grid grid-cols-[1.2fr_2fr_auto] gap-3 items-start">
 
-        {/* Property Name Dropdown with Create Option */}
+        {/* Option Type Dropdown with Create Option */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="w-full h-9 px-3 text-xs border border-gray-300 rounded flex items-center justify-between hover:border-gray-400 transition-colors text-left bg-white"
+            className="w-full h-11 px-3 text-sm border border-gray-300 rounded flex items-center justify-between hover:border-gray-400 transition-colors text-left bg-white"
           >
             <span className={option.type ? "text-gray-900" : "text-gray-400"}>
               {option.type || "Search or type to add"}
             </span>
-            <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
+            <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
           </button>
 
           {isOpen && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-64 overflow-hidden flex flex-col">
               {/* Search Input - Fixed at top */}
-              <div className="p-2 border-b sticky top-0 bg-white">
+              <div className="p-1 border-b sticky top-0 bg-white">
                 <input
                   type="text"
-                  className="w-full h-8 px-2 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                  className="w-full h-9 px-3 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                   placeholder="Search or type to create..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -767,7 +769,7 @@ function OptionRow({
                       setIsOpen(false);
                       setSearchTerm("");
                     }}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-blue-50 transition-colors text-gray-900"
+                    className="w-full px-3 py-1 text-sm text-left hover:bg-blue-50 transition-colors text-gray-900"
                   >
                     {opt.name}
                   </button>
@@ -785,7 +787,7 @@ function OptionRow({
                       setIsOpen(false);
                       setSearchTerm("");
                     }}
-                    className="w-full px-3 py-2 text-xs text-left bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 font-medium border-t"
+                    className="w-full px-3 py-1 text-sm text-left bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 font-medium border-t"
                   >
                     + Create "{searchTerm}"
                   </button>
@@ -793,14 +795,14 @@ function OptionRow({
 
                 {/* Empty State */}
                 {availableOptions.length === 0 && !searchTerm && (
-                  <div className="px-3 py-6 text-xs text-gray-500 text-center">
-                    No options available
+                  <div className="px-3 py-1 text-sm text-gray-500 text-center">
+                    No option types available
                   </div>
                 )}
 
                 {/* No Results */}
                 {availableOptions.length === 0 && searchTerm && exactMatch && (
-                  <div className="px-3 py-6 text-xs text-gray-500 text-center">
+                  <div className="px-3 py-1 text-sm text-gray-500 text-center">
                     No matching options
                   </div>
                 )}
@@ -809,64 +811,24 @@ function OptionRow({
           )}
         </div>
 
-        {/* Values Section */}
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <input
-              value={option.input || ""}
-              onChange={(e) => onInputChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onAddValue();
-                }
-              }}
-              placeholder="Enter value"
-              className={`${inputClass} flex-1`}
-            />
-            <button
-              onClick={onAddValue}
-              className="h-9 px-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              title="Add value"
-            >
-              <RotateCcw size={14} className="text-gray-600" />
-            </button>
-          </div>
-
-          {option.values.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {option.values.map((val, vi) => (
-                <span
-                  key={vi}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded"
-                >
-                  {val}
-                  <button
-                    onClick={() => onRemoveValue(vi)}
-                    className="hover:text-red-600 transition-colors"
-                    title="Remove value"
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+        {/* Single Value Input */}
+        <div>
+          <input
+            value={option.value || ""}
+            onChange={(e) => onValueChange(e.target.value)}
+            placeholder="Enter value"
+            className="input w-full"
+          />
         </div>
 
         {/* Delete Button */}
-        <button
-          onClick={onRemoveOption}
-          className="h-9 w-9 flex items-center justify-center text-red-500 hover:bg-red-50 rounded transition-colors"
-          title="Remove option"
-        >
-          <Trash2 size={16} />
+        <button onClick={onRemoveOption} className="mt-1">
+          <Trash2 className="text-red-500 hover:text-red-700" size={20} />
         </button>
       </div>
     </div>
   );
 }
-
 
 function SkuMediaSection({ skuMedia, setSkuMedia }) {
   const [uploading, setUploading] = useState(false);
@@ -884,7 +846,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('media_for', 'product');
+        formData.append('media_for', 'product sku');
 
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/upload_media`,
@@ -1055,6 +1017,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
               {/* ADD MORE (show if less than 4 images) */}
               {skuMedia.length < 4 && (
                 <label className="shrink-0 w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors">
+                  {uploading && <span className="text-xs">(Uploading...)</span>}
                   <Upload className="h-4 w-4 text-gray-400" />
                   <span className="text-[10px] text-gray-500 mt-0.5">Add</span>
                   <input

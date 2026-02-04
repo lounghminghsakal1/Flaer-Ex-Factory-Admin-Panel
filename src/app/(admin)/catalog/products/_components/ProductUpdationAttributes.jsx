@@ -7,11 +7,14 @@ import {
   CornerDownLeft,
   ChevronRight,
   ChevronDown,
-  RotateCcw
+  RotateCcw,
+  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 import CreateSkuPopup from "./CreateSkuPopup";
+import SkuDetailsPopup from "./SkuDetailsPopup";
 
 export default function ProductUpdationAttributes({
   productId,
@@ -19,18 +22,41 @@ export default function ProductUpdationAttributes({
   products,
   setProducts,
   pricingMode,
-  globalPricing
+  globalPricing,
+  isEditing,
+  onPropertiesChange,
+  onContentsChange,
+  onMediaChange
 }) {
   const [loading, setLoading] = useState(true);
   const [productData, setProductData] = useState(null);
   const [showUpdateSkuSection, setShowUpdateSkuSection] = useState(false);
-  const [detailsPopup, setDetailsPopup] = useState(null);
+  const [skuDetailsPopup, setSkuDetailsPopup] = useState(null);
   const [properties, setProperties] = useState([]);
   const [hasChanges, setHasChanges] = useState(false);
   const options = properties.map((prop) => ({
     type: prop.name,
     values: prop.values || []
   }));
+
+  // Contents state
+  const [contents, setContents] = useState([]);
+  const [hasContentsChanges, setHasContentsChanges] = useState(false);
+
+  const [skuForSkuDetailsPopup, setSkuForSkuDetailsPopup] = useState(null);
+
+  // Add useEffect to notify parent of changes
+  useEffect(() => {
+    if (onPropertiesChange) {
+      onPropertiesChange(properties);
+    }
+  }, [properties]);
+
+  useEffect(() => {
+    if (onContentsChange) {
+      onContentsChange(contents);
+    }
+  }, [contents]);
 
   useEffect(() => {
     if (productId) {
@@ -87,38 +113,57 @@ export default function ProductUpdationAttributes({
         setProperties={setProperties}
         hasChanges={hasChanges}
         setHasChanges={setHasChanges}
+        isEditing={isEditing}
       />
 
       {/* SKU Table Section */}
       <SkuTableSection
         productData={productData}
-        setDetailsPopup={setDetailsPopup}
+        setSkuDetailsPopup={setSkuDetailsPopup}
         options={options}
         pricingMode={pricingMode}
         globalPricing={globalPricing}
         onRefresh={fetchProductDetails}
+        isEditing={isEditing}
+        setSkuForSkuDetailsPopup={setSkuForSkuDetailsPopup}
       />
 
       {/* Details Popup */}
-      {detailsPopup && (
+      {skuDetailsPopup && (
         <SkuDetailsPopup
-          sku={detailsPopup}
-          onClose={() => setDetailsPopup(null)}
+          sku={skuForSkuDetailsPopup}
+          onClose={() => setSkuDetailsPopup(null)}
         />
       )}
+
+      {/* Product Contents Section */}
+      <ProductContentsSection
+        productData={productData}
+        contents={contents}
+        setContents={setContents}
+        hasChanges={hasContentsChanges}
+        setHasChanges={setHasContentsChanges}
+        isEditing={isEditing}
+      />
+
+      <ProductMediaSection
+        productData={productData}
+        isEditing={isEditing}
+        onMediaChange={onMediaChange} 
+      />
+      
     </div>
   );
 }
 
-// ==================== OPTION TYPES SECTION ====================
+// ==================== PROPERTY TYPES SECTION ====================
 function PropertyTypesSection({
   productData,
-  showUpdateSkuSection,
-  setShowUpdateSkuSection,
   properties,
   setProperties,
   hasChanges,
-  setHasChanges
+  setHasChanges,
+  isEditing // prop to control edit mode
 }) {
 
   const [propertyNames, setPropertyNames] = useState([]);
@@ -130,8 +175,13 @@ function PropertyTypesSection({
   }, [productData]);
 
   function extractPropertiesFromProduct() {
-    if (!productData?.product_properties) return;
+    if (!productData?.product_properties) {
+      setProperties([]);
+      setOriginalProperties([]);
+      return;
+    }
 
+    // Create a map to consolidate properties 
     const propertiesMap = {};
 
     productData.product_properties.forEach(prop => {
@@ -141,13 +191,9 @@ function PropertyTypesSection({
       if (!propertiesMap[propertyName]) {
         propertiesMap[propertyName] = {
           name: propertyName,
-          values: [],
-          input: ""
+          value: propertyValue,
+          isExisting: true // Mark as existing property
         };
-      }
-
-      if (!propertiesMap[propertyName].values.includes(propertyValue)) {
-        propertiesMap[propertyName].values.push(propertyValue);
       }
     });
 
@@ -172,56 +218,49 @@ function PropertyTypesSection({
       setPropertyNames(result.data || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load property names");
+      errorToast("Failed to load property names");
     }
   }
 
   const addPropertyRow = () => {
-    setProperties(p => [...p, { name: "", values: [], input: "" }]);
+    setProperties(p => [...p, { name: "", value: "", isExisting: false }]);
   };
 
   const deletePropertyRow = (index) => {
-    if (properties.length === 1) {
-      setProperties([{ name: "", values: [], input: "" }]);
-    } else {
-      setProperties(p => p.filter((_, i) => i !== index));
+    const propertyToRemove = properties[index];
+
+    // Confirm if removing an existing property
+    if (propertyToRemove.isExisting && propertyToRemove.value) {
+      const ok = window.confirm(
+        `Removing "${propertyToRemove.name}: ${propertyToRemove.value}" Are you sure you want to remove this ?`
+      );
+      if (!ok) return;
     }
+
+    setProperties(p => p.filter((_, i) => i !== index));
   };
 
-  const addPropertyValue = (index) => {
+  const updatePropertyName = (index, name) => {
     const updated = [...properties];
-    const value = updated[index].input.trim();
-
-    if (!updated[index].name) {
-      alert("Please select property name first");
-      return;
-    }
-
-    if (!value) return;
-    if (updated[index].values.includes(value)) return;
-
-    updated[index].values.push(value);
-    updated[index].input = "";
+    updated[index].name = name;
     setProperties(updated);
   };
 
-  const removePropertyValue = (propIndex, valueIndex) => {
-    const property = properties[propIndex];
-    const valueToRemove = property.values[valueIndex];
+  const updatePropertyValue = (index, value) => {
+    const updated = [...properties];
+    updated[index].value = value;
+    setProperties(updated);
+  };
 
-    const ok = window.confirm(
-      `Removing "${valueToRemove}" will affect corresponding products. Do you want to continue?`
-    );
+  const createNewPropertyName = (newPropertyName) => {
+    setPropertyNames(prev => [...prev, newPropertyName]);
+  };
 
-    if (!ok) return;
-
-    const updatedProperties = properties.map((p, i) =>
-      i === propIndex
-        ? { ...p, values: p.values.filter((_, vi) => vi !== valueIndex) }
-        : p
-    );
-
-    setProperties(updatedProperties);
+  // Get selected property names (except current row)
+  const getSelectedNames = (currentIndex) => {
+    return properties
+      .map((p, idx) => idx !== currentIndex ? p.name : null)
+      .filter(Boolean);
   };
 
   return (
@@ -229,114 +268,34 @@ function PropertyTypesSection({
       {/* Header */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">Product Properties</h3>
-        <button
-          onClick={() => setShowUpdateSkuSection(!showUpdateSkuSection)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
-        >
-          {showUpdateSkuSection ? 'Cancel Update' : 'Update Properties'}
-        </button>
       </div>
 
       {/* Properties Display/Edit */}
       <div className="space-y-4">
-        {properties.map((prop, i) => (
-          <div key={i} className="border border-gray-300 rounded-lg p-4">
-            <div className="grid grid-cols-[1.2fr_2fr_auto] gap-3 items-start">
-              {/* Property Name */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">Property Name</label>
-                {showUpdateSkuSection ? (
-                  <SearchableDropdown
-                    options={propertyNames
-                      .filter(name => {
-                        const selectedNames = properties
-                          .map((p, idx) => idx !== i ? p.name : null)
-                          .filter(Boolean);
-                        return !selectedNames.includes(name);
-                      })
-                      .map(name => ({ id: name, name: name }))}
-                    value={prop.name}
-                    creatable
-                    onChange={(value) => {
-                      const updated = [...properties];
-                      updated[i].name = value;
-                      setProperties(updated);
-                    }}
-                    placeholder="Search or type to add"
-                    emptyMessage="No property names available"
-                    onCreateOption={(newProp) => {
-                      setPropertyNames(prev => [...prev, newProp]);
-                      const updated = [...properties];
-                      updated[i].name = newProp;
-                      setProperties(updated);
-                    }}
-                  />
-                ) : (
-                  <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700">
-                    {prop.name}
-                  </div>
-                )}
-              </div>
-
-              {/* Property Values */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-600">Values</label>
-
-                {showUpdateSkuSection && (
-                  <div className="flex">
-                    <input
-                      value={prop.input}
-                      placeholder="Enter value"
-                      onChange={e => {
-                        const updated = [...properties];
-                        updated[i].input = e.target.value;
-                        setProperties(updated);
-                      }}
-                      onKeyDown={e => e.key === "Enter" && addPropertyValue(i)}
-                      className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <button
-                      onClick={() => addPropertyValue(i)}
-                      className="px-3 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 hover:bg-blue-600 hover:text-white transition"
-                    >
-                      <CornerDownLeft size={16} />
-                    </button>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  {prop.values.map((val, vi) => (
-                    <span
-                      key={vi}
-                      className="flex items-center gap-1 px-2 py-1 text-blue-700 bg-blue-50 rounded-md text-xs"
-                    >
-                      {val}
-                      {showUpdateSkuSection && (
-                        <button
-                          onClick={() => removePropertyValue(i, vi)}
-                          title="Remove property value"
-                        >
-                          <X size={12} className="text-red-500" />
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Delete Button */}
-              {showUpdateSkuSection && (
-                <button onClick={() => deletePropertyRow(i)} className="mt-6">
-                  <Trash2 className="text-red-500 hover:text-red-700" />
-                </button>
-              )}
-            </div>
+        {properties.length === 0 && !isEditing ? (
+          <div className="text-center py-8 text-gray-500 text-sm border border-gray-200 rounded-lg">
+            No properties added yet
           </div>
-        ))}
+        ) : (
+          properties.map((prop, i) => (
+            <PropertyRow
+              key={i}
+              property={prop}
+              propertyNames={propertyNames}
+              selectedNames={getSelectedNames(i)}
+              onNameChange={(name) => updatePropertyName(i, name)}
+              onValueChange={(value) => updatePropertyValue(i, value)}
+              onRemoveProperty={() => deletePropertyRow(i)}
+              onCreateNewProperty={createNewPropertyName}
+              isEditing={isEditing}
+              isExisting={prop.isExisting} // Existing properties cannot change name
+            />
+          ))
+        )}
       </div>
 
       {/* Add Property Row Button */}
-      {showUpdateSkuSection && (
+      {isEditing && (
         <div className="flex justify-center">
           <button
             onClick={addPropertyRow}
@@ -350,14 +309,174 @@ function PropertyTypesSection({
   );
 }
 
-// ==================== SKU TABLE SECTION ====================
+function PropertyRow({
+  property,
+  propertyNames,
+  selectedNames,
+  onNameChange,
+  onValueChange,
+  onRemoveProperty,
+  onCreateNewProperty,
+  isEditing,
+  isExisting // If true, property type cannot be changed
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter available property names
+  const availableNames = propertyNames
+    .filter(name => !selectedNames.includes(name))
+    .filter(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  // Check if search term matches exactly with an existing property
+  const exactMatch = propertyNames.some(
+    name => name.toLowerCase() === searchTerm.toLowerCase()
+  );
+
+  return (
+    <div className="border border-gray-300 rounded-lg p-4">
+      <div className="grid grid-cols-[1.2fr_2fr_auto] gap-3 items-start">
+
+        {/* Property Name */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600">Property Name</label>
+
+          {isEditing && !isExisting ? (
+            // Editable dropdown for new properties
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md flex items-center justify-between hover:border-gray-400 transition-colors text-left bg-white"
+              >
+                <span className={property.name ? "text-gray-900" : "text-gray-400"}>
+                  {property.name || "Search or type to add"}
+                </span>
+                <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
+              </button>
+
+              {isOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-64 overflow-hidden flex flex-col">
+                  {/* Search Input */}
+                  <div className="p-2 border-b sticky top-0 bg-white">
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="Search or type to create..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Options List */}
+                  <div className="overflow-y-auto flex-1">
+                    {availableNames.map((name) => (
+                      <button
+                        key={name}
+                        onClick={() => {
+                          onNameChange(name);
+                          setIsOpen(false);
+                          setSearchTerm("");
+                        }}
+                        className="w-full px-3 py-2 text-sm text-left hover:bg-blue-50 transition-colors text-gray-900"
+                      >
+                        {name}
+                      </button>
+                    ))}
+
+                    {/* Create New Property Button */}
+                    {searchTerm && !exactMatch && (
+                      <button
+                        onClick={() => {
+                          if (onCreateNewProperty) {
+                            onCreateNewProperty(searchTerm);
+                          }
+                          onNameChange(searchTerm);
+                          setIsOpen(false);
+                          setSearchTerm("");
+                        }}
+                        className="w-full px-3 py-2 text-sm text-left bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 font-medium border-t"
+                      >
+                        + Create "{searchTerm}"
+                      </button>
+                    )}
+
+                    {/* Empty State */}
+                    {availableNames.length === 0 && !searchTerm && (
+                      <div className="px-3 py-6 text-sm text-gray-500 text-center">
+                        No property names available
+                      </div>
+                    )}
+
+                    {/* No Results */}
+                    {availableNames.length === 0 && searchTerm && exactMatch && (
+                      <div className="px-3 py-6 text-sm text-gray-500 text-center">
+                        No matching properties
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Read-only display for existing properties or when not editing
+            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700">
+              {property.name || "—"}
+            </div>
+          )}
+        </div>
+
+        {/* Property Value */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600">Value</label>
+
+          {isEditing ? (
+            <input
+              value={property.value || ""}
+              onChange={(e) => onValueChange(e.target.value)}
+              placeholder="Enter value"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          ) : (
+            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700">
+              {property.value || "—"}
+            </div>
+          )}
+        </div>
+
+        {/* Delete Button */}
+        {isEditing && (
+          <button onClick={onRemoveProperty} className="mt-6">
+            <Trash2 className="text-red-500 hover:text-red-700" size={20} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// SKU TABLE SECTION 
 function SkuTableSection({
   productData,
-  setDetailsPopup,
+  setSkuDetailsPopup,
   options,
   pricingMode,
   globalPricing,
-  onRefresh
+  onRefresh,
+  isEditing,
+  setSkuForSkuDetailsPopup
 }) {
   const allVariants = productData?.all_variants || [];
   const [showCreateSkuPopup, setShowCreateSkuPopup] = useState(false);
@@ -408,15 +527,17 @@ function SkuTableSection({
       {/* Header with Create Button */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">Product SKUs</h3>
-        <button
-          onClick={() => {
-            setShowCreateSkuPopup(true);
-          }}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
-        >
-          <Plus size={18} />
-          Create Product SKU
-        </button>
+        {isEditing && (
+          <button
+            onClick={() => {
+              setShowCreateSkuPopup(true);
+            }}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Create Product SKU
+          </button>
+        )}
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -458,7 +579,8 @@ function SkuTableSection({
                     <button
                       onClick={() => {
                         // TODO: Navigate to SKU details page
-
+                        setSkuForSkuDetailsPopup(sku);
+                        setSkuDetailsPopup(true);
                       }}
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
                     >
@@ -493,142 +615,142 @@ function SkuTableSection({
   );
 }
 
-// ==================== SKU DETAILS POPUP ====================
-function SkuDetailsPopup({ sku, onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">SKU Details</h3>
-            <p className="text-sm text-gray-500 mt-0.5">{sku.sku_code}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 transition-colors"
-          >
-            <X size={24} />
-          </button>
-        </div>
+// SKU DETAILS POPUP 
+// function SkuDetailsPopup({ sku, onClose }) {
+//   return (
+//     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+//       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+//         {/* Header */}
+//         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+//           <div>
+//             <h3 className="text-lg font-semibold text-gray-900">SKU Details</h3>
+//             <p className="text-sm text-gray-500 mt-0.5">{sku.sku_code}</p>
+//           </div>
+//           <button
+//             onClick={onClose}
+//             className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 transition-colors"
+//           >
+//             <X size={24} />
+//           </button>
+//         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
-            {/* Basic Information */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">Basic Information</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <InfoField label="SKU Name" value={sku.sku_name} />
-                <InfoField label="Display Name" value={sku.display_name} />
-                <InfoField label="SKU Code" value={sku.sku_code} />
-                <InfoField label="Status" value={
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${sku.status === 'active' ? 'bg-green-100 text-green-800' :
-                    sku.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                    {sku.status}
-                  </span>
-                } />
-              </div>
-            </div>
+//         {/* Content */}
+//         <div className="flex-1 overflow-y-auto p-6">
+//           <div className="space-y-6">
+//             {/* Basic Information */}
+//             <div className="bg-gray-50 rounded-lg p-4">
+//               <h4 className="text-sm font-semibold text-gray-900 mb-4">Basic Information</h4>
+//               <div className="grid grid-cols-2 gap-4">
+//                 <InfoField label="SKU Name" value={sku.sku_name} />
+//                 <InfoField label="Display Name" value={sku.display_name} />
+//                 <InfoField label="SKU Code" value={sku.sku_code} />
+//                 <InfoField label="Status" value={
+//                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${sku.status === 'active' ? 'bg-green-100 text-green-800' :
+//                     sku.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+//                       'bg-red-100 text-red-800'
+//                     }`}>
+//                     {sku.status}
+//                   </span>
+//                 } />
+//               </div>
+//             </div>
 
-            {/* Pricing Information */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">Pricing Information</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <InfoField label="MRP" value={`₹${parseFloat(sku.mrp).toFixed(2)}`} />
-                <InfoField label="Selling Price" value={`₹${parseFloat(sku.selling_price).toFixed(2)}`} />
-                <InfoField label="Unit Price" value={`₹${parseFloat(sku.unit_price).toFixed(2)}`} />
-                <InfoField label="Conversion Factor" value={sku.conversion_factor} />
-                <InfoField label="Multiplication Factor" value={sku.multiplication_factor} />
-                <InfoField label="Threshold Quantity" value={sku.threshold_quantity} />
-              </div>
-            </div>
+//             {/* Pricing Information */}
+//             <div className="bg-gray-50 rounded-lg p-4">
+//               <h4 className="text-sm font-semibold text-gray-900 mb-4">Pricing Information</h4>
+//               <div className="grid grid-cols-3 gap-4">
+//                 <InfoField label="MRP" value={`₹${parseFloat(sku.mrp).toFixed(2)}`} />
+//                 <InfoField label="Selling Price" value={`₹${parseFloat(sku.selling_price).toFixed(2)}`} />
+//                 <InfoField label="Unit Price" value={`₹${parseFloat(sku.unit_price).toFixed(2)}`} />
+//                 <InfoField label="Conversion Factor" value={sku.conversion_factor} />
+//                 <InfoField label="Multiplication Factor" value={sku.multiplication_factor} />
+//                 <InfoField label="Threshold Quantity" value={sku.threshold_quantity} />
+//               </div>
+//             </div>
 
-            {/* Physical Attributes */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">Physical Attributes</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <InfoField label="UOM" value={sku.uom?.toUpperCase() || 'N/A'} />
-                <InfoField label="Dimension" value={sku.dimension || 'N/A'} />
-                <InfoField label="Weight" value={sku.weight ? `${sku.weight} kg` : 'N/A'} />
-              </div>
-            </div>
+//             {/* Physical Attributes */}
+//             <div className="bg-gray-50 rounded-lg p-4">
+//               <h4 className="text-sm font-semibold text-gray-900 mb-4">Physical Attributes</h4>
+//               <div className="grid grid-cols-3 gap-4">
+//                 <InfoField label="UOM" value={sku.uom?.toUpperCase() || 'N/A'} />
+//                 <InfoField label="Dimension" value={sku.dimension || 'N/A'} />
+//                 <InfoField label="Weight" value={sku.weight ? `${sku.weight} kg` : 'N/A'} />
+//               </div>
+//             </div>
 
-            {/* Option Type Values */}
-            {sku.option_type_values && sku.option_type_values.length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-4">Option Values</h4>
-                <div className="flex flex-wrap gap-2">
-                  {sku.option_type_values.map((opt, idx) => (
-                    <div key={idx} className="bg-white border border-gray-200 rounded-lg px-3 py-2">
-                      <div className="text-xs text-gray-500">{opt.option_type.name}</div>
-                      <div className="text-sm font-medium text-gray-900">{opt.option_value.name}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+//             {/* Option Type Values */}
+//             {sku.option_type_values && sku.option_type_values.length > 0 && (
+//               <div className="bg-gray-50 rounded-lg p-4">
+//                 <h4 className="text-sm font-semibold text-gray-900 mb-4">Option Values</h4>
+//                 <div className="flex flex-wrap gap-2">
+//                   {sku.option_type_values.map((opt, idx) => (
+//                     <div key={idx} className="bg-white border border-gray-200 rounded-lg px-3 py-2">
+//                       <div className="text-xs text-gray-500">{opt.option_type.name}</div>
+//                       <div className="text-sm font-medium text-gray-900">{opt.option_value.name}</div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+//             )}
 
-            {/* SKU Media */}
-            {sku.sku_media && sku.sku_media.length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-4">Media</h4>
-                <div className="grid grid-cols-4 gap-4">
-                  {sku.sku_media
-                    .sort((a, b) => a.sequence - b.sequence)
-                    .map((media, idx) => (
-                      <div key={media.id} className="relative">
-                        <img
-                          src={media.media_url}
-                          alt={`SKU Media ${idx + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                        />
-                        {media.sequence === 1 && (
-                          <span className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium">
-                            Primary
-                          </span>
-                        )}
-                        <span className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs">
-                          {media.sequence}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
+//             {/* SKU Media */}
+//             {sku.sku_media && sku.sku_media.length > 0 && (
+//               <div className="bg-gray-50 rounded-lg p-4">
+//                 <h4 className="text-sm font-semibold text-gray-900 mb-4">Media</h4>
+//                 <div className="grid grid-cols-4 gap-4">
+//                   {sku.sku_media
+//                     .sort((a, b) => a.sequence - b.sequence)
+//                     .map((media, idx) => (
+//                       <div key={media.id} className="relative">
+//                         <img
+//                           src={media.media_url}
+//                           alt={`SKU Media ${idx + 1}`}
+//                           className="w-full h-32 object-cover rounded-lg border border-gray-200"
+//                         />
+//                         {media.sequence === 1 && (
+//                           <span className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium">
+//                             Primary
+//                           </span>
+//                         )}
+//                         <span className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs">
+//                           {media.sequence}
+//                         </span>
+//                       </div>
+//                     ))}
+//                 </div>
+//               </div>
+//             )}
 
-            {/* Master SKU Badge */}
-            {sku.master && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-green-900">Master SKU</div>
-                  <div className="text-xs text-green-700">This is the primary variant for this product</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+//             {/* Master SKU Badge */}
+//             {sku.master && (
+//               <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+//                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+//                   <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+//                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+//                   </svg>
+//                 </div>
+//                 <div>
+//                   <div className="text-sm font-semibold text-green-900">Master SKU</div>
+//                   <div className="text-xs text-green-700">This is the primary variant for this product</div>
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+//         </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+//         {/* Footer */}
+//         <div className="border-t border-gray-200 px-6 py-4">
+//           <button
+//             onClick={onClose}
+//             className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+//           >
+//             Close
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 
 // ==================== HELPER COMPONENT ====================
 function InfoField({ label, value }) {
@@ -640,749 +762,641 @@ function InfoField({ label, value }) {
   );
 }
 
-// function CreateSkuPopup({
-//   onClose,
-//   options: initialOptions = [],
-//   productName,
-//   productId,
-//   existingSkus,
-//   pricingMode: initialPricingMode,
-//   globalPricing: initialGlobalPricing,
-//   onSuccess,
-//   taxTypeId
-// }) {
-//   const [loading, setLoading] = useState(false);
-//   const [pricingMode, setPricingMode] = useState(initialPricingMode || "conversion");
-//   const [options, setOptions] = useState(initialOptions);
-//   const [optionTypes, setOptionTypes] = useState([]);
-
-//   const [globalPricing, setGlobalPricing] = useState({
-//     conversion_factor: initialGlobalPricing?.conversion_factor || 1,
-//     multiplication_factor: initialGlobalPricing?.multiplication_factor || 1,
-//     threshold_quantity: initialGlobalPricing?.threshold_quantity || 1
-//   });
-
-//   const [form, setForm] = useState({
-//     sku_name: "",
-//     display_name: "",
-//     sku_code: "",
-//     unit_price: "",
-//     mrp: "",
-//     selling_price: "",
-//     uom: "piece",
-//     status: "active"
-//   });
-
-//   const UOM_OPTIONS = [
-//     { id: 'sq_ft', name: 'Sq ft' },
-//     { id: 'ml', name: 'Ml' },
-//     { id: 'l', name: 'L' },
-//     { id: 'gm', name: 'Gm' },
-//     { id: 'kg', name: 'Kg' },
-//     { id: 'm', name: 'Mm' },
-//     { id: 'packet', name: 'Packet' },
-//     { id: 'unit', name: 'Unit' },
-//     { id: 'piece', name: 'Piece' },
-//   ];
-
-//   useEffect(() => {
-//     fetchOptionTypes();
-//   }, []);
-
-//   async function fetchOptionTypes() {
-//     try {
-//       const res = await fetch(
-//         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/option_types?only_names=true`
-//       );
-
-//       if (!res.ok) throw new Error("Failed to fetch option types");
-
-//       const result = await res.json();
-//       setOptionTypes(result.data || []);
-//     } catch (err) {
-//       console.error(err);
-//       toast.error("Failed to load option types");
-//     }
-//   }
-
-//   function updateForm(next) {
-//     setForm(prev => ({ ...prev, ...next }));
-//   }
-
-//   function updateGlobalPricing(next) {
-//     setGlobalPricing(prev => ({ ...prev, ...next }));
-//   }
-
-//   function handleMrpChange(value) {
-//     const mrpValue = value;
-//     const conversionFactor = Number(globalPricing.conversion_factor) || 1;
-//     const unitPrice = mrpValue && conversionFactor
-//       ? Number((Number(mrpValue) / conversionFactor).toFixed(2))
-//       : "";
-//     updateForm({ mrp: mrpValue, unit_price: unitPrice });
-//   }
-
-//   function handleUnitPriceChange(value) {
-//     const unitValue = value;
-//     const multiplicationFactor = Number(globalPricing.multiplication_factor) || 1;
-//     const calculatedPrice = unitValue && multiplicationFactor
-//       ? Number((Number(unitValue) * multiplicationFactor).toFixed(2))
-//       : "";
-//     updateForm({
-//       unit_price: unitValue,
-//       mrp: calculatedPrice,
-//       selling_price: calculatedPrice
-//     });
-//   }
-
-//   function handlePricingModeChange(mode) {
-//     setPricingMode(mode);
-
-//     if (mode === "conversion" && form.mrp) {
-//       handleMrpChange(form.mrp);
-//     } else if (mode === "multiplication" && form.unit_price) {
-//       handleUnitPriceChange(form.unit_price);
-//     }
-//   }
-
-//   function handleConversionFactorChange(value) {
-//     updateGlobalPricing({ conversion_factor: value });
-//     if (pricingMode === "conversion" && form.mrp) {
-//       const conversionFactor = Number(value) || 1;
-//       const unitPrice = Number((Number(form.mrp) / conversionFactor).toFixed(2));
-//       updateForm({ unit_price: unitPrice });
-//     }
-//   }
-
-//   function handleMultiplicationFactorChange(value) {
-//     updateGlobalPricing({ multiplication_factor: value });
-//     if (pricingMode === "multiplication" && form.unit_price) {
-//       const multiplicationFactor = Number(value) || 1;
-//       const calculatedPrice = Number((Number(form.unit_price) * multiplicationFactor).toFixed(2));
-//       updateForm({ mrp: calculatedPrice, selling_price: calculatedPrice });
-//     }
-//   }
-
-//   function addOption() {
-//     setOptions([...options, { type: "", values: [], input: "" }]);
-//   }
-
-//   function removeOption(optionIndex) {
-//     const updatedOptions = options.filter((_, idx) => idx !== optionIndex);
-//     setOptions(updatedOptions);
-//   }
-
-//   function updateOptionType(optionIndex, type) {
-//     const updatedOptions = [...options];
-//     updatedOptions[optionIndex].type = type;
-//     setOptions(updatedOptions);
-//   }
-
-//   function addValueToOption(optionIndex) {
-//     const option = options[optionIndex];
-//     const value = option.input?.trim();
-
-//     if (!value) {
-//       toast.error("Please enter a value");
-//       return;
-//     }
-
-//     if (!option.type) {
-//       toast.error("Please select option type first");
-//       return;
-//     }
-
-//     if (option.values.includes(value)) {
-//       toast.error("Value already exists");
-//       return;
-//     }
-
-//     const updatedOptions = [...options];
-//     updatedOptions[optionIndex].values.push(value);
-//     updatedOptions[optionIndex].input = "";
-//     setOptions(updatedOptions);
-//   }
-
-//   function removeValueFromOption(optionIndex, valueIndex) {
-//     const updatedOptions = [...options];
-//     updatedOptions[optionIndex].values.splice(valueIndex, 1);
-//     setOptions(updatedOptions);
-//   }
-
-//   function validateForm() {
-//     if (!form.sku_name.trim()) {
-//       toast.error("SKU name is required");
-//       return false;
-//     }
-
-//     if (!form.display_name.trim()) {
-//       toast.error("Display name is required");
-//       return false;
-//     }
-
-//     if (!form.sku_code.trim()) {
-//       toast.error("SKU code is required");
-//       return false;
-//     }
-
-//     if (existingSkus?.some(s => s.sku_name === form.sku_name.trim())) {
-//       toast.error("SKU name already exists");
-//       return false;
-//     }
-
-//     if (existingSkus?.some(s => s.sku_code === form.sku_code.trim())) {
-//       toast.error("SKU code already exists");
-//       return false;
-//     }
-
-//     if (pricingMode === "conversion") {
-//       if (!form.mrp || !form.selling_price) {
-//         toast.error("MRP and Selling Price are required");
-//         return false;
-//       }
-//     } else {
-//       if (!form.unit_price) {
-//         toast.error("Unit Price is required");
-//         return false;
-//       }
-//     }
-
-//     if (
-//       Number(form.mrp) <= 0 ||
-//       Number(form.selling_price) <= 0 ||
-//       Number(form.unit_price) <= 0
-//     ) {
-//       toast.error("Prices must be greater than 0");
-//       return false;
-//     }
-
-//     return true;
-//   }
-
-//   async function handleCreateSku() {
-//     if (!validateForm()) return;
-
-//     setLoading(true);
-
-//     try {
-//       const payload = {
-//         product_id: productId,
-//         sku_name: form.sku_name.trim(),
-//         display_name: form.display_name.trim(),
-//         sku_code: form.sku_code.trim(),
-//         unit_price: Number(form.unit_price),
-//         mrp: Number(form.mrp),
-//         selling_price: Number(form.selling_price),
-//         uom: form.uom,
-//         status: form.status,
-//         is_combo: false,
-//         minimum_order_quantity: Number(globalPricing.threshold_quantity) || 1,
-//         conversion_factor: Number(globalPricing.conversion_factor) || 1,
-//         multiplication_factor: Number(globalPricing.multiplication_factor) || 1,
-//         options: options.filter(opt => opt.type && opt.values.length > 0)
-//       };
-
-//       if (taxTypeId) {
-//         payload.tax_type_id = taxTypeId;
-//       }
-
-//       console.log("Create SKU payload:", payload);
-
-//       const response = await fetch(
-//         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/product_skus`,
-//         {
-//           method: 'POST',
-//           headers: { 'Content-Type': 'application/json' },
-//           body: JSON.stringify(payload)
-//         }
-//       );
-
-//       const result = await response.json();
-
-//       if (!response.ok) {
-//         let errorMessage = "Failed to create SKU";
-//         if (Array.isArray(result?.errors)) {
-//           errorMessage = result.errors.join(", ");
-//         } else if (typeof result?.errors === "object") {
-//           errorMessage = Object.values(result.errors).flat().join(", ");
-//         } else if (result?.message) {
-//           errorMessage = result.message;
-//         }
-//         toast.error(errorMessage);
-//         return;
-//       }
-
-//       toast.success("SKU created successfully");
-//       onSuccess?.();
-//       onClose();
-//     } catch (err) {
-//       console.error("Create SKU error:", err);
-//       toast.error("An error occurred while creating SKU");
-//     } finally {
-//       setLoading(false);
-//     }
-//   }
-
-//   const inputClass = "w-full h-9 px-3 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500";
-//   const labelClass = "block text-xs font-medium text-gray-700 mb-1";
-
-//   return (
-//     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-//       <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-
-//         {/* Header */}
-//         <div className="flex items-center justify-between px-5 py-4 border-b">
-//           <div>
-//             <h3 className="text-sm font-semibold text-gray-900">Create Product SKU</h3>
-//             <p className="text-xs text-gray-500 mt-0.5">{productName}</p>
-//           </div>
-//           <button
-//             onClick={onClose}
-//             className="text-gray-400 hover:text-gray-600 p-1"
-//           >
-//             <X size={20} />
-//           </button>
-//         </div>
-
-//         {/* Content */}
-//         <div className="flex-1 overflow-auto p-5 space-y-5">
-
-//           {/* Pricing Mode */}
-//           <div className="border border-gray-200 rounded p-4 space-y-3">
-//             <h4 className="text-xs font-semibold text-gray-900">Pricing Mode</h4>
-
-//             <div className="flex gap-6">
-//               <label className="flex items-center gap-2 cursor-pointer">
-//                 <input
-//                   type="radio"
-//                   name="pricingMode"
-//                   value="conversion"
-//                   checked={pricingMode === "conversion"}
-//                   onChange={(e) => handlePricingModeChange(e.target.value)}
-//                   className="w-4 h-4"
-//                 />
-//                 <span className="text-xs text-gray-700">Conversion Factor (MRP → Unit Price)</span>
-//               </label>
-
-//               <label className="flex items-center gap-2 cursor-pointer">
-//                 <input
-//                   type="radio"
-//                   name="pricingMode"
-//                   value="multiplication"
-//                   checked={pricingMode === "multiplication"}
-//                   onChange={(e) => handlePricingModeChange(e.target.value)}
-//                   className="w-4 h-4"
-//                 />
-//                 <span className="text-xs text-gray-700">Multiplication Factor (Unit Price → MRP)</span>
-//               </label>
-//             </div>
-
-//             <div className="grid grid-cols-3 gap-3">
-//               {pricingMode === "conversion" && (
-//                 <div>
-//                   <label className={labelClass}>Conversion Factor</label>
-//                   <input
-//                     type="number"
-//                     min="0"
-//                     step="0.01"
-//                     className={inputClass}
-//                     value={globalPricing.conversion_factor}
-//                     onChange={(e) => handleConversionFactorChange(e.target.value)}
-//                   />
-//                 </div>
-//               )}
-
-//               {pricingMode === "multiplication" && (
-//                 <div>
-//                   <label className={labelClass}>Multiplication Factor</label>
-//                   <input
-//                     type="number"
-//                     min="0"
-//                     step="0.01"
-//                     className={inputClass}
-//                     value={globalPricing.multiplication_factor}
-//                     onChange={(e) => handleMultiplicationFactorChange(e.target.value)}
-//                   />
-//                 </div>
-//               )}
-
-//               <div>
-//                 <label className={labelClass}>Threshold Quantity</label>
-//                 <input
-//                   type="number"
-//                   min="1"
-//                   className={inputClass}
-//                   value={globalPricing.threshold_quantity}
-//                   onChange={(e) => updateGlobalPricing({ threshold_quantity: e.target.value })}
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className={labelClass}>UOM</label>
-//                 <select
-//                   className={inputClass}
-//                   value={form.uom}
-//                   onChange={(e) => updateForm({ uom: e.target.value })}
-//                 >
-//                   {UOM_OPTIONS.map(opt => (
-//                     <option key={opt.id} value={opt.id}>{opt.name}</option>
-//                   ))}
-//                 </select>
-//               </div>
-//             </div>
-
-//             <div className="bg-blue-50 border border-blue-200 rounded p-2">
-//               <p className="text-xs text-blue-800">
-//                 <strong>{pricingMode === "conversion" ? "Conversion Mode:" : "Multiplication Mode:"}</strong>
-//                 {" "}
-//                 {pricingMode === "conversion" 
-//                   ? "In SKU table, enter MRP → Unit Price will be auto-calculated as MRP ÷ Conversion Factor"
-//                   : "In SKU table, enter Unit Price → MRP & Selling Price will be auto-calculated as Unit Price × Multiplication Factor"
-//                 }
-//               </p>
-//             </div>
-//           </div>
-
-//           {/* SKU Information */}
-//           <div className="border border-gray-200 rounded p-4 space-y-3">
-//             <h4 className="text-xs font-semibold text-gray-900">SKU Information</h4>
-
-//             <div className="grid grid-cols-2 gap-3">
-//               <div>
-//                 <label className={labelClass}>SKU Name *</label>
-//                 <input
-//                   className={inputClass}
-//                   value={form.sku_name}
-//                   onChange={(e) => updateForm({ sku_name: e.target.value })}
-//                   placeholder="Enter SKU name"
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className={labelClass}>Display Name *</label>
-//                 <input
-//                   className={inputClass}
-//                   value={form.display_name}
-//                   onChange={(e) => updateForm({ display_name: e.target.value })}
-//                   placeholder="Enter display name"
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className={labelClass}>SKU Code *</label>
-//                 <input
-//                   className={inputClass}
-//                   value={form.sku_code}
-//                   onChange={(e) => updateForm({ sku_code: e.target.value })}
-//                   placeholder="Enter SKU code"
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className={labelClass}>Status</label>
-//                 <select
-//                   className={inputClass}
-//                   value={form.status}
-//                   onChange={(e) => updateForm({ status: e.target.value })}
-//                 >
-//                   <option value="active">Active</option>
-//                   <option value="inactive">Inactive</option>
-//                   <option value="deleted">Deleted</option>
-//                 </select>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Pricing Details */}
-//           <div className="border border-gray-200 rounded p-4 space-y-3">
-//             <h4 className="text-xs font-semibold text-gray-900">Pricing Details</h4>
-
-//             <div className="grid grid-cols-3 gap-3">
-//               {pricingMode === "conversion" ? (
-//                 <>
-//                   <div>
-//                     <label className={labelClass}>MRP *</label>
-//                     <input
-//                       type="number"
-//                       min="0"
-//                       step="0.01"
-//                       className={inputClass}
-//                       value={form.mrp}
-//                       onChange={(e) => handleMrpChange(e.target.value)}
-//                       placeholder="0.00"
-//                     />
-//                   </div>
-
-//                   <div>
-//                     <label className={labelClass}>Unit Price (Auto)</label>
-//                     <input
-//                       type="number"
-//                       min="0"
-//                       step="0.01"
-//                       className={`${inputClass} bg-blue-50`}
-//                       value={form.unit_price}
-//                       onChange={(e) => updateForm({ unit_price: e.target.value })}
-//                       placeholder="0.00"
-//                     />
-//                   </div>
-
-//                   <div>
-//                     <label className={labelClass}>Selling Price *</label>
-//                     <input
-//                       type="number"
-//                       min="0"
-//                       step="0.01"
-//                       className={inputClass}
-//                       value={form.selling_price}
-//                       onChange={(e) => updateForm({ selling_price: e.target.value })}
-//                       placeholder="0.00"
-//                     />
-//                   </div>
-//                 </>
-//               ) : (
-//                 <>
-//                   <div>
-//                     <label className={labelClass}>Unit Price *</label>
-//                     <input
-//                       type="number"
-//                       min="0"
-//                       step="0.01"
-//                       className={inputClass}
-//                       value={form.unit_price}
-//                       onChange={(e) => handleUnitPriceChange(e.target.value)}
-//                       placeholder="0.00"
-//                     />
-//                   </div>
-
-//                   <div>
-//                     <label className={labelClass}>MRP (Auto)</label>
-//                     <input
-//                       type="number"
-//                       min="0"
-//                       step="0.01"
-//                       className={`${inputClass} bg-blue-50`}
-//                       value={form.mrp}
-//                       onChange={(e) => updateForm({ mrp: e.target.value })}
-//                       placeholder="0.00"
-//                     />
-//                   </div>
-
-//                   <div>
-//                     <label className={labelClass}>Selling Price (Auto)</label>
-//                     <input
-//                       type="number"
-//                       min="0"
-//                       step="0.01"
-//                       className={`${inputClass} bg-blue-50`}
-//                       value={form.selling_price}
-//                       onChange={(e) => updateForm({ selling_price: e.target.value })}
-//                       placeholder="0.00"
-//                     />
-//                   </div>
-//                 </>
-//               )}
-//             </div>
-//           </div>
-
-//           {/* Option Values */}
-//           <div className="border border-gray-200 rounded p-4 space-y-3">
-//             <h4 className="text-xs font-semibold text-gray-900">Option Values</h4>
-
-//             <div className="space-y-3">
-//               {options.map((opt, i) => (
-//                 <OptionRow
-//                   key={i}
-//                   option={opt}
-//                   optionTypes={optionTypes}
-//                   selectedTypes={options.map((o, idx) => idx !== i ? o.type : null).filter(Boolean)}
-//                   onTypeChange={(type) => updateOptionType(i, type)}
-//                   onAddValue={() => addValueToOption(i)}
-//                   onRemoveValue={(valueIndex) => removeValueFromOption(i, valueIndex)}
-//                   onRemoveOption={() => removeOption(i)}
-//                   onInputChange={(value) => {
-//                     const updatedOptions = [...options];
-//                     updatedOptions[i].input = value;
-//                     setOptions(updatedOptions);
-//                   }}
-//                 />
-//               ))}
-//             </div>
-
-//             <div className="flex justify-center pt-2">
-//               <button
-//                 onClick={addOption}
-//                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-//               >
-//                 <Plus size={16} className="text-gray-600" />
-//               </button>
-//             </div>
-//           </div>
-
-//         </div>
-
-//         {/* Footer */}
-//         <div className="border-t px-5 py-3 flex gap-2 bg-gray-50">
-//           <button
-//             onClick={onClose}
-//             className="flex-1 px-4 py-2 text-xs font-medium border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-//           >
-//             Cancel
-//           </button>
-//           <button
-//             onClick={handleCreateSku}
-//             disabled={loading}
-//             className="flex-1 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-//           >
-//             {loading ? 'Creating...' : 'Create SKU'}
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-function OptionRow({
-  option,
-  optionTypes,
-  selectedTypes,
-  onTypeChange,
-  onAddValue,
-  onRemoveValue,
-  onRemoveOption,
-  onInputChange
+function ProductContentsSection({
+  productData,
+  contents,
+  setContents,
+  hasChanges,
+  setHasChanges,
+  isEditing
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef(null);
+  const [originalContents, setOriginalContents] = useState([]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+    extractContentsFromProduct();
+  }, [productData]);
+
+  function extractContentsFromProduct() {
+    if (!productData?.product_contents || productData.product_contents.length === 0) {
+      setContents([]);
+      setOriginalContents([]);
+      return;
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
-  const availableOptions = optionTypes
-    .filter(opt => !selectedTypes.includes(opt.name))
-    .filter(opt => opt.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Map existing contents with their IDs
+    const extractedContents = productData.product_contents.map(content => ({
+      id: content.id,
+      content_type: content.name,
+      content_value: content.value,
+      isExisting: true
+    }));
 
-  const inputClass = "w-full h-9 px-3 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500";
+    setContents(extractedContents);
+    setOriginalContents(JSON.parse(JSON.stringify(extractedContents))); // Deep copy
+  }
+
+  useEffect(() => {
+    // Check if contents have changed
+    const changed = JSON.stringify(contents) !== JSON.stringify(originalContents);
+    setHasChanges(changed);
+  }, [contents, originalContents]);
+
+  const addContentRow = () => {
+    setContents(prev => [...prev, { content_type: "", content_value: "", isExisting: false }]);
+  };
+
+  const deleteContentRow = (index) => {
+    const contentToRemove = contents[index];
+
+    // Confirm if removing an existing content
+    if (contentToRemove.isExisting && contentToRemove.content_value) {
+      const ok = window.confirm(
+        `Removing "${contentToRemove.content_type}: ${contentToRemove.content_value}" Are sure you want to remove this ?`
+      );
+      if (!ok) return;
+    }
+
+    setContents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateContentType = (index, type) => {
+    const updated = [...contents];
+    updated[index].content_type = type;
+    setContents(updated);
+  };
+
+  const updateContentValue = (index, value) => {
+    const updated = [...contents];
+    updated[index].content_value = value;
+    setContents(updated);
+  };
 
   return (
-    <div className="border border-gray-200 rounded p-3">
-      <div className="grid grid-cols-[1fr_2fr_auto] gap-3 items-start">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-gray-900">Product Content</h3>
+      </div>
 
-        {/* Property Name Dropdown */}
-        <div className="relative" ref={dropdownRef}>
+      {/* Contents Display/Edit */}
+      <div className="space-y-4">
+        {contents.length === 0 && !isEditing ? (
+          <div className="text-center py-8 text-gray-500 text-sm border border-gray-200 rounded-lg">
+            No content added yet
+          </div>
+        ) : (
+          contents.map((content, i) => (
+            <ContentRow
+              key={i}
+              content={content}
+              onTypeChange={(type) => updateContentType(i, type)}
+              onValueChange={(value) => updateContentValue(i, value)}
+              onRemoveContent={() => deleteContentRow(i)}
+              isEditing={isEditing}
+              isExisting={content.isExisting}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Add Content Row Button */}
+      {isEditing && (
+        <div className="flex justify-center">
           <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="w-full h-9 px-3 text-xs border border-gray-300 rounded flex items-center justify-between hover:border-gray-400 transition-colors text-left"
+            onClick={addContentRow}
+            className="h-10 w-10 rounded-full border border-gray-400 flex items-center justify-center hover:bg-blue-600 hover:text-white transition"
           >
-            <span className={option.type ? "text-gray-900" : "text-gray-400"}>
-              {option.type || "Search or type to add"}
-            </span>
-            <ChevronDown size={14} className="text-gray-400" />
+            <Plus />
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
-          {isOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-auto">
-              <div className="p-2 border-b sticky top-0 bg-white">
-                <input
-                  type="text"
-                  className="w-full h-8 px-2 text-xs border border-gray-300 rounded"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  autoFocus
-                />
-              </div>
+// Helper function to get contents payload (can be exported and used in parent component)
+function getContentsPayload(contents) {
+  return contents
+    .filter(c => c.content_type && c.content_value) // Only include filled contents
+    .map(c => {
+      if (c.isExisting) {
+        // For existing contents, include ID
+        return {
+          id: c.id,
+          content_type: c.content_type,
+          content_value: c.content_value
+        };
+      } else {
+        // For new contents, no ID
+        return {
+          content_type: c.content_type,
+          content_value: c.content_value
+        };
+      }
+    });
+}
 
-              <div className="max-h-40 overflow-y-auto">
-                {availableOptions.map((opt) => (
-                  <button
-                    key={opt.name}
-                    onClick={() => {
-                      onTypeChange(opt.name);
-                      setIsOpen(false);
-                      setSearchTerm("");
-                    }}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-gray-100 transition-colors"
-                  >
-                    {opt.name}
-                  </button>
-                ))}
+function ContentRow({
+  content,
+  onTypeChange,
+  onValueChange,
+  onRemoveContent,
+  isEditing,
+  isExisting // If true, content type cannot be changed
+}) {
 
-                {searchTerm && !availableOptions.some(opt => opt.name.toLowerCase() === searchTerm.toLowerCase()) && (
-                  <button
-                    onClick={() => {
-                      onTypeChange(searchTerm);
-                      setIsOpen(false);
-                      setSearchTerm("");
-                    }}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-gray-100 transition-colors text-blue-600"
-                  >
-                    Create "{searchTerm}"
-                  </button>
-                )}
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+      <div className="grid grid-cols-[1.2fr_2fr_auto] gap-3 items-center">
 
-                {availableOptions.length === 0 && !searchTerm && (
-                  <div className="px-3 py-2 text-xs text-gray-500">No options available</div>
-                )}
-              </div>
-            </div>
+        {/* Content Type */}
+        <div>
+          {isEditing && !isExisting ? (
+            // Editable text input for new content
+            <input
+              value={content.content_type || ""}
+              onChange={(e) => onTypeChange(e.target.value)}
+              placeholder="Enter content type"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            />
+          ) : (
+            // Read-only display for existing content or when not editing
+            <input
+              value={content.content_type || ""}
+              readOnly
+              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700 cursor-not-allowed"
+            />
           )}
         </div>
 
-        {/* Values Section */}
-        <div className="space-y-2">
-          <div className="flex gap-2">
+        {/* Content Value */}
+        <div>
+          {isEditing ? (
             <input
-              value={option.input || ""}
-              onChange={(e) => onInputChange(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onAddValue()}
+              value={content.content_value || ""}
+              onChange={(e) => onValueChange(e.target.value)}
               placeholder="Enter value"
-              className={`${inputClass} flex-1`}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
             />
-            <button
-              onClick={onAddValue}
-              className="h-9 px-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-            >
-              <RotateCcw size={14} className="text-gray-600" />
-            </button>
-          </div>
-
-          {option.values.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {option.values.map((val, vi) => (
-                <span
-                  key={vi}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded"
-                >
-                  {val}
-                  <button
-                    onClick={() => onRemoveValue(vi)}
-                    className="hover:text-red-600 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
-            </div>
+          ) : (
+            <input
+              value={content.content_value || ""}
+              readOnly
+              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700 cursor-not-allowed"
+            />
           )}
         </div>
 
         {/* Delete Button */}
-        <button
-          onClick={onRemoveOption}
-          className="h-9 w-9 flex items-center justify-center text-red-500 hover:bg-red-50 rounded transition-colors"
-        >
-          <Trash2 size={16} />
-        </button>
+        {isEditing && (
+          <button onClick={onRemoveContent} className="">
+            <Trash2 className="text-red-500 hover:text-red-700" size={20} />
+          </button>
+        )}
       </div>
     </div>
   );
+}
+
+
+function ProductMediaSection({ productData, isEditing, onMediaChange }) {
+  const [productMedia, setProductMedia] = useState(
+    productData?.product_medias || []
+  );
+  const [uploading, setUploading] = useState(false);
+  const [mediaPopup, setMediaPopup] = useState(false);
+
+  useEffect(() => {
+    if (onMediaChange) {
+      onMediaChange(productMedia);
+    }
+  }, [productMedia]);
+
+  // Upload media to S3
+  const handleMediaUpload = async (files) => {
+    if (!files.length) return;
+
+    setUploading(true);
+
+    try {
+      const uploadedUrls = [];
+
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("media_for", "product");
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/upload_media`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!response.ok) throw new Error("Upload failed");
+
+        const result = await response.json();
+        uploadedUrls.push(result.data.media_url);
+      }
+
+      // Get current max sequence
+      const maxSequence =
+        productMedia.length > 0
+          ? Math.max(...productMedia.map((m) => m.sequence))
+          : 0;
+
+      // Add new media with proper sequence
+      const newMedia = files.map((file, idx) => ({
+        id: Date.now() + idx, // Temporary ID for new uploads
+        media_url: uploadedUrls[idx],
+        media_type: "image",
+        active: true,
+        sequence: maxSequence + idx + 1,
+        isNew: true, // Flag to identify new uploads
+      }));
+
+      // If this is the first upload, set sequence to 1 (primary)
+      if (productMedia.length === 0 && newMedia.length > 0) {
+        newMedia[0].sequence = 1;
+      }
+
+      setProductMedia((prev) => [...prev, ...newMedia]);
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("Failed to upload images");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Set image as primary
+  const setPrimary = (id) => {
+    setProductMedia((prev) => {
+      const selectedMedia = prev.find((m) => m.id === id);
+      if (!selectedMedia || selectedMedia.sequence === 1) return prev;
+
+      return prev.map((m) => {
+        if (m.id === id) {
+          return { ...m, sequence: 1 };
+        } else if (m.sequence === 1) {
+          return { ...m, sequence: selectedMedia.sequence };
+        }
+        return m;
+      });
+    });
+
+    setMediaPopup(false);
+  };
+
+  // Remove image (cannot remove primary)
+  const removeMedia = (id) => {
+    const mediaToRemove = productMedia.find((m) => m.id === id);
+
+    if (mediaToRemove?.sequence === 1) {
+      alert("Cannot remove primary image");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Are you sure you want to remove this image?"
+    );
+    if (!confirmed) return;
+
+    setProductMedia((prev) => {
+      const filtered = prev.filter((m) => m.id !== id);
+
+      // Reorder sequences without changing primary
+      const primary = filtered.find((m) => m.sequence === 1);
+      const others = filtered
+        .filter((m) => m.sequence !== 1)
+        .sort((a, b) => a.sequence - b.sequence);
+
+      return [
+        primary,
+        ...others.map((m, idx) => ({ ...m, sequence: idx + 2 })),
+      ].filter(Boolean);
+    });
+  };
+
+  const sortedMedia = [...productMedia].sort((a, b) => a.sequence - b.sequence);
+  const primary = sortedMedia.find((m) => m.sequence === 1);
+  const otherImages = sortedMedia.filter((m) => m.sequence !== 1);
+  const visibleOthers = otherImages.slice(0, 3);
+  const hiddenCount = otherImages.length - 3;
+
+  return (
+    <>
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900">Product Media</h3>
+
+        {productMedia.length === 0 && !isEditing ? (
+          // Empty state - non-editing mode
+          <div className="text-center py-12 text-gray-500 border border-gray-200 rounded-lg">
+            No media uploaded yet
+          </div>
+        ) : productMedia.length === 0 && isEditing ? (
+          // Empty state - editing mode with upload
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+            <label className="cursor-pointer block text-center">
+              <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+              <p className="text-sm text-gray-600 mb-1">
+                Click to upload images
+              </p>
+              <p className="text-xs text-gray-500">
+                PNG, JPG up to 10MB each
+              </p>
+              {uploading && (
+                <p className="text-sm text-blue-600 mt-2">Uploading...</p>
+              )}
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length) handleMediaUpload(files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+        ) : (
+          // Images display
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start gap-3 flex-wrap">
+              {/* PRIMARY IMAGE - Larger */}
+              {primary && (
+                <div className="relative group">
+                  <div className="w-64 h-48 rounded-lg overflow-hidden border-2 border-blue-500">
+                    <img
+                      src={primary.media_url}
+                      className="w-full h-full object-cover"
+                      alt="Primary"
+                    />
+                  </div>
+                  <span className="absolute bottom-2 left-2 bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium">
+                    Primary
+                  </span>
+
+                  {/* Hover overlay - only in editing mode */}
+                  {isEditing && (
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center">
+                      <span className="text-white text-sm font-medium">
+                        Primary Image
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* OTHER IMAGES - Smaller (show first 3) */}
+              {visibleOthers.map((media) => (
+                <div key={media.id} className="relative group">
+                  <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-300">
+                    <img
+                      src={media.media_url}
+                      className="w-full h-full object-cover"
+                      alt={`Media ${media.sequence}`}
+                    />
+                  </div>
+
+                  {/* Hover overlay - only in editing mode */}
+                  {isEditing && (
+                    <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition rounded-lg flex flex-col items-center justify-center gap-2">
+                      <button
+                        onClick={() => setPrimary(media.id)}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
+                      >
+                        Primary
+                      </button>
+                      <button
+                        onClick={() => removeMedia(media.id)}
+                        className="px-3 py-1.5 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* VIEW MORE BUTTON */}
+              {hiddenCount > 0 && (
+                <button
+                  onClick={() => setMediaPopup(true)}
+                  className="w-32 h-32 border-2 border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition cursor-pointer"
+                >
+                  <ImageIcon className="h-8 w-8 text-gray-600 mb-1" />
+                  <span className="text-lg font-semibold text-gray-900">
+                    +{hiddenCount}
+                  </span>
+                  <span className="text-xs text-gray-500">View</span>
+                </button>
+              )}
+
+              {/* ADD MORE BUTTON - only in editing mode */}
+              {isEditing && (
+                <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition cursor-pointer">
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mb-1"></div>
+                      <span className="text-xs text-gray-600">
+                        Uploading...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                      <span className="text-xs text-gray-600">Add</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length) handleMediaUpload(files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Add More Images button below - only in editing mode and if images exist */}
+            {isEditing && productMedia.length >= 4 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm font-medium">
+                  <Upload size={16} />
+                  Add More Images
+                  {uploading && <span className="text-xs">(Uploading...)</span>}
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length) handleMediaUpload(files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Media Popup */}
+      {mediaPopup && (
+        <MediaPopup
+          media={sortedMedia}
+          isEditing={isEditing}
+          onSetPrimary={setPrimary}
+          onRemove={removeMedia}
+          onClose={() => setMediaPopup(false)}
+          onUpload={handleMediaUpload}
+          uploading={uploading}
+        />
+      )}
+    </>
+  );
+}
+
+// Media Popup Component
+function MediaPopup({
+  media,
+  isEditing,
+  onSetPrimary,
+  onRemove,
+  onClose,
+  onUpload,
+  uploading,
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Product Media</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="grid grid-cols-3 gap-4">
+            {media.map((m) => (
+              <div key={m.id} className="relative group">
+                <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
+                  <img
+                    src={m.media_url}
+                    className="w-full h-full object-cover"
+                    alt={`Media ${m.sequence}`}
+                  />
+                </div>
+
+                {/* Sequence Badge */}
+                <div className="absolute top-2 left-2">
+                  {m.sequence === 1 ? (
+                    <span className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium">
+                      Primary
+                    </span>
+                  ) : (
+                    <span className="bg-gray-800/80 text-white px-2 py-1 rounded text-xs font-medium">
+                      {m.sequence}
+                    </span>
+                  )}
+                </div>
+
+                {/* Hover Overlay - only in editing mode and not for primary */}
+                {isEditing && m.sequence !== 1 && (
+                  <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => onSetPrimary(m.id)}
+                      className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition font-medium"
+                    >
+                      Set as Primary
+                    </button>
+                    <button
+                      onClick={() => onRemove(m.id)}
+                      className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex gap-3">
+          {isEditing && (
+            <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm font-medium">
+              <Upload size={16} />
+              Add More Images
+              {uploading && <span className="ml-1">(Uploading...)</span>}
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length) onUpload(files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Helper function to get media payload for API submission
+function getMediaPayload(productMedia) {
+  return productMedia.map((m) => {
+    if (m.isNew) {
+      // New uploads don't have a real ID yet
+      return {
+        media_url: m.media_url,
+        media_type: m.media_type,
+        active: m.active,
+        sequence: m.sequence,
+      };
+    } else {
+      // Existing media
+      return {
+        id: m.id,
+        media_url: m.media_url,
+        media_type: m.media_type,
+        active: m.active,
+        sequence: m.sequence,
+      };
+    }
+  });
 }
 

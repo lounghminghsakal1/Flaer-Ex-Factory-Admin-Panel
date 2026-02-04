@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
+import { successToast,errorToast } from "../../../../../../components/ui/toast";
 
 function cartesian(arrays) {
   return arrays.reduce(
@@ -1043,7 +1044,7 @@ export default function ProductCreationAttributes({
                               />
 
                               {/* TOOLTIP */}
-                              {sku.sku_code && sku.sku_code.length > 15 && (
+                              {sku.sku_code && sku.sku_code.length > 10 && (
                                 <div className={`pointer-events-none absolute z-[9999] left-0 ${skuIndex >= product.product_skus.length - 2 ? 'bottom-full mb-2' : 'top-full mt-2'
                                   } opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out`}>
                                   <div className="relative">
@@ -1780,8 +1781,8 @@ export default function ProductCreationAttributes({
       <ProductMediaSection
         productMedia={productMedia}
         setProductMedia={setProductMedia}
-        uploadMediaFiles={uploadMediaFiles}
-        setMediaPopup={setMediaPopup}
+        // uploadMediaFiles={uploadMediaFiles}
+        // setMediaPopup={setMediaPopup}
       />
 
     </div>
@@ -1905,12 +1906,9 @@ function removeMediaWithPrimaryFix(mediaList, removeId) {
 
 
 
-function ProductMediaSection({
-  productMedia,
-  setProductMedia,
-  setMediaPopup
-}) {
+function ProductMediaSection({ productMedia, setProductMedia }) {
   const [uploading, setUploading] = useState(false);
+  const [mediaPopup, setMediaPopup] = useState(false);
 
   // Upload media to S3 immediately
   const handleMediaUpload = async (files) => {
@@ -1940,23 +1938,31 @@ function ProductMediaSection({
         uploadedUrls.push(result.data.media_url);
       }
 
-      //  Store ONLY the uploaded URLs
-      setProductMedia(prev => [
-        ...prev,
-        ...files.map((file, idx) => ({
-          id: Date.now() + idx,
-          name: file.name,
-          url: uploadedUrls[idx],
-          uploadedUrl: uploadedUrls[idx],
-          sequence: prev.length + idx + 1,
-          active: true
-        }))
-      ]);
+      // Get current max sequence or 0 if no media exists
+      const maxSequence = productMedia.length > 0
+        ? Math.max(...productMedia.map(m => m.sequence))
+        : 0;
 
-      toast.success(`${files.length} image(s) uploaded successfully`);
+      // Add new media with proper sequence
+      const newMedia = files.map((file, idx) => ({
+        id: Date.now() + idx,
+        name: file.name,
+        media_url: uploadedUrls[idx],
+        media_type: 'image',
+        active: true,
+        sequence: maxSequence + idx + 1
+      }));
+
+      // If this is the first upload, set sequence to 1 (primary)
+      if (productMedia.length === 0 && newMedia.length > 0) {
+        newMedia[0].sequence = 1;
+      }
+
+      setProductMedia(prev => [...prev, ...newMedia]);
+      successToast(`${files.length} image(s) uploaded successfully`);
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload images');
+      errorToast('Failed to upload images');
     } finally {
       setUploading(false);
     }
@@ -1964,159 +1970,69 @@ function ProductMediaSection({
 
   // Make selected image primary
   const setPrimary = (id) => {
-    setProductMedia(prev =>
-      prev.map(m => ({
-        ...m,
-        sequence: m.id === id ? 1 : m.sequence > 1 ? m.sequence : m.sequence + 1
-      }))
-    );
+    setProductMedia(prev => {
+      // Find current primary
+      const currentPrimary = prev.find(m => m.sequence === 1);
+      const selectedMedia = prev.find(m => m.id === id);
+
+      if (!selectedMedia || selectedMedia.sequence === 1) return prev;
+
+      return prev.map(m => {
+        if (m.id === id) {
+          // Set selected as primary
+          return { ...m, sequence: 1 };
+        } else if (m.sequence === 1) {
+          // Move old primary to selected's position
+          return { ...m, sequence: selectedMedia.sequence };
+        }
+        return m;
+      });
+    });
+
+    // Close popup after setting primary
+    setMediaPopup(false);
   };
 
-  // Remove image
+  // Remove image (cannot remove primary)
   const removeMedia = (id) => {
-    setProductMedia(prev =>
-      prev.filter(m => m.id !== id)
-        .map((m, idx) => ({ ...m, sequence: idx + 1 }))
-    );
-  };
+    const mediaToRemove = productMedia.find(m => m.id === id);
 
-  // Show all images in popup
-  const showAllImages = () => {
-    setMediaPopup({
-      media: productMedia,
-      isProductLevel: true,
-      onSetPrimary: setPrimary,
-      onRemove: removeMedia
+    if (mediaToRemove?.sequence === 1) {
+      errorToast('Cannot remove primary image');
+      return;
+    }
+
+    setProductMedia(prev => {
+      const filtered = prev.filter(m => m.id !== id);
+
+      // Reorder sequences without changing primary
+      const primary = filtered.find(m => m.sequence === 1);
+      const others = filtered.filter(m => m.sequence !== 1);
+
+      return [
+        primary,
+        ...others.map((m, idx) => ({ ...m, sequence: idx + 2 }))
+      ].filter(Boolean);
     });
   };
 
   const primary = productMedia.find(m => m.sequence === 1);
-  const otherImages = productMedia.filter(m => m.sequence !== 1);
-  const visibleImages = otherImages.slice(0, 3); // Show max 3 after primary
+  const otherImages = productMedia.filter(m => m.sequence !== 1).sort((a, b) => a.sequence - b.sequence);
+  const visibleImages = otherImages.slice(0, 3);
   const hiddenCount = otherImages.length - 3;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Product Media</h3>
-      </div>
+    <>
+      <div className="border border-gray-200 rounded p-4 space-y-3">
+        <h4 className="text-xs font-semibold text-gray-900">Product Media</h4>
 
-      {productMedia.length === 0 ? (
-        // Empty state with upload
-        <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-          <label className="cursor-pointer">
-            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-            <p className="text-sm text-gray-500 mb-2">Click to upload images</p>
-            {uploading && <p className="text-xs text-blue-600">Uploading...</p>}
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              disabled={uploading}
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                if (files.length) handleMediaUpload(files);
-                e.target.value = "";
-              }}
-            />
-          </label>
-        </div>
-      ) : (
-        // Images grid
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 overflow-x-auto">
-            {/* PRIMARY IMAGE */}
-            {primary && (
-              <div className="relative group shrink-0 w-56 h-40">
-                <img
-                  src={primary.previewUrl || primary.uploadedUrl}
-                  className="w-full h-full object-cover rounded-lg border-2 border-blue-500"
-                  alt="Primary"
-                />
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center">
-                  <button
-                    onClick={() => removeMedia(primary.id)}
-                    className="px-3 py-1 bg-red-500 text-white text-xs rounded"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <span className="absolute bottom-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs">
-                  Primary
-                </span>
-              </div>
-            )}
-
-            {/* OTHER IMAGES */}
-            {visibleImages.map(m => (
-              <div key={m.id} className="relative group flex-shrink-0 w-24 h-24">
-                <img
-                  src={m.previewUrl || m.uploadedUrl}
-                  className="w-full h-full object-cover rounded-lg border border-gray-300"
-                  alt="Product"
-                />
-
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex flex-col items-center justify-center gap-1">
-                  <button
-                    onClick={() => setPrimary(m.id)}
-                    className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded"
-                  >
-                    Primary
-                  </button>
-                  <button
-                    onClick={() => removeMedia(m.id)}
-                    className="px-2 py-0.5 bg-red-500 text-white text-[10px] rounded"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {/* ADD MORE */}
-            {productMedia.length < 4 && (
-              <label className="shrink-0 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500">
-                <Upload className="h-5 w-5 text-gray-400" />
-                <span className="text-[10px] text-gray-500">Add</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length) handleMediaUpload(files);
-                    e.target.value = "";
-                  }}
-                />
-                {uploading && <p className="text-xs text-blue-600">Uploading...</p>}
-              </label>
-            )}
-
-            {/* VIEW ALL */}
-            {hiddenCount > 0 && (
-              <button
-                onClick={showAllImages}
-                className="shrink-0 w-24 h-24 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 cursor-pointer"
-              >
-                <Image className="h-5 w-5 text-gray-600" />
-                <span className="text-xs font-semibold">+{hiddenCount}</span>
-                <span className="text-[10px] text-gray-500">View</span>
-              </button>
-            )}
-          </div>
-
-          {/* Add more button below grid (if 4+ images) */}
-          {productMedia.length >= 4 && (
-            <label className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-blue-700 text-white rounded-md hover:bg-blue-900 transition-colors cursor-pointer">
-              <Plus size={16} />
-              Add More Images
-              {uploading && <span className="text-xs">(Uploading...)</span>}
+        {productMedia.length === 0 ? (
+          // Empty state with upload
+          <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+            <label className="cursor-pointer">
+              <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+              <p className="text-xs text-gray-500 mb-1">Click to upload images</p>
+              {uploading && <p className="text-xs text-blue-600">Uploading...</p>}
               <input
                 type="file"
                 multiple
@@ -2130,9 +2046,217 @@ function ProductMediaSection({
                 }}
               />
             </label>
-          )}
-        </div>
+          </div>
+        ) : (
+          // Images grid
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {/* PRIMARY IMAGE */}
+              {primary && (
+                <div className="relative group shrink-0 w-40 h-28">
+                  <img
+                    src={primary.media_url}
+                    className="w-full h-full object-cover rounded-lg border-2 border-blue-500"
+                    alt="Primary"
+                  />
+                  <span className="absolute bottom-1.5 left-1.5 bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-medium">
+                    Primary
+                  </span>
+                </div>
+              )}
+
+              {/* OTHER IMAGES */}
+              {visibleImages.map(m => (
+                <div key={m.id} className="relative group flex-shrink-0 w-20 h-20">
+                  <img
+                    src={m.media_url}
+                    className="w-full h-full object-cover rounded-lg border border-gray-300"
+                    alt="SKU"
+                  />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex flex-col items-center justify-center gap-1">
+                    <button
+                      onClick={() => setPrimary(m.id)}
+                      className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded hover:bg-blue-700"
+                    >
+                      Primary
+                    </button>
+                    <button
+                      onClick={() => removeMedia(m.id)}
+                      className="px-2 py-0.5 bg-red-500 text-white text-[10px] rounded hover:bg-red-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* ADD MORE (show if less than 4 images) */}
+              {productMedia.length < 4 && (
+                <label className="shrink-0 w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors">
+                  <Upload className="h-4 w-4 text-gray-400" />
+                  <span className="text-[10px] text-gray-500 mt-0.5">Add</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length) handleMediaUpload(files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+
+              {/* VIEW ALL BUTTON */}
+              {hiddenCount > 0 && (
+                <button
+                  onClick={() => setMediaPopup(true)}
+                  className="shrink-0 w-20 h-20 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 cursor-pointer transition-colors"
+                >
+                  <Image className="h-4 w-4 text-gray-600" />
+                  <span className="text-xs font-semibold text-gray-900">+{hiddenCount}</span>
+                  <span className="text-[10px] text-gray-500">View</span>
+                </button>
+              )}
+            </div>
+
+            {/* Add more button below grid (if 4+ images) */}
+            {productMedia.length >= 4 && (
+              <label className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer">
+                <Plus size={14} />
+                Add More Images
+                {uploading && <span className="text-xs">(Uploading...)</span>}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length) handleMediaUpload(files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Media Popup */}
+      {mediaPopup && (
+        <MediaPopup
+          media={productMedia}
+          onSetPrimary={setPrimary}
+          onRemove={removeMedia}
+          onClose={() => setMediaPopup(false)}
+          onUpload={handleMediaUpload}
+          uploading={uploading}
+        />
       )}
+    </>
+  );
+}
+
+// Mini Popup Component
+function MediaPopup({ media, onSetPrimary, onRemove, onClose, onUpload, uploading }) {
+  const sortedMedia = [...media].sort((a, b) => a.sequence - b.sequence);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b">
+          <h3 className="text-sm font-semibold text-gray-900">Product Media</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-5">
+          <div className="grid grid-cols-3 gap-4">
+            {sortedMedia.map((m, index) => (
+              <div key={m.id} className="relative group">
+                <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
+                  <img
+                    src={m.media_url}
+                    className="w-full h-full object-cover"
+                    alt={`Media ${index + 1}`}
+                  />
+                </div>
+
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center gap-2">
+                  {m.sequence !== 1 && (
+                    <>
+                      <button
+                        onClick={() => onSetPrimary(m.id)}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                      >
+                        Set as Primary
+                      </button>
+                      <button
+                        onClick={() => onRemove(m.id)}
+                        className="px-3 py-1.5 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                      >
+                        Remove
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Sequence Badge */}
+                <div className="absolute top-2 left-2">
+                  {m.sequence === 1 ? (
+                    <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                      Primary
+                    </span>
+                  ) : (
+                    <span className="bg-gray-800 text-white px-2 py-1 rounded text-xs font-medium">
+                      {m.sequence}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t px-5 py-3 bg-gray-50 flex gap-2">
+          <label className="flex-1 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors cursor-pointer text-center">
+            <Plus size={14} className="inline mr-1" />
+            Add More Images
+            {uploading && <span className="ml-2">(Uploading...)</span>}
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length) onUpload(files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-medium border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

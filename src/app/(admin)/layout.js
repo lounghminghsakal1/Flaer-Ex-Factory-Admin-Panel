@@ -147,7 +147,6 @@ const SidebarLayout = ({ children }) => {
         { label: 'Categories', icon: Layers, href: '/catalog/categories' },
         { label: 'Products', icon: Box, href: '/catalog/products' },
         { label: 'Brands', icon: Tag, href: '/catalog/brands' },
-        { label: 'Product SKUs', icon: Boxes, href: '/catalog/product_skus' },
       ],
     },
     {

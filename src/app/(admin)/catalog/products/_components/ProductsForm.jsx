@@ -95,6 +95,10 @@ export default function ProductsForm() {
     threshold_quantity: 1
   });
 
+  const [updateProperties, setUpdateProperties] = useState([]);
+  const [updateContents, setUpdateContents] = useState([]);
+  const [updateProductMedia, setUpdateProductMedia] = useState([]);
+
   function mapBackendDataToViewFormData(data) {
     setEditAndViewFormData({
       id: data.id,
@@ -118,7 +122,6 @@ export default function ProductsForm() {
       requires_inventory: data.requires_inventory,
       tags: data.tags || [],
 
-      //  ADD THESE LINES
       products: data.products || [],
       product_contents: data.product_contents || [],
       product_media: data.product_media || []
@@ -144,70 +147,6 @@ export default function ProductsForm() {
       setInitialLoading(false);
     }
   }
-
-
-  // useEffect(() => {
-  //   if (isCreateNew) return;
-  //   if (!isCreateNew && editAndViewFormData.id) {
-  //     // Populate generatedProducts from backend data
-  //     const backendProducts = editAndViewFormData.products || [];
-
-  //     const transformedGeneratedProducts = backendProducts.map((prod, idx) => ({
-  //       id: idx + 1,
-  //       name: prod.name.replace(editAndViewFormData.name + " ", ""),
-  //       properties: prod.product_properties?.map(p => ({
-  //         name: p.property_name,
-  //         value: p.property_value
-  //       })) || [],
-  //       skuCount: prod.product_skus?.length || 0,
-  //       content_type: prod.product_contents?.[0]?.content_type || "",
-  //       content_values: prod.product_contents?.map(c => c.content_value) || [],
-  //       content_media: prod.product_media?.map((m, i) => ({
-  //         id: Date.now() + i,
-  //         name: `media-${i}`,
-  //         url: m.media_url,
-  //         uploadedUrl: m.media_url,
-  //         active: m.active
-  //       })) || []
-  //     }));
-
-  //     setGeneratedProducts(transformedGeneratedProducts);
-
-  //     // Populate products (SKUs)
-  //     const transformedProducts = backendProducts.map(prod => ({
-  //       name: prod.name,
-  //       display_name: prod.display_name,
-  //       product_properties: prod.product_properties || [],
-  //       product_skus: prod.product_skus?.map(sku => ({
-  //         sku_name: sku.sku_name,
-  //         sku_code: sku.sku_code || "",
-  //         display_name: sku.display_name,
-  //         display_name_edited: sku.display_name !== sku.sku_name,
-  //         mrp: sku.mrp || "",
-  //         selling_price: sku.selling_price || "",
-  //         unit_price: sku.unit_price || "",
-  //         dimension: sku.dimension || "",
-  //         weight: sku.weight || "",
-  //         conversion_factor: sku.conversion_factor || 1,
-  //         multiplication_factor: sku.multiplication_factor || 1,
-  //         uom: sku.uom || "piece",
-  //         threshold_quantity: sku.threshold_quantity || 1,
-  //         status: sku.status || "active",
-  //         master: sku.master || false,
-  //         option_type_values: sku.option_type_values || [],
-  //         sku_media: sku.sku_media?.map((m, i) => ({
-  //           id: Date.now() + i,
-  //           name: `sku-media-${i}`,
-  //           url: m.media_url,
-  //           uploadedUrl: m.media_url,
-  //           active: m.active
-  //         })) || []
-  //       })) || []
-  //     }));
-
-  //     setProducts(transformedProducts);
-  //   }
-  // }, [isCreateNew, editAndViewFormData.id]);
 
   //  UPLOAD MEDIA HELPER FUNCTION
   async function uploadMediaFiles(files, mediaFor = "product") {
@@ -275,33 +214,44 @@ export default function ProductsForm() {
 
             product_properties: p.product_properties || [],
 
-            product_skus: p.product_skus.map((sku, i) => ({
-              sku_name: sku.sku_name,
-              sku_code: sku.sku_code || "",
-              display_name: sku.display_name || sku.sku_name,
-              mrp: Number(sku.mrp),
-              selling_price: Number(sku.selling_price),
-              unit_price: Number(sku.unit_price),
-              dimension: sku.dimension || "",
-              weight: sku.weight ? Number(sku.weight) : null,
-              conversion_factor: Number(sku.conversion_factor) || 1,
-              multiplication_factor: Number(sku.multiplication_factor) || 1,
-              uom: sku.uom,
-              threshold_quantity: Number(sku.threshold_quantity) || 1,
-              status: sku.status,
-              master: sku.master,
+            product_skus: p.product_skus.map((sku, i) => {
+              const isConversion = formData.selection_type === "conversion";
+              const isMultiplication = formData.selection_type === "multiplication";
 
-              option_type_values: sku.option_type_values || [],
+              return {
+                sku_name: sku.sku_name,
+                sku_code: sku.sku_code || "",
+                display_name: sku.display_name || sku.sku_name,
+                mrp: Number(sku.mrp),
+                selling_price: Number(sku.selling_price),
+                unit_price: Number(sku.unit_price),
+                dimension: sku.dimension || "",
+                weight: sku.weight ? Number(sku.weight) : null,
+                uom: sku.uom,
+                threshold_quantity: Number(sku.threshold_quantity) || 1,
+                status: sku.status,
+                master: sku.master,
 
-              sku_media: (sku.sku_media || [])
-                .filter(m => m.uploadedUrl)
-                .map((m, idx) => ({
-                  media_type: "image",
-                  media_url: m.uploadedUrl,
-                  active: true,
-                  sequence: idx + 1
-                }))
-            }))
+                ...(isConversion && {
+                  conversion_factor: Number(sku.conversion_factor) || 1
+                }),
+
+                ...(isMultiplication && {
+                  multiplication_factor: Number(sku.multiplication_factor) || 1
+                }),
+
+                option_type_values: sku.option_type_values || [],
+
+                sku_media: (sku.sku_media || [])
+                  .filter(m => m.uploadedUrl)
+                  .map((m, idx) => ({
+                    media_type: "image",
+                    media_url: m.uploadedUrl,
+                    active: true,
+                    sequence: idx + 1
+                  }))
+              };
+            })
           })),
 
         product_contents: [],
@@ -355,90 +305,269 @@ export default function ProductsForm() {
     return null; // All validations passed
   }
 
+  // Add these functions in ProductsForm component, after buildCreateProductPayload
+
+  function buildUpdateProductPayload(formData, properties, contents, productMedia) {
+    const payload = {
+      product: {
+        description: formData.description,
+        hsn_code: formData.hsn_code,
+        min_order_quantity: Number(formData.min_order_quantity),
+        max_order_quantity: Number(formData.max_order_quantity),
+        multiplication_order_quantity: Number(formData.multiplication_order_quantity),
+        status: formData.status,
+        product_type: formData.product_type,
+        category_id: formData.category_id,
+        brand_id: formData.brand_id,
+        tax_type_id: formData.tax_type_id,
+        returnable: formData.returnable,
+        tracking_type: formData.tracking_type,
+        selection_type: formData.selection_type,
+        requires_inventory: formData.requires_inventory,
+        tags: formData.tags || [],
+      }
+    };
+
+    // Add product_properties if they exist
+    if (properties && properties.length > 0) {
+      payload.product.product_properties = properties
+        .filter(p => p.name && p.value)
+        .map(p => {
+          if (p.isExisting && p.property_id && p.value_id) {
+            // Existing property with IDs
+            return {
+              property_id: p.property_id,
+              value_id: p.value_id,
+              property_value: p.value
+            };
+          } else {
+            // New property without IDs
+            return {
+              property_name: p.name,
+              property_value: p.value
+            };
+          }
+        });
+    }
+
+    // Add product_contents if they exist
+    if (contents && contents.length > 0) {
+      payload.product.product_contents = contents
+        .filter(c => c.content_type && c.content_value)
+        .map(c => {
+          if (c.isExisting && c.id) {
+            // Existing content with ID
+            return {
+              id: c.id,
+              content_type: c.content_type,
+              content_value: c.content_value
+            };
+          } else {
+            // New content without ID
+            return {
+              content_type: c.content_type,
+              content_value: c.content_value
+            };
+          }
+        });
+    }
+
+    // Add product_media if they exist
+    if (productMedia && productMedia.length > 0) {
+      payload.product.product_media = productMedia.map(m => {
+        if (m.isNew) {
+          // New media without ID
+          return {
+            media_url: m.media_url,
+            media_type: m.media_type || "image",
+            active: m.active !== undefined ? m.active : true,
+            sequence: m.sequence
+          };
+        } else {
+          // Existing media with ID
+          return {
+            id: m.id,
+            media_url: m.media_url,
+            media_type: m.media_type,
+            active: m.active,
+            sequence: m.sequence
+          };
+        }
+      });
+    }
+
+    return payload;
+  }
+
+  function validateUpdateProduct(formData, properties, contents, productMedia) {
+    if (!formData.hsn_code?.trim()) return "HSN code is required";
+    if (!formData.category_id) return "Category is required";
+    if (formData.taxable && !formData.tax_type_id) {
+      return "Select tax type";
+    }
+
+    // Validate properties
+    if (properties && properties.length > 0) {
+      for (let i = 0; i < properties.length; i++) {
+        const prop = properties[i];
+        if (!prop.name?.trim()) {
+          return `Property name is required at row ${i + 1}`;
+        }
+        if (!prop.value?.trim()) {
+          return `Property value is required for "${prop.name}"`;
+        }
+      }
+    }
+
+    // Validate contents
+    if (contents && contents.length > 0) {
+      for (let i = 0; i < contents.length; i++) {
+        const content = contents[i];
+        if (content.content_type?.trim() && !content.content_value?.trim()) {
+          return `Content value is required for "${content.content_type}"`;
+        }
+        if (!content.content_type?.trim() && content.content_value?.trim()) {
+          return `Content type is required at row ${i + 1}`;
+        }
+      }
+    }
+
+    return null; // All validations passed
+  }
+
   async function handleSubmit() {
     try {
       setLoading(true);
 
-      const validationError = validateBeforeSubmit(formData, products);
-      if (validationError) {
-        toast.error(validationError);
-        return;
-      }
-
-      //  Ensure productMedia has uploadedUrl
-      const product_media = productMedia
-        .filter(m => m.uploadedUrl)
-        .map((m, idx) => ({
-          media_type: "image",
-          media_url: m.uploadedUrl,
-          active: true,
-          sequence: idx + 1
-        }));
-
-      //  Ensure productContents are not empty
-      const product_contents = productContents
-        .filter(c => c.content_type?.trim() && c.content_value?.trim())
-        .map(c => ({
-          content_type: c.content_type,
-          content_value: c.content_value
-        }));
-
-      console.log("=== DEBUG: Product Media ===", product_media);
-      console.log("=== DEBUG: Product Contents ===", product_contents);
-
-      const basePayload = buildCreateProductPayload(formData, products);
-
-      const payload = {
-        product: {
-          ...basePayload.product,
-          product_contents,
-          product_media
+      if (isCreateNew) {
+        // CREATE FLOW (existing logic)
+        const validationError = validateBeforeSubmit(formData, products);
+        if (validationError) {
+          toast.error(validationError);
+          return;
         }
-      };
 
-      console.log("=== FINAL PAYLOAD ===");
-      console.log(JSON.stringify(payload, null, 2));
+        const product_media = productMedia
+          .filter(m => m.media_url)
+          .map((m, idx) => ({
+            media_type: "image",
+            media_url: m.media_url,
+            active: true,
+            sequence: m.sequence ?? idx + 1
+          }));
 
-      //  DETERMINE METHOD AND URL
-      const method = isCreateNew ? "POST" : "PUT";
-      const url = isCreateNew
-        ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products`
-        : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/${productId}`;
+        const product_contents = productContents
+          .filter(c => c.content_type?.trim() && c.content_value?.trim())
+          .map(c => ({
+            content_type: c.content_type,
+            content_value: c.content_value
+          }));
 
-      console.log("=== CHECKING STATES BEFORE SUBMIT ===");
-      console.log("productContents:", productContents);
-      console.log("productMedia:", productMedia);
-      console.log("product_contents (filtered):", product_contents);
-      console.log("product_media (filtered):", product_media);
+        const basePayload = buildCreateProductPayload(formData, products);
 
-      const response = await fetch(url, {
-        method: method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+        const payload = {
+          product: {
+            ...basePayload.product,
+            product_contents,
+            product_media
+          }
+        };
 
-      const result = await response.json();
+        console.log("=== CREATE PAYLOAD ===");
+        console.log(JSON.stringify(payload, null, 2));
 
-      if (!response.ok) {
-        let errorMessage = "Something went wrong";
-        if (Array.isArray(result?.errors)) {
-          errorMessage = result.errors.join(", ");
-        } else if (typeof result?.errors === "object") {
-          errorMessage = Object.values(result.errors).flat().join(", ");
-        } else if (result?.message) {
-          errorMessage = result.message;
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          let errorMessage = "Something went wrong";
+          if (Array.isArray(result?.errors)) {
+            errorMessage = result.errors.join(", ");
+          } else if (typeof result?.errors === "object") {
+            errorMessage = Object.values(result.errors).flat().join(", ");
+          } else if (result?.message) {
+            errorMessage = result.message;
+          }
+          errorToast(errorMessage);
+          return;
         }
-        errorToast(errorMessage);
-        return;
+
+        toast.success("Product created successfully");
+        setProducts([]);
+        setGeneratedProducts([]);
+        router.push("/catalog/products");
+
+      } else {
+        // UPDATE FLOW (new logic)
+        // Get data from ProductUpdationAttributes component
+        // You'll need to pass these as refs or state from ProductUpdationAttributes
+
+        // For now, we'll get them from the component's internal state
+        // This requires modifications to ProductUpdationAttributes to expose these values
+
+        // Validation
+        const validationError = validateUpdateProduct(
+          formData,
+          updateProperties,    // Now using state from ProductUpdationAttributes
+          updateContents,      // Now using state from ProductUpdationAttributes
+          updateProductMedia   // Now using state from ProductUpdationAttributes
+        );
+
+        if (validationError) {
+          toast.error(validationError);
+          return;
+        }
+
+        const payload = buildUpdateProductPayload(
+          formData,
+          updateProperties,
+          updateContents,
+          updateProductMedia
+        );
+
+        console.log("=== UPDATE PAYLOAD ===");
+        console.log(JSON.stringify(payload, null, 2));
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/${productId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          let errorMessage = "Failed to update product";
+          if (Array.isArray(result?.errors)) {
+            errorMessage = result.errors.join(", ");
+          } else if (typeof result?.errors === "object") {
+            errorMessage = Object.values(result.errors).flat().join(", ");
+          } else if (result?.message) {
+            errorMessage = result.message;
+          }
+          errorToast(errorMessage);
+          return;
+        }
+
+        toast.success("Product updated successfully");
+        setIsEditing(false);
+
+        // Refresh product details
+        if (!isCreateNew && productId) {
+          fetchProductDetails();
+        }
       }
-
-
-      toast.success(isCreateNew ? "Product created successfully" : "Product updated successfully");
-
-      setProducts([]);
-      setGeneratedProducts([]);
-
-      router.push("/catalog/products");
 
     } catch (err) {
       console.error("=== SUBMIT ERROR ===", err);
@@ -556,6 +685,13 @@ export default function ProductsForm() {
                 formData={formData}
                 products={products}
                 setProducts={setProducts}
+                isEditing={isEditing}
+                pricingMode={pricingMode}
+                globalPricing={globalPricing}
+                // NEW PROPS
+                onPropertiesChange={setUpdateProperties}
+                onContentsChange={setUpdateContents}
+                onMediaChange={setUpdateProductMedia}
               />
             )}
           </div>
