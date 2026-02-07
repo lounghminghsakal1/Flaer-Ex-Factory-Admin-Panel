@@ -1,11 +1,22 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
 import CategoriesHeader from "./_components/CategoriesHeader";
 import CategoryListing from "./_components/CategoriesListing";
+import CategoriesTabs from "./_components/CategoriesTabs";
 
 export default function CategoriesPage() {
-    return(
-        <section>
+
+    const searchParams = useSearchParams();
+    const tab = searchParams.get("tab") || "parent";
+
+    return (
+        <section className="space-y-4">
             <CategoriesHeader />
-            <CategoryListing />
+
+            <CategoriesTabs activeTab={tab} />
+
+            <CategoryListing tab={tab} />
         </section>
     );
 }

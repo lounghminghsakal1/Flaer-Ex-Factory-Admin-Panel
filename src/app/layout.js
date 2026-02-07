@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import ConfirmProvider from "../../components/shared/ConfirmProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,12 +24,25 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <Toaster
-          position="top-right"
-          reverseOrder={false}
-          gutter={12}
-        />
+        <ConfirmProvider>
+          <Toaster
+            position="top-right"
+            reverseOrder={false}
+            gutter={8}
+            containerStyle={{
+              top: 20,
+              right: 20,
+            }}
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#fff',
+                color: '#363636',
+              },
+            }}
+          />
+          {children}
+        </ConfirmProvider>
       </body>
     </html>
   );

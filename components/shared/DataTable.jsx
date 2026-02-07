@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ExternalLink,ChevronsLeft,ChevronLeft,ChevronRight,ChevronsRight } from 'lucide-react';
+import { ExternalLink, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 import { useState } from 'react';
 
 export default function DataTable({
@@ -9,58 +9,56 @@ export default function DataTable({
   data = [],
   rowKey = 'id',
   getDetailsLink,
+  currentPage,
+  totalPages,
+  itemsPerPage = 20,
+  onPageChange
 }) {
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
+  const currentData = data;
+  const startIndex = (currentPage - 1) * itemsPerPage;
 
-  // Pagination calculations
-    const totalPages = Math.ceil(data.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const currentData = data.slice(startIndex, endIndex);
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxPagesToShow = 10;
 
-    // Generate page numbers to display
-    const getPageNumbers = () => {
-        const pages = [];
-        const maxPagesToShow = 10;
-
-        if (totalPages <= maxPagesToShow) {
-            for (let i = 1; i <= totalPages; i++) {
-                pages.push(i);
-            }
-        } else {
-            if (currentPage <= 6) {
-                for (let i = 1; i <= 8; i++) {
-                    pages.push(i);
-                }
-                pages.push('...');
-                pages.push(totalPages);
-            } else if (currentPage >= totalPages - 5) {
-                pages.push(1);
-                pages.push('...');
-                for (let i = totalPages - 7; i <= totalPages; i++) {
-                    pages.push(i);
-                }
-            } else {
-                pages.push(1);
-                pages.push('...');
-                for (let i = currentPage - 2; i <= currentPage + 2; i++) {
-                    pages.push(i);
-                }
-                pages.push('...');
-                pages.push(totalPages);
-            }
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 6) {
+        for (let i = 1; i <= 8; i++) {
+          pages.push(i);
         }
-        return pages;
-        
-    };
-
-    const goToPage = (page) => {
-        if (page >= 1 && page <= totalPages) {
-            setCurrentPage(page);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 5) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 7; i <= totalPages; i++) {
+          pages.push(i);
         }
-    };
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 2; i <= currentPage + 2; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+
+  };
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      onPageChange(page);
+    }
+  };
 
   return (
     <div className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden">
@@ -118,7 +116,10 @@ export default function DataTable({
                     >
                       {col.render
                         ? col.render(row[col.key], row)
-                        : row[col.key] ?? '—'}
+                        : row[col.key] && row[col.key].toString().trim() !== ''
+                          ? row[col.key]
+                          : '—'
+                      }
                     </td>
                   ))}
 
@@ -148,76 +149,76 @@ export default function DataTable({
         </table>
       </div>
       {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-1 px-4 py-4 border-t border-gray-200 bg-gray-50/50">
-                    {/* First Page Button */}
-                    <button
-                        onClick={() => goToPage(1)}
-                        disabled={currentPage === 1}
-                        className={`p-2 rounded-lg transition-all ${currentPage === 1
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-200'
-                            }`}
-                    >
-                        <ChevronsLeft className="w-4 h-4" />
-                    </button>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 px-4 py-4 border-t border-gray-200 bg-gray-50/50">
+          {/* First Page Button */}
+          <button
+            onClick={() => goToPage(1)}
+            disabled={currentPage === 1}
+            className={`p-2 rounded-lg transition-all ${currentPage === 1
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            <ChevronsLeft className="w-4 h-4" />
+          </button>
 
-                    {/* Previous Page Button */}
-                    <button
-                        onClick={() => goToPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className={`p-2 rounded-lg transition-all ${currentPage === 1
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-200'
-                            }`}
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
+          {/* Previous Page Button */}
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`p-2 rounded-lg transition-all ${currentPage === 1
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
 
-                    {/* Page Numbers */}
-                    {getPageNumbers().map((page, index) => (
-                        page === '...' ? (
-                            <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-400 text-sm">
-                                ...
-                            </span>
-                        ) : (
-                            <button
-                                key={page}
-                                onClick={() => goToPage(page)}
-                                className={`min-w-9 h-9 px-3 rounded-lg text-[11px] font-medium transition-all ${currentPage === page
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 hover:bg-gray-200'
-                                    }`}
-                            >
-                                {page}
-                            </button>
-                        )
-                    ))}
+          {/* Page Numbers */}
+          {getPageNumbers().map((page, index) => (
+            page === '...' ? (
+              <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-400 text-sm">
+                ...
+              </span>
+            ) : (
+              <button
+                key={page}
+                onClick={() => goToPage(page)}
+                className={`min-w-9 h-9 px-3 rounded-lg text-[11px] font-medium transition-all ${currentPage === page
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                {page}
+              </button>
+            )
+          ))}
 
-                    {/* Next Page Button */}
-                    <button
-                        onClick={() => goToPage(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className={`p-2 rounded-lg transition-all ${currentPage === totalPages
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-200'
-                            }`}
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
+          {/* Next Page Button */}
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`p-2 rounded-lg transition-all ${currentPage === totalPages
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
 
-                    {/* Last Page Button */}
-                    <button
-                        onClick={() => goToPage(totalPages)}
-                        disabled={currentPage === totalPages}
-                        className={`py-2 rounded-lg transition-all ${currentPage === totalPages
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-200'
-                            }`}
-                    >
-                        <ChevronsRight className="w-4 h-4" />
-                    </button>
-                </div>
+          {/* Last Page Button */}
+          <button
+            onClick={() => goToPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className={`py-2 rounded-lg transition-all ${currentPage === totalPages
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            <ChevronsRight className="w-4 h-4" />
+          </button>
+        </div>
       )}
     </div>
   );

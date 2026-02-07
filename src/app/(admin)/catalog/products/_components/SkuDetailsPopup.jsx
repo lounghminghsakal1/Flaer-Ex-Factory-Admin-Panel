@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { successToast, errorToast } from "../../../../../../components/ui/toast";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
+import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
 
 export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
   const [loading, setLoading] = useState(true);
@@ -51,6 +52,8 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
     { id: "unit", name: "Unit" },
     { id: "piece", name: "Piece" },
   ];
+
+  const confirm = useConfirm();
 
   useEffect(() => {
     fetchSkuDetails();
@@ -101,6 +104,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
         const extractedOptions = data.option_type_values.map((opt) => ({
           option_type_id: opt.option_type.id,
           value_id: opt.option_value.id,
+          original_value_id: opt.option_value.id,
           type: opt.option_type.name,
           value: opt.option_value.name,
           isExisting: true,
@@ -190,14 +194,14 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
     setOptions([...options, { type: "", value: "", isExisting: false }]);
   }
 
-  function deleteOptionRow(index) {
+  async function deleteOptionRow(index) {
     const optionToRemove = options[index];
     if (
       optionToRemove.isExisting &&
       optionToRemove.type &&
       optionToRemove.value
     ) {
-      const ok = window.confirm(
+      const ok = await confirm(
         `Remove "${optionToRemove.type}: ${optionToRemove.value}"?`
       );
       if (!ok) return;
@@ -214,6 +218,11 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
   function updateOptionValue(index, value) {
     const updated = [...options];
     updated[index].value = value;
+    if (updated[index].isExisting) {
+      updated[index].isValueChanged = true;
+      delete updated[index].value_id;
+    }
+
     setOptions(updated);
   }
 
@@ -239,27 +248,53 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       return;
     }
 
+    if (form.selling_price > form.mrp) {
+      errorToast("Selling price cannot be greater than mrp");
+      return;
+    }
+
+    if (pricingMode === "conversion" && Number(form.unit_price) != Number(form.mrp) / Number(form.conversion_factor)) {
+      errorToast("mrp and unit price not matching the conversion factor, check prices");
+      return;
+    }
+
+    if (pricingMode === "multiplication" && Number(form.mrp) != Number(form.unit_price) * Number(form.multiplication_factor)) {
+      errorToast("mrp and unit price not matching with multiplication factor, check prices");
+      return;
+    }
+
+
+
     setUpdating(true);
 
     try {
       // Build option_type_values array
       const option_type_values = options
-        .filter((opt) => opt.type && opt.value)
-        .map((opt) => {
-          if (opt.isExisting) {
-            // Existing option with IDs
+        .filter(opt => opt.type && opt.value)
+        .map(opt => {
+
+          // CASE 1 → Existing + Not Changed
+          if (opt.isExisting && !opt.isValueChanged) {
             return {
               option_type_id: opt.option_type_id,
-              value_id: opt.value_id,
-              option_value: opt.value,
-            };
-          } else {
-            // New option without IDs
-            return {
-              option_type: opt.type,
-              option_value: opt.value,
+              value_id: opt.original_value_id
             };
           }
+
+          // CASE 2 → Existing + Changed Value
+          if (opt.isExisting && opt.isValueChanged) {
+            return {
+              option_type_id: opt.option_type_id,
+              option_value: opt.value
+            };
+          }
+
+          // CASE 3 → New Option
+          return {
+            option_type: opt.type,
+            option_value: opt.value
+          };
+
         });
 
       // Build sku_media array
@@ -350,6 +385,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       successToast("SKU updated successfully");
       setIsEditing(false);
       onSuccess?.();
+      onClose();
       fetchSkuDetails(); // Refresh data
     } catch (err) {
       console.error("Update SKU error:", err);
@@ -391,7 +427,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium cursor-pointer"
               >
                 <Edit2 size={16} />
                 Edit
@@ -400,7 +436,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
               <button
                 onClick={handleUpdate}
                 disabled={updating}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium disabled:opacity-50 cursor-pointer"
               >
                 <Save size={16} />
                 {updating ? "Updating..." : "Update SKU"}
@@ -408,7 +444,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
             )}
             <button
               onClick={onClose}
-              className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 transition-colors"
+              className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 transition-colors cursor-pointer"
             >
               <X size={20} />
             </button>
@@ -460,11 +496,10 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
                   className="sr-only"
                 />
                 <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    pricingMode === "conversion"
-                      ? "border-blue-600 bg-white"
-                      : "border-gray-300 bg-white"
-                  } ${!isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${pricingMode === "conversion"
+                    ? "border-blue-600 bg-white"
+                    : "border-gray-300 bg-white"
+                    } ${!isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {pricingMode === "conversion" && (
                     <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>
@@ -486,11 +521,10 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
                   className="sr-only"
                 />
                 <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    pricingMode === "multiplication"
-                      ? "border-blue-600 bg-white"
-                      : "border-gray-300 bg-white"
-                  } ${!isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${pricingMode === "multiplication"
+                    ? "border-blue-600 bg-white"
+                    : "border-gray-300 bg-white"
+                    } ${!isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {pricingMode === "multiplication" && (
                     <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>
@@ -849,7 +883,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
         <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            className="w-80 ml-76 px-4 py-2 bg-gray-400 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors font-medium cursor-pointer"
           >
             Close
           </button>
@@ -1011,7 +1045,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
   };
 
   // Remove image (cannot remove primary)
-  const removeMedia = (id) => {
+  const removeMedia = async (id) => {
     const mediaToRemove = skuMedia.find((m) => m.id === id);
 
     if (mediaToRemove?.sequence === 1) {
@@ -1019,7 +1053,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
       return;
     }
 
-    const confirmed = window.confirm(
+    const confirmed = await confirm(
       "Are you sure you want to remove this image?"
     );
     if (!confirmed) return;
@@ -1162,6 +1196,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
                   <span className="text-[10px] text-gray-500">View</span>
                 </button>
               )}
+
             </div>
 
             {/* Add more button below grid (if 4+ images and editing) */}

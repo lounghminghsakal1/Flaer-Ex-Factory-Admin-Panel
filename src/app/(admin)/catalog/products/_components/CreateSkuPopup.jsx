@@ -66,7 +66,7 @@ function CreateSkuPopup({
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load option types");
+      errorToast("Failed to load option types");
     }
   }
 
@@ -338,7 +338,7 @@ function CreateSkuPopup({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1"
+            className="text-gray-400 hover:text-gray-100 hover:bg-red-500 rounded-md p-2 cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -675,17 +675,17 @@ function CreateSkuPopup({
 
 
         {/* Footer */}
-        <div className="border-t px-5 py-3 flex gap-2 bg-gray-50">
+        <div className="border-t px-5 py-3 flex mx-auto gap-2 bg-gray-50">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 text-xs font-medium border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+            className="w-48 px-4 py-2 text-xs font-medium border bg-gray-200 border-gray-300 rounded hover:bg-gray-600 hover:text-gray-100 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleCreateSku}
             disabled={loading}
-            className="flex-1 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-48 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? 'Creating...' : 'Create SKU'}
           </button>

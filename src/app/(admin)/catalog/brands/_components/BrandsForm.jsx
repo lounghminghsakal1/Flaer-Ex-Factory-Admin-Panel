@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Package, Tag, Save, Edit2, Upload, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { errorToast,successToast } from '../../../../../../components/ui/toast';
 
 const BrandsForm = () => {
   const router = useRouter();
@@ -147,9 +148,7 @@ const BrandsForm = () => {
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      setToastMessage('Failed to upload image');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      errorToast('Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
@@ -159,6 +158,11 @@ const BrandsForm = () => {
     setLoading(true);
     const urlParams = new URLSearchParams(window.location.search);
     const brandId = urlParams.get('id');
+
+    if (formData.brand_name === "") {
+      errorToast("Name cannot be blank");
+      return;
+    }
 
     try {
       const url = brandId
@@ -171,11 +175,11 @@ const BrandsForm = () => {
         name: formData.brand_name,
         code: formData.brand_code,
         description: formData.brand_description,
-        slug: formData.brand_slug,
+        // slug: formData.brand_slug,
         priority: Number(formData.priority),
         status: formData.status,
-        image_url: formData.image_url,
-        category_id: Number(formData.category_id),
+        // image_url: formData.image_url,
+        // category_id: Number(formData.category_id),
         meta: {
           country: formData.meta.country,
           founded: formData.meta.founded,
@@ -190,16 +194,11 @@ const BrandsForm = () => {
       });
 
       if (response.ok) {
-        setToastMessage(brandId ? 'Brand updated successfully!' : 'Brand created successfully!');
-        setShowToast(true);
-        setTimeout(() => {
-          window.history.back();
-        }, 1500);
+        successToast(brandId ? 'Brand updated successfully!' : 'Brand created successfully!');
       }
+      router.push("/catalog/brands");
     } catch (error) {
-      setToastMessage('Error saving brand');
-      setShowToast(true);
-      console.error('Error:', error);
+      errorToast('Error saving brand');
     } finally {
       setLoading(false);
     }
@@ -388,6 +387,7 @@ const BrandsForm = () => {
                 name="priority"
                 value={formData.priority}
                 onChange={handleInputChange}
+                onWheel={(e) => e.target.blur()}
                 disabled={isLocked}
                 min="1"
                 placeholder="1"
@@ -395,7 +395,7 @@ const BrandsForm = () => {
               />
             </div>
 
-            <div className="col-span-2">
+            {/* <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 BRAND SLUG <span className="text-red-500">*</span>
               </label>
@@ -408,7 +408,7 @@ const BrandsForm = () => {
                 placeholder="e.g., hafele"
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
-            </div>
+            </div> */}
 
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -426,7 +426,7 @@ const BrandsForm = () => {
             </div>
 
             {/* IMAGE UPLOAD */}
-            <div className="col-span-2">
+            {/* <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 BRAND IMAGE
               </label>
@@ -474,10 +474,10 @@ const BrandsForm = () => {
                   />
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* CATEGORY DROPDOWN */}
-            <div className="col-span-2">
+            {/* <div className="col-span-2">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-gray-700">
                   CATEGORY
@@ -505,7 +505,7 @@ const BrandsForm = () => {
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
           </div>
         </div>
 

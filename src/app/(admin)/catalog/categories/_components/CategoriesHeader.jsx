@@ -18,9 +18,6 @@ export default function CategoriesHeader() {
             </div> 
             <div>
                 <Button text={"Create Category"} icon={Plus} onClick={handleCreateCategory}/>
-                <button>
-                    
-                </button>
             </div>
         </div>
     );

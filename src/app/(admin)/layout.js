@@ -87,7 +87,7 @@ const SidebarItem = ({
       {hasSubmenu && isOpen && (
         <div
           className={`
-            fixed z-20
+            fixed z-30
             ${isCollapsed ? 'left-20' : 'left-64'}
             bg-linear-to-br from-gray-900 to-gray-800
             border border-gray-700/50 rounded-xl shadow-2xl
@@ -145,8 +145,8 @@ const SidebarLayout = ({ children }) => {
       defaultHref: '/catalog/categories',
       submenuItems: [
         { label: 'Categories', icon: Layers, href: '/catalog/categories' },
-        { label: 'Products', icon: Box, href: '/catalog/products' },
         { label: 'Brands', icon: Tag, href: '/catalog/brands' },
+        { label: 'Products', icon: Box, href: '/catalog/products' },
       ],
     },
     {
@@ -180,8 +180,7 @@ const SidebarLayout = ({ children }) => {
           ${isCollapsed ? 'w-20' : 'w-64'}
           bg-linear-to-b from-gray-900 to-gray-950
           border-r border-gray-800/50
-           transition-[width] duration-450 ease-in-out
-          overflow-x-hidden   
+           transition-[width] duration-450 ease-in-out  
         `}
       >
 

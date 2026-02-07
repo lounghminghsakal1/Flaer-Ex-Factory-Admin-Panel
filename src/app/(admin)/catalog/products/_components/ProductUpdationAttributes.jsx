@@ -11,10 +11,9 @@ import {
   Image as ImageIcon,
   Upload,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 import CreateSkuPopup from "./CreateSkuPopup";
 import SkuDetailsPopup from "./SkuDetailsPopup";
+import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
 
 export default function ProductUpdationAttributes({
   productId,
@@ -44,6 +43,8 @@ export default function ProductUpdationAttributes({
   const [hasContentsChanges, setHasContentsChanges] = useState(false);
 
   const [skuForSkuDetailsPopup, setSkuForSkuDetailsPopup] = useState(null);
+
+  const confirm = useConfirm();
 
   // Add useEffect to notify parent of changes
   useEffect(() => {
@@ -75,7 +76,7 @@ export default function ProductUpdationAttributes({
       setProductData(result.data);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load product details");
+      errorToast("Failed to load product details");
     } finally {
       setLoading(false);
     }
@@ -133,6 +134,7 @@ export default function ProductUpdationAttributes({
         <SkuDetailsPopup
           sku={skuForSkuDetailsPopup}
           onClose={() => setSkuDetailsPopup(null)}
+          onSuccess={fetchProductDetails}
         />
       )}
 
@@ -149,9 +151,9 @@ export default function ProductUpdationAttributes({
       <ProductMediaSection
         productData={productData}
         isEditing={isEditing}
-        onMediaChange={onMediaChange} 
+        onMediaChange={onMediaChange}
       />
-      
+
     </div>
   );
 }
@@ -190,11 +192,16 @@ function PropertyTypesSection({
 
       if (!propertiesMap[propertyName]) {
         propertiesMap[propertyName] = {
+          property_id: prop.property_type.id,
+          value_id: prop.property_value.id,
+          original_value_id: prop.property_value.id,
           name: propertyName,
           value: propertyValue,
-          isExisting: true // Mark as existing property
+          isExisting: true,
+          isValueChanged: false
         };
       }
+
     });
 
     const extractedProperties = Object.values(propertiesMap);
@@ -223,15 +230,24 @@ function PropertyTypesSection({
   }
 
   const addPropertyRow = () => {
-    setProperties(p => [...p, { name: "", value: "", isExisting: false }]);
+    setProperties(p => [
+      ...p,
+      {
+        name: "",
+        value: "",
+        isExisting: false,
+        isValueChanged: true
+      }
+    ]);
   };
 
-  const deletePropertyRow = (index) => {
+
+  const deletePropertyRow = async (index) => {
     const propertyToRemove = properties[index];
 
     // Confirm if removing an existing property
     if (propertyToRemove.isExisting && propertyToRemove.value) {
-      const ok = window.confirm(
+      const ok = await confirm(
         `Removing "${propertyToRemove.name}: ${propertyToRemove.value}" Are you sure you want to remove this ?`
       );
       if (!ok) return;
@@ -248,9 +264,16 @@ function PropertyTypesSection({
 
   const updatePropertyValue = (index, value) => {
     const updated = [...properties];
+
     updated[index].value = value;
+    if (updated[index].isExisting) {
+      updated[index].isValueChanged =
+        value !== updated[index].value;
+    }
+
     setProperties(updated);
   };
+
 
   const createNewPropertyName = (newPropertyName) => {
     setPropertyNames(prev => [...prev, newPropertyName]);
@@ -805,12 +828,12 @@ function ProductContentsSection({
     setContents(prev => [...prev, { content_type: "", content_value: "", isExisting: false }]);
   };
 
-  const deleteContentRow = (index) => {
+  const deleteContentRow = async (index) => {
     const contentToRemove = contents[index];
 
     // Confirm if removing an existing content
     if (contentToRemove.isExisting && contentToRemove.content_value) {
-      const ok = window.confirm(
+      const ok = await confirm(
         `Removing "${contentToRemove.content_type}: ${contentToRemove.content_value}" Are sure you want to remove this ?`
       );
       if (!ok) return;
@@ -1050,7 +1073,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
   };
 
   // Remove image (cannot remove primary)
-  const removeMedia = (id) => {
+  const removeMedia = async (id) => {
     const mediaToRemove = productMedia.find((m) => m.id === id);
 
     if (mediaToRemove?.sequence === 1) {
@@ -1058,7 +1081,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
       return;
     }
 
-    const confirmed = window.confirm(
+    const confirmed = await confirm(
       "Are you sure you want to remove this image?"
     );
     if (!confirmed) return;
@@ -1230,7 +1253,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
             </div>
 
             {/* Add More Images button below - only in editing mode and if images exist */}
-            {isEditing && productMedia.length >= 4 && (
+            {/* {isEditing && productMedia.length >= 4 && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm font-medium">
                   <Upload size={16} />
@@ -1250,7 +1273,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
                   />
                 </label>
               </div>
-            )}
+            )} */}
           </div>
         )}
       </div>
@@ -1376,27 +1399,5 @@ function MediaPopup({
   );
 }
 
-// Helper function to get media payload for API submission
-function getMediaPayload(productMedia) {
-  return productMedia.map((m) => {
-    if (m.isNew) {
-      // New uploads don't have a real ID yet
-      return {
-        media_url: m.media_url,
-        media_type: m.media_type,
-        active: m.active,
-        sequence: m.sequence,
-      };
-    } else {
-      // Existing media
-      return {
-        id: m.id,
-        media_url: m.media_url,
-        media_type: m.media_type,
-        active: m.active,
-        sequence: m.sequence,
-      };
-    }
-  });
-}
+
 

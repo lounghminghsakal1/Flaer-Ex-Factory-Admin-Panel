@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Search, X } from 'lucide-react';
+import { errorToast } from '../../../../../../components/ui/toast';
 
 const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,7 +11,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
   const [showCreatePopup, setShowCreatePopup] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const dropdownRef = useRef(null);
-
+  const brandRefs = useRef({});
 
   const [formDataPopup, setFormDataPopup] = useState({
     brand_name: '',
@@ -50,9 +51,19 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      
+      // Auto-scroll to selected brand when dropdown opens
+      if (selectedBrand && brandRefs.current[selectedBrand.id]) {
+        setTimeout(() => {
+          brandRefs.current[selectedBrand.id]?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
+          });
+        }, 100);
+      }
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, selectedBrand]);
 
   async function fetchBrandOptions() {
     try {
@@ -101,6 +112,10 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
   };
 
   const handleCreateBrand = async () => {
+    if (formDataPopup.brand_name === "") {
+      errorToast("Name cannot be blank");
+      return;
+    }
     try {
       const body = {
         name: formDataPopup.brand_name,
@@ -126,10 +141,40 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const newBrand = result.data;
+
         setShowCreatePopup(false);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
-        fetchBrandOptions();
+
+        // Fetch updated brand list
+        await fetchBrandOptions();
+
+        // Auto-select the newly created brand
+        const newBrandOption = { id: newBrand.id, name: newBrand.name };
+        setSelectedBrand(newBrandOption);
+
+        // Update parent form data
+        if (setFormData) {
+          setFormData(prev => ({
+            ...prev,
+            brand_id: newBrand.id
+          }));
+        }
+
+        onBrandSelect?.(newBrandOption);
+
+        // Reopen dropdown and scroll to new brand
+        setTimeout(() => {
+          setIsOpen(true);
+          setTimeout(() => {
+            brandRefs.current[newBrand.id]?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'nearest'
+            });
+          }, 100);
+        }, 100);
       }
     } catch (error) {
       console.error('Error creating brand:', error);
@@ -139,7 +184,6 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
   const filteredBrands = brandOptions.filter(brand =>
     brand.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
 
   return (
     <>
@@ -199,29 +243,39 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
                   <div className="p-4 text-center text-sm text-gray-500">No brands found</div>
                 ) : (
                   <div>
-                    {filteredBrands.map(brand => (
-                      <button
-                        key={brand.id}
-                        onClick={() => handleBrandSelect(brand)}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
-                      >
-                        {brand.name}
-                      </button>
-                    ))}
+                    {filteredBrands.map(brand => {
+                      const isSelected = selectedBrand?.id === brand.id;
+                      return (
+                        <button
+                          key={brand.id}
+                          ref={el => brandRefs.current[brand.id] = el}
+                          onClick={() => handleBrandSelect(brand)}
+                          className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                            isSelected
+                              ? 'bg-blue-50 text-blue-600 font-medium'
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                          }`}
+                        >
+                          {brand.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              {/* Create Brand Button */}
+              {/* Create Brand Button - Centered */}
               <div className="border-t border-gray-200 p-2">
                 <button
                   type="button"
                   onClick={openCreatePopup}
                   disabled={disabled}
-                  className={`text-sm text-blue-600 hover:text-blue-900 font-medium ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                    }`}
+                  className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-teal-600 hover:bg-teal-50 rounded transition-colors font-medium ${
+                    disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 >
-                  + Create Brand
+                  <Plus className="w-4 h-4" />
+                  <span>Add New Brand</span>
                 </button>
               </div>
             </div>
@@ -318,20 +372,6 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
                 />
               </div>
 
-              {/* Brand Slug */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Brand Slug
-                </label>
-                <input
-                  type="text"
-                  value={formDataPopup.brand_slug}
-                  onChange={(e) => setFormDataPopup({ ...formDataPopup, brand_slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., hafele"
-                />
-              </div>
-
               {/* Image URL
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -417,6 +457,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
                 <button
                   onClick={handleCreateBrand}
                   className="flex-1 px-4 py-2 text-sm bg-blue-400 text-white rounded-md hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
+                  disabled={formDataPopup.name === "s"}
                 >
                   Create Brand
                 </button>

@@ -8,9 +8,9 @@ import {
   Upload,
   Image
 } from "lucide-react";
-import toast from "react-hot-toast";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
-import { successToast,errorToast } from "../../../../../../components/ui/toast";
+import { successToast, errorToast } from "../../../../../../components/ui/toast";
+import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
 
 function cartesian(arrays) {
   return arrays.reduce(
@@ -30,25 +30,25 @@ function generateProducts(baseName, properties) {
 
   if (!validProps.length) return [];
 
-  const allProducts = [];
+  // Get values arrays
+  const propValues = validProps.map(p => p.values);
+
+  // Cartesian combinations
+  const combinations = cartesian(propValues);
+
   let productId = 1;
 
-  validProps.forEach(prop => {
-    prop.values.forEach(value => {
-      allProducts.push({
-        id: productId++,
-        name: `${baseName} ${value}`.trim(),
-        properties: [{
-          name: prop.name,
-          value: value
-        }],
-        skuCount: 0
-      });
-    });
-  });
-
-  return allProducts;
+  return combinations.map(combo => ({
+    id: productId++,
+    name: `${baseName} ${combo.join(" ")}`.trim(),
+    properties: validProps.map((p, i) => ({
+      name: p.name,
+      value: combo[i]
+    })),
+    skuCount: 0
+  }));
 }
+
 
 function generateSkus(productName, options) {
   const validOpts = options.filter(
@@ -90,6 +90,8 @@ export default function ProductCreationAttributes({
   productMedia,
   setProductMedia
 }) {
+
+  const confirm = useConfirm();
 
   const [properties, setProperties] = useState([
     { name: "", values: [], input: "" }
@@ -187,7 +189,7 @@ export default function ProductCreationAttributes({
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load option types");
+      errorToast("Failed to load option types");
     }
   }
 
@@ -314,45 +316,85 @@ export default function ProductCreationAttributes({
     }, 0);
   };
 
-  const removePropertyValue = (propIndex, valueIndex) => {
+  const removePropertyValue = async (propIndex, valueIndex) => {
+
     const prop = properties[propIndex];
     const valueToDelete = prop.values[valueIndex];
+    let ok;
 
-    const productNameToDelete = `${formData.name} ${valueToDelete}`;
-
-    // Check if this value actually generated products
-    const hasProduct = generatedProducts.some(
-      p => p.name === productNameToDelete
+    // Simulate removal first
+    const updatedProperties = properties.map((p, i) =>
+      i === propIndex
+        ? { ...p, values: p.values.filter((_, vi) => vi !== valueIndex) }
+        : p
     );
 
-    // Confirm ONLY if destructive
-    if (hasProduct) {
-      const ok = window.confirm(
-        `Removing "${valueToDelete}" will delete:\n\n` +
-        `• Product: ${productNameToDelete}\n` +
-        `• All its SKUs\n\nDo you want to continue?`
+    // Generate products BEFORE + AFTER removal
+    const oldProducts = generateProducts(formData.name, properties);
+    const newProducts = generateProducts(formData.name, updatedProperties);
+
+    //  Detect deleted products
+    const deletedProducts = oldProducts.filter(
+      oldP => !newProducts.some(newP => newP.name === oldP.name)
+    );
+
+    if (valueIndex === 0) {
+      if (propIndex === 0) {
+        ok = await confirm(`Removing ${valueToDelete} will delete all products and SKUs of it, do you want to continue ?? `);
+      } else {
+        ok = await confirm(`Removing ${valueToDelete} can change the name of the products, do you want to continue ?`);
+      }
+    } else {
+      //  Confirm ONLY if destructive
+      if (deletedProducts.length > 0) {
+        ok = await confirm(
+          `Removing "${valueToDelete}" will delete:\n\n` +
+          deletedProducts.map(p => `• ${p.name}`).join("\n") +
+          `\n\nAnd all their SKUs if present .\n\nContinue?`
+        );
+      }
+    }
+    if (!ok) return;
+
+
+    //  Apply removal
+    setProperties(updatedProperties);
+
+    if (generatedProducts.length === 0) return;
+
+    setGeneratedProducts(newProducts);
+
+    setProducts(prevProducts => {
+      const validOptions = options.filter(
+        o => o.type && o.values.length > 0
       );
 
-      if (!ok) return;
-    }
+      return newProducts.map(genProd => {
 
-    //Remove property value
-    setProperties(prev =>
-      prev.map((p, i) =>
-        i === propIndex
-          ? { ...p, values: p.values.filter((_, vi) => vi !== valueIndex) }
-          : p
-      )
-    );
+        const existing = prevProducts.find(
+          p => p.name === genProd.name
+        );
 
-    // Remove generated product row
-    setGeneratedProducts(prev =>
-      prev.filter(p => p.name !== productNameToDelete)
-    );
-    // Remove SKU table (products)
-    setProducts(prev =>
-      prev.filter(p => p.name !== productNameToDelete)
-    );
+        // If existing product → keep it
+        if (existing) return existing;
+
+        // If new product → generate SKUs IF options exist
+        return {
+          name: genProd.name,
+          display_name: genProd.name,
+          product_properties: genProd.properties.map(prop => ({
+            property_name: prop.name,
+            property_value: prop.value
+          })),
+          product_skus:
+            validOptions.length > 0
+              ? generateSkus(genProd.name, validOptions)
+              : []
+        };
+      });
+    });
+
+
   };
 
 
@@ -388,28 +430,155 @@ export default function ProductCreationAttributes({
 
     // AUTO-GENERATE/UPDATE SKUs for ALL products immediately
     setTimeout(() => {
-      if (generatedProducts.length > 0) {
-        const tempSkus = generatedProducts.map(gp => ({
-          product: gp,
-          skus: generateSkus(gp.name, updated)
-        }));
 
-        console.log("Generated SKUs:", tempSkus);
-        handleCreateSkus();
-      }
+      setProducts(prev =>
+        syncProductSkus(prev, generatedProducts, updated)
+      );
+
+      setGeneratedProducts(prev =>
+        prev.map(gp => ({
+          ...gp,
+          skuCount: generateSkus(
+            gp.name,
+            updated.filter(o => o.type && o.values.length > 0)
+          ).length
+        }))
+      );
+
     }, 0);
   };
 
-  const removeOptionValue = (optIndex, valueIndex) => {
+  function syncProductSkus(existingProducts, generatedProducts, options) {
+
+    const validOptions = options.filter(o => o.type && o.values.length > 0);
+
+    return generatedProducts.map(genProd => {
+
+      const existingProduct = existingProducts.find(
+        p => p.name === genProd.name
+      );
+
+      if (!validOptions.length) {
+        return {
+          ...(existingProduct || {
+            name: genProd.name,
+            display_name: genProd.name,
+            product_properties: genProd.properties?.map(prop => ({
+              property_name: prop.name,
+              property_value: prop.value
+            })) || []
+          }),
+          product_skus: []
+        };
+      }
+
+      const expectedSkus = generateSkus(genProd.name, validOptions);
+
+      const existingSkuMap = new Map(
+        (existingProduct?.product_skus || []).map(s => [s.sku_name, s])
+      );
+
+      const mergedSkus = expectedSkus.map((sku, idx) => {
+
+        if (existingSkuMap.has(sku.sku_name)) {
+          return existingSkuMap.get(sku.sku_name); // ⭐ PRESERVE USER DATA
+        }
+
+        return {
+          sku_name: sku.sku_name,
+          display_name: sku.sku_name,
+          display_name_edited: false,
+          sku_code: "",
+          mrp: "",
+          selling_price: "",
+          unit_price: "",
+          conversion_factor: 1,
+          multiplication_factor: 1,
+          uom: "piece",
+          threshold_quantity: 1,
+          status: "active",
+          master: idx === 0,
+          option_type_values: sku.option_type_values ?? [],
+          sku_media: []
+        };
+      });
+
+      return {
+        ...(existingProduct || {
+          name: genProd.name,
+          display_name: genProd.name,
+          product_properties: genProd.properties?.map(prop => ({
+            property_name: prop.name,
+            property_value: prop.value
+          })) || []
+        }),
+        product_skus: mergedSkus
+      };
+    });
+  }
+
+  function rebuildAllSkus(products, options) {
+    const validOptions = options.filter(
+      o => o.type && o.values.length > 0
+    );
+
+    return products.map(product => {
+
+      if (validOptions.length === 0) {
+        return {
+          ...product,
+          product_skus: []
+        };
+      }
+
+      const newSkus = generateSkus(product.name, validOptions);
+
+      return {
+        ...product,
+        product_skus: newSkus.map((sku, idx) => ({
+          sku_name: sku.sku_name,
+          display_name: sku.sku_name,
+          display_name_edited: false,
+          sku_code: "",
+          mrp: "",
+          selling_price: "",
+          unit_price: "",
+          conversion_factor: 1,
+          multiplication_factor: 1,
+          uom: "piece",
+          threshold_quantity: 1,
+          status: "active",
+          master: idx === 0,
+          option_type_values: sku.option_type_values ?? [],
+          sku_media: []
+        }))
+      };
+    });
+  }
+
+  const removeOptionValue = async (optIndex, valueIndex) => {
     const option = options[optIndex];
     const valueToRemove = option.values[valueIndex];
 
-    const ok = window.confirm(
+    let ok;
+    if (valueIndex === 0) {
+      if (optIndex === 0) {
+        ok = await confirm(
+          `Removing "${valueToRemove}" can delete all skus of every products, do you want to delete it ??`
+        );
+      } else {
+        ok = await confirm(
+          `Removing "${valueToRemove}" can change corressponding skus name, do you want to delete it ??`
+        );
+      }
+    } else {
+      ok = await confirm(
         `Removing "${valueToRemove}" can delete corressponding skus also, do you want to delete it ??`
       );
+    }
 
     if (!ok) return;
-    
+
     // Remove option value
     const updatedOptions = options.map((o, i) =>
       i === optIndex
@@ -417,93 +586,45 @@ export default function ProductCreationAttributes({
         : o
     );
 
-    setOptions(updatedOptions);
-
-    //Re-generate SKUs for products
-    setProducts(prevProducts =>
-      prevProducts.map(product => {
-        // Re-generate SKUs based on updated options
-        const newSkus = generateSkus(product.name, updatedOptions);
-
-        // Preserve existing SKU data where possible
-        const existingSkuMap = new Map(
-          product.product_skus.map(sku => [sku.sku_name, sku])
-        );
-
-        const mergedSkus = newSkus.map((newSku, idx) => {
-          if (existingSkuMap.has(newSku.sku_name)) {
-            return existingSkuMap.get(newSku.sku_name);
-          }
-
-          return {
-            sku_name: newSku.sku_name,
-            display_name: newSku.sku_name,
-            display_name_edited: false,
-            sku_code: "",
-            mrp: "",
-            selling_price: "",
-            unit_price: "",
-            conversion_factor: 1,
-            multiplication_factor: 1,
-            uom: "piece",
-            threshold_quantity: 1,
-            status: "active",
-            master: idx === 0,
-            option_type_values: newSku.option_type_values ?? [],
-            sku_media: []
-          };
-        });
-
-        return {
-          ...product,
-          product_skus: mergedSkus
-        };
-      })
+    const validOptions = updatedOptions.filter(
+      o => o.type && o.values.length > 0
     );
 
-    //Update SKU counts
+    const noOptionsLeft = validOptions.length === 0;
+
+
+    setOptions(updatedOptions);
+
+    setProducts(prev =>
+      syncProductSkus(prev, generatedProducts, updatedOptions)
+    );
+
     setGeneratedProducts(prev =>
       prev.map(gp => ({
         ...gp,
-        skuCount: generateSkus(gp.name, updatedOptions).length
+        skuCount: generateSkus(
+          gp.name,
+          updatedOptions.filter(o => o.type && o.values.length > 0)
+        ).length
       }))
     );
+
   };
 
 
   // General
-  function deleteGeneratedProduct(productId) {
+  async function deleteGeneratedProduct(productId) {
     const deleted = generatedProducts.find(p => p.id === productId);
     if (!deleted) return;
+    const ok = await confirm("Are you sure you want to delete this ? ");
+    if (!ok) return;
 
-    const deletedProductName = deleted.name;
-
-    // 1️⃣ Remove generated product
     setGeneratedProducts(prev =>
       prev.filter(p => p.id !== productId)
     );
 
-    // 2️⃣ Remove SKU table
     setProducts(prev =>
-      prev.filter(p => p.name !== deletedProductName)
-    );
-
-    // 3️⃣ Remove the originating property value
-    setProperties(prev =>
-      prev
-        .map(prop => {
-          // Remove only the value that created this product
-          const updatedValues = prop.values.filter(
-            val => `${formData.name} ${val}` !== deletedProductName
-          );
-
-          return {
-            ...prop,
-            values: updatedValues
-          };
-        })
-      // remove empty property rows
-      // .filter(prop => prop.values.length > 0 || prop.name === "")
+      prev.filter(p => p.name !== deleted.name)
     );
   }
 
@@ -1073,6 +1194,7 @@ export default function ProductCreationAttributes({
                                   min="0"
                                   className={inputCell}
                                   value={sku.mrp ?? ""}
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const mrpValue = e.target.value;
                                     const unitPrice = mrpValue && globalPricing.conversion_factor
@@ -1086,7 +1208,7 @@ export default function ProductCreationAttributes({
                                             ...p,
                                             product_skus: p.product_skus.map((s, sIdx) =>
                                               sIdx === skuIndex
-                                                ? { ...s, mrp: mrpValue, unit_price: unitPrice }
+                                                ? { ...s, mrp: mrpValue, unit_price: unitPrice, selling_price: mrpValue }
                                                 : s
                                             )
                                           }
@@ -1104,6 +1226,8 @@ export default function ProductCreationAttributes({
                                   min="0"
                                   className={`${inputCell} bg-gray-100`}
                                   value={sku.unit_price ?? ""}
+                                  onWheel={(e) => e.target.blur()}
+                                  disabled
                                   onChange={(e) =>
                                     setProducts(prev =>
                                       prev.map((p, pIdx) =>
@@ -1130,6 +1254,7 @@ export default function ProductCreationAttributes({
                                   min="0"
                                   className={inputCell}
                                   value={sku.selling_price ?? ""}
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) =>
                                     setProducts(prev =>
                                       prev.map((p, pIdx) =>
@@ -1158,6 +1283,7 @@ export default function ProductCreationAttributes({
                                   min="0"
                                   className={inputCell}
                                   value={sku.unit_price ?? ""}
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const unitValue = e.target.value;
                                     const calculatedPrice = unitValue && globalPricing.multiplication_factor
@@ -1194,6 +1320,8 @@ export default function ProductCreationAttributes({
                                   min="0"
                                   className={`${inputCell} bg-gray-100`}
                                   value={sku.mrp ?? ""}
+                                  onWheel={(e) => e.target.blur()}
+                                  disabled
                                   onChange={(e) =>
                                     setProducts(prev =>
                                       prev.map((p, pIdx) =>
@@ -1220,6 +1348,7 @@ export default function ProductCreationAttributes({
                                   min="0"
                                   className={`${inputCell} bg-gray-100`}
                                   value={sku.selling_price ?? ""}
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) =>
                                     setProducts(prev =>
                                       prev.map((p, pIdx) =>
@@ -1381,10 +1510,10 @@ export default function ProductCreationAttributes({
                                           )
                                         );
 
-                                        toast.success(`${files.length} image(s) uploaded`);
+                                        successToast(`${files.length} image(s) uploaded`);
                                       } catch (error) {
                                         console.error('Upload error:', error);
-                                        toast.error('Upload failed');
+                                        errorToast('Upload failed');
 
                                         // Remove loading state on error
                                         setProducts(prev =>
@@ -1590,10 +1719,10 @@ export default function ProductCreationAttributes({
                                             )
                                           );
 
-                                          toast.success(`${files.length} image(s) uploaded`);
+                                          successToast(`${files.length} image(s) uploaded`);
                                         } catch (error) {
                                           console.error('Upload error:', error);
-                                          toast.error('Upload failed');
+                                          errorToast('Upload failed');
 
                                           // Remove loading items on error
                                           setProducts(prev =>
@@ -1627,9 +1756,10 @@ export default function ProductCreationAttributes({
                           {/* DELETE */}
                           <td className="px-2 py-1 text-center">
                             <button
-                              onClick={() => {
+                              onClick={async () => {
                                 let cascadeProductName = null;
-
+                                const ok = await confirm("Are you sure you want to delete this ? ");
+                                if (!ok) return;
                                 setProducts(prev => {
                                   const updated = prev.map((p, pIdx) =>
                                     pIdx === productIndex
@@ -1781,8 +1911,8 @@ export default function ProductCreationAttributes({
       <ProductMediaSection
         productMedia={productMedia}
         setProductMedia={setProductMedia}
-        // uploadMediaFiles={uploadMediaFiles}
-        // setMediaPopup={setMediaPopup}
+      // uploadMediaFiles={uploadMediaFiles}
+      // setMediaPopup={setMediaPopup}
       />
 
     </div>
@@ -1877,34 +2007,6 @@ function ProductContentSection({ productContents, setProductContents }) {
     </div>
   );
 }
-
-function removeMediaWithPrimaryFix(mediaList, removeId) {
-  const removed = mediaList.find(m => m.id === removeId);
-  const remaining = mediaList.filter(m => m.id !== removeId);
-
-  // If nothing left
-  if (remaining.length === 0) return [];
-
-  // If removed image was primary
-  if (removed?.sequence === 1) {
-    return remaining.map((m, idx) => ({
-      ...m,
-      sequence: idx === 0 ? 1 : idx + 1
-    }));
-  }
-
-  // If removed image was NOT primary
-  return remaining.map(m => ({
-    ...m,
-    // keep original sequence, just normalize gaps
-    sequence:
-      m.sequence > removed.sequence
-        ? m.sequence - 1
-        : m.sequence
-  }));
-}
-
-
 
 function ProductMediaSection({ productMedia, setProductMedia }) {
   const [uploading, setUploading] = useState(false);
@@ -2053,7 +2155,7 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
               {/* PRIMARY IMAGE */}
               {primary && (
-                <div className="relative group shrink-0 w-40 h-28">
+                <div className="relative group shrink-0 w-40 h-40">
                   <img
                     src={primary.media_url}
                     className="w-full h-full object-cover rounded-lg border-2 border-blue-500"
@@ -2067,22 +2169,22 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
 
               {/* OTHER IMAGES */}
               {visibleImages.map(m => (
-                <div key={m.id} className="relative group flex-shrink-0 w-20 h-20">
+                <div key={m.id} className="relative group flex-shrink-0 w-28 h-28">
                   <img
                     src={m.media_url}
                     className="w-full h-full object-cover rounded-lg border border-gray-300"
                     alt="SKU"
                   />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex flex-col items-center justify-center gap-1">
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-lg flex flex-col items-center justify-center gap-1.5">
                     <button
                       onClick={() => setPrimary(m.id)}
-                      className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded hover:bg-blue-700"
+                      className="px-2 py-1 bg-blue-500 text-white text-[10px] rounded hover:bg-blue-700 cursor-pointer"
                     >
                       Primary
                     </button>
                     <button
                       onClick={() => removeMedia(m.id)}
-                      className="px-2 py-0.5 bg-red-500 text-white text-[10px] rounded hover:bg-red-600"
+                      className="px-2 py-1 bg-red-500 text-white text-[10px] rounded hover:bg-red-700 cursor-pointer"
                     >
                       Remove
                     </button>
@@ -2091,7 +2193,7 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
               ))}
 
               {/* ADD MORE (show if less than 4 images) */}
-              {productMedia.length < 4 && (
+              {/* {productMedia.length < 4 && (
                 <label className="shrink-0 w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors">
                   <Upload className="h-4 w-4 text-gray-400" />
                   <span className="text-[10px] text-gray-500 mt-0.5">Add</span>
@@ -2108,23 +2210,53 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
                     }}
                   />
                 </label>
-              )}
+              )} */}
 
               {/* VIEW ALL BUTTON */}
               {hiddenCount > 0 && (
                 <button
                   onClick={() => setMediaPopup(true)}
-                  className="shrink-0 w-20 h-20 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 cursor-pointer transition-colors"
+                  className="shrink-0 w-28 h-28 border border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 hover:scale-110  cursor-pointer transition-colors"
                 >
                   <Image className="h-4 w-4 text-gray-600" />
                   <span className="text-xs font-semibold text-gray-900">+{hiddenCount}</span>
                   <span className="text-[10px] text-gray-500">View</span>
                 </button>
               )}
+
+
+              <label className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition cursor-pointer">
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mb-1"></div>
+                    <span className="text-xs text-gray-600">
+                      Uploading...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                    <span className="text-xs text-gray-600">Add</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length) handleMediaUpload(files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+
             </div>
 
             {/* Add more button below grid (if 4+ images) */}
-            {productMedia.length >= 4 && (
+            {/* {productMedia.length >= 4 && (
               <label className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer">
                 <Plus size={14} />
                 Add More Images
@@ -2142,7 +2274,7 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
                   }}
                 />
               </label>
-            )}
+            )} */}
           </div>
         )}
       </div>
@@ -2174,7 +2306,7 @@ function MediaPopup({ media, onSetPrimary, onRemove, onClose, onUpload, uploadin
           <h3 className="text-sm font-semibold text-gray-900">Product Media</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1"
+            className="text-gray-400 hover:text-gray-100 rounded hover:bg-red-500 p-2 cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -2199,13 +2331,13 @@ function MediaPopup({ media, onSetPrimary, onRemove, onClose, onUpload, uploadin
                     <>
                       <button
                         onClick={() => onSetPrimary(m.id)}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                        className="px-3 py-1.5 bg-blue-500 text-white text-xs rounded hover:bg-blue-700 cursor-pointer"
                       >
                         Set as Primary
                       </button>
                       <button
                         onClick={() => onRemove(m.id)}
-                        className="px-3 py-1.5 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                        className="px-3 py-1.5 bg-red-500 text-white text-xs rounded hover:bg-red-700 cursor-pointer"
                       >
                         Remove
                       </button>
@@ -2232,7 +2364,7 @@ function MediaPopup({ media, onSetPrimary, onRemove, onClose, onUpload, uploadin
 
         {/* Footer */}
         <div className="border-t px-5 py-3 bg-gray-50 flex gap-2">
-          <label className="flex-1 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors cursor-pointer text-center">
+          <label className="w-64 ml-56 px-4 py-2 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-800 transition-colors cursor-pointer text-center">
             <Plus size={14} className="inline mr-1" />
             Add More Images
             {uploading && <span className="ml-2">(Uploading...)</span>}
@@ -2251,7 +2383,7 @@ function MediaPopup({ media, onSetPrimary, onRemove, onClose, onUpload, uploadin
           </label>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 w-64 text-xs font-medium border border-gray-300 rounded hover:bg-gray-500 hover:text-gray-100 transition-colors cursor-pointer"
           >
             Close
           </button>

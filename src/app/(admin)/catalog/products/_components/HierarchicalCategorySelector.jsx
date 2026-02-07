@@ -18,6 +18,8 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
   const [isParentToggle, setIsParentToggle] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const dropdownRef = useRef(null);
+  const subcategoryCache = useRef({});
+  const categoryRefs = useRef({});
 
   const [formData, setFormData] = useState({
     name: '',
@@ -38,9 +40,12 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
   }, []);
 
   useEffect(() => {
-    fetchRootCategories();
-    fetchSubCategories();
-  }, [isCreated])
+    if (!selectedCategoryId) return;
+
+    findAndSetCategoryHierarchy(selectedCategoryId);
+
+  }, [selectedCategoryId]);
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -51,15 +56,19 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      // Auto-expand selected parent category when dropdown opens
-      if (selectedParent && !expandedCategories.has(selectedParent.id)) {
-        const newExpanded = new Set(expandedCategories);
-        newExpanded.add(selectedParent.id);
-        setExpandedCategories(newExpanded);
+
+      // Auto-scroll to selected parent/subcategory when dropdown opens
+      if (selectedParent && categoryRefs.current[selectedParent.id]) {
+        setTimeout(() => {
+          categoryRefs.current[selectedParent.id]?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
+          });
+        }, 100);
       }
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, selectedParent]);
 
   const fetchRootCategories = async () => {
     setLoading(true);
@@ -80,64 +89,120 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
   };
 
   const fetchSubCategories = async (parentId) => {
+    if (!parentId) return [];
+
+    if (subcategoryCache.current[parentId]) {
+      return subcategoryCache.current[parentId];
+    }
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${parentId}&only_names=true`);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${parentId}&only_names=true`
+      );
+
       const result = await response.json();
-      return (result.data || []).map(cat => ({
+
+      const children = (result.data || []).map(cat => ({
         ...cat,
         children: [],
         hasChildren: false
       }));
-    } catch (error) {
-      console.error('Error fetching subcategories:', error);
+
+      subcategoryCache.current[parentId] = children;
+
+      return children;
+
+    } catch {
       return [];
     }
   };
+
+  const findAndSetCategoryHierarchy = async (subcategoryId) => {
+    if (!subcategoryId) return;
+
+    // Ensure parents loaded
+    let parents = categories;
+
+    if (!parents.length) {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`
+      );
+      const result = await res.json();
+
+      parents = (result.data || []).map(cat => ({
+        ...cat,
+        children: [],
+        hasChildren: true
+      }));
+
+      setCategories(parents);
+    }
+
+    // Find parent containing this subcategory
+    for (const parent of parents) {
+      let children = subcategoryCache.current[parent.id];
+
+      if (!children) {
+        children = await fetchSubCategories(parent.id);
+      }
+
+      const match = children.find(c => c.id === subcategoryId);
+
+      if (match) {
+        // Update category tree
+        setCategories(prev =>
+          prev.map(p =>
+            p.id === parent.id ? { ...p, children } : p
+          )
+        );
+
+        setSelectedParent(parent);
+        setSelectedCategory(match);
+        setExpandedCategories(prev => new Set([...prev, parent.id]));
+
+        return;
+      }
+    }
+  };
+
 
   const toggleCategory = async (category, event) => {
     event.stopPropagation();
 
     if (expandedCategories.has(category.id)) {
+      // Collapse
       const newExpanded = new Set(expandedCategories);
       newExpanded.delete(category.id);
       setExpandedCategories(newExpanded);
     } else {
+      // Expand
       const newExpanded = new Set(expandedCategories);
       newExpanded.add(category.id);
       setExpandedCategories(newExpanded);
 
-      const updateChildren = async (cats) => {
-        for (let cat of cats) {
-          if (cat.id === category.id && cat.children?.length === 0) {
-            const updateChildren = async (cats) => {
-              return Promise.all(
-                cats.map(async (cat) => {
-                  if (cat.id === category.id && cat.children?.length === 0) {
-                    const children = await fetchSubCategories(category.id);
-                    return { ...cat, children };
-                  }
-                  if (cat.children?.length > 0) {
-                    return { ...cat, children: await updateChildren(cat.children) };
-                  }
-                  return cat;
-                })
-              );
-            };
+      // Load children if not already loaded
+      if (category.children?.length === 0) {
+        const children = await fetchSubCategories(category.id);
+        setCategories(prev => prev.map(cat =>
+          cat.id === category.id ? { ...cat, children } : cat
+        ));
+      }
 
-            const updated = await updateChildren(categories);
-            setCategories(updated);
-
-            return true;
-          }
-          if (cat.children?.length > 0) {
-            if (await updateChildren(cat.children)) return true;
-          }
-        }
-        return false;
-      };
-
-      await updateChildren(categories);
+      // Auto-scroll to this category
+      setTimeout(() => {
+        categoryRefs.current[category.id]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }, 100);
     }
+  };
+
+  const handleParentClick = async (category, event) => {
+    event.stopPropagation();
+
+    // Same behavior as toggle - just expand/collapse
+    await toggleCategory(category, event);
   };
 
   const handleSubcategorySelect = (child, parent) => {
@@ -225,21 +290,43 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
           });
         });
 
-        // Expand parent immediately
-        if (!isParentToggle && parentId) {
-          setExpandedCategories(prev => new Set([...prev, parentId]));
-        }
+        // For parent category: expand it to show empty subcategory section
+        if (isParentToggle) {
+          setExpandedCategories(prev => new Set([...prev, newCategory.id]));
 
-        // Auto select
-        if (!isParentToggle && parentId) {
+          // Don't set as selected, just keep it expanded
+          setSelectedCategory(null);
+          setSelectedParent(null);
+
+          // Reopen dropdown and scroll to new parent
+          setTimeout(() => {
+            setIsOpen(true);
+            setTimeout(() => {
+              categoryRefs.current[newCategory.id]?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+              });
+            }, 100);
+          }, 100);
+        } else {
+          // For subcategory: expand parent and select the subcategory
+          setExpandedCategories(prev => new Set([...prev, parentId]));
+
           const parent = categories.find(c => c.id === parentId) || lockedParentForChild;
           setSelectedCategory(newCategory);
           setSelectedParent(parent);
           onCategorySelect?.(newCategory);
-        } else {
-          setSelectedCategory(newCategory);
-          setSelectedParent(null);
-          onCategorySelect?.(newCategory);
+
+          // Reopen dropdown and scroll to parent
+          setTimeout(() => {
+            setIsOpen(true);
+            setTimeout(() => {
+              categoryRefs.current[parentId]?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+              });
+            }, 100);
+          }, 100);
         }
 
         setLockedParentForChild(null);
@@ -255,11 +342,8 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
     if (selectedParent) {
       return `${selectedParent.name} >> ${selectedCategory.name}`;
     }
+    // This shouldn't happen now since we only select subcategories
     return selectedCategory.name;
-  };
-
-  const isParentSelected = (categoryId) => {
-    return selectedCategory?.id === categoryId && !selectedParent;
   };
 
   const isChildSelected = (childId, parentId) => {
@@ -270,14 +354,17 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
     const isExpanded = expandedCategories.has(category.id);
     const hasChildren = category.children && category.children?.length > 0;
     const filtered = searchQuery ? category.name.toLowerCase().includes(searchQuery.toLowerCase()) : true;
-    const parentSelected = isParentSelected(category.id);
 
     if (!filtered) return null;
 
     return (
-      <div key={category.id} className="border-b border-gray-100 last:border-b-0">
+      <div
+        key={category.id}
+        className="border-b border-gray-100 last:border-b-0"
+        ref={el => categoryRefs.current[category.id] = el}
+      >
         {/* Parent Category Row */}
-        <div className="flex items-center hover:bg-gray-200 transition-colors">
+        <div className="flex items-center hover:bg-gray-50 transition-colors">
           {/* Expand/Collapse Button with Plus/Minus */}
           <button
             onClick={(e) => toggleCategory(category, e)}
@@ -290,8 +377,11 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
             )}
           </button>
 
-          {/* Parent Category Name (No radio button) */}
-          <div className={`flex-1 py-3 pr-3 text-sm font-medium ${parentSelected ? 'text-blue-600' : 'text-gray-900'}`}>
+          {/* Parent Category Name - Clickable to expand */}
+          <div
+            onClick={(e) => handleParentClick(category, e)}
+            className="flex-1 py-3 pr-3 text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+          >
             {category.name}
           </div>
         </div>
@@ -370,7 +460,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
             + Create Category
           </button>
         </div>
-        <p className="text-xs text-gray-500 mb-2">Choose a category </p>
+        <p className="text-xs text-gray-500 mb-2">Choose a subcategory</p>
 
         <div className="relative" ref={dropdownRef}>
           <button

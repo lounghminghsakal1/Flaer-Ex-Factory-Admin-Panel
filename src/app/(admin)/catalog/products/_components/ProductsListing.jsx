@@ -4,26 +4,43 @@ import { useState, useEffect } from "react";
 
 export default function ProductsListing() {
 
-  const [data, setData] = useState("");
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchProductDetails();
   }, []);
 
-  async function fetchProductDetails() {
+  useEffect(() => {
+    fetchProductDetails(currentPage);
+  }, [currentPage]);
+
+
+  async function fetchProductDetails(page = 1) {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products`);
-      if (!response.ok) throw new Error("Failed to fetch products data");
-      const result = await response.json();
-      setData(result.data || []);
-    } catch (err) {
 
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?page=${page}`
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch products");
+
+      const result = await response.json();
+
+      setData(result.data || []);
+      setTotalPages(result.meta?.total_pages || 1);
+
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }
+
 
 
 
@@ -66,7 +83,7 @@ export default function ProductsListing() {
               : value === 'inactive' ? 'bg-gray-300 text-gray-700' : 'bg-red-100 text-red-700'
             }`}
         >
-          {value==="active" ? "ACTIVE" : value==="inactive" ? "INACTIVE" : "DELETED"}
+          {value === "active" ? "ACTIVE" : value === "inactive" ? "INACTIVE" : "DELETED"}
         </span>
       ),
     },
@@ -79,6 +96,9 @@ export default function ProductsListing() {
         <DataTable
           columns={columns}
           data={data}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
           getDetailsLink={(row) => `/catalog/products/form?id=${row.id}`}
         />
       </div>

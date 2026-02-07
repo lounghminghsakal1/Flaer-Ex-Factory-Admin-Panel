@@ -8,6 +8,7 @@ import ProductCreationAttributes from "./ProductCreationAttributes";
 import ProductUpdationAttributes from "./ProductUpdationAttributes";
 import HierarchicalCategorySelector from "./HierarchicalCategorySelector";
 import BrandSelector from "./BrandSelector";
+import TaxSelector from "./TaxSelector";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 import { successToast, errorToast } from "../../../../../../components/ui/toast";
 
@@ -54,7 +55,7 @@ export default function ProductsForm() {
     selection_type: "fifo",
     returnable: true,
     requires_inventory: true,
-    taxable: false,
+    taxable: true,
     tags: []
   });
 
@@ -128,6 +129,8 @@ export default function ProductsForm() {
     });
   }
 
+  const [globalUom, setGlobalUom] = useState("piece");
+
   useEffect(() => {
     if (!isCreateNew && productId) {
       fetchProductDetails();
@@ -180,7 +183,7 @@ export default function ProductsForm() {
         uploadedUrls.push(result.data.url);
       } catch (err) {
         console.error(`Error uploading file:`, err);
-        toast.error(`Failed to upload file`);
+        errorToast(`Failed to upload file`);
       }
     }
 
@@ -215,8 +218,8 @@ export default function ProductsForm() {
             product_properties: p.product_properties || [],
 
             product_skus: p.product_skus.map((sku, i) => {
-              const isConversion = formData.selection_type === "conversion";
-              const isMultiplication = formData.selection_type === "multiplication";
+              const isConversion = pricingMode === "conversion";
+              const isMultiplication = pricingMode === "multiplication";
 
               return {
                 sku_name: sku.sku_name,
@@ -227,17 +230,17 @@ export default function ProductsForm() {
                 unit_price: Number(sku.unit_price),
                 dimension: sku.dimension || "",
                 weight: sku.weight ? Number(sku.weight) : null,
-                uom: sku.uom,
-                threshold_quantity: Number(sku.threshold_quantity) || 1,
+                uom: globalUom,
+                threshold_quantity: Number(globalPricing.threshold_quantity) || 1,
                 status: sku.status,
                 master: sku.master,
 
                 ...(isConversion && {
-                  conversion_factor: Number(sku.conversion_factor) || 1
+                  conversion_factor: Number(globalPricing.conversion_factor) || 1
                 }),
 
                 ...(isMultiplication && {
-                  multiplication_factor: Number(sku.multiplication_factor) || 1
+                  multiplication_factor: Number(globalPricing.multiplication_factor) || 1
                 }),
 
                 option_type_values: sku.option_type_values || [],
@@ -310,6 +313,8 @@ export default function ProductsForm() {
   function buildUpdateProductPayload(formData, properties, contents, productMedia) {
     const payload = {
       product: {
+        name: formData.name,
+        display_name: formData.display_name,
         description: formData.description,
         hsn_code: formData.hsn_code,
         min_order_quantity: Number(formData.min_order_quantity),
@@ -333,21 +338,22 @@ export default function ProductsForm() {
       payload.product.product_properties = properties
         .filter(p => p.name && p.value)
         .map(p => {
-          if (p.isExisting && p.property_id && p.value_id) {
-            // Existing property with IDs
+          // EXISTING PROPERTY
+          if (p.isExisting) {
             return {
               property_id: p.property_id,
               value_id: p.value_id,
               property_value: p.value
             };
-          } else {
-            // New property without IDs
-            return {
-              property_name: p.name,
-              property_value: p.value
-            };
           }
+          // NEW PROPERTY
+          return {
+            property_name: p.name,
+            property_value: p.value
+          };
+
         });
+
     }
 
     // Add product_contents if they exist
@@ -443,7 +449,7 @@ export default function ProductsForm() {
         // CREATE FLOW (existing logic)
         const validationError = validateBeforeSubmit(formData, products);
         if (validationError) {
-          toast.error(validationError);
+          errorToast(validationError);
           return;
         }
 
@@ -500,7 +506,8 @@ export default function ProductsForm() {
           return;
         }
 
-        toast.success("Product created successfully");
+        // successToast("Product created successfully");
+        successToast("Product created successfully");
         setProducts([]);
         setGeneratedProducts([]);
         router.push("/catalog/products");
@@ -516,13 +523,13 @@ export default function ProductsForm() {
         // Validation
         const validationError = validateUpdateProduct(
           formData,
-          updateProperties,    // Now using state from ProductUpdationAttributes
-          updateContents,      // Now using state from ProductUpdationAttributes
-          updateProductMedia   // Now using state from ProductUpdationAttributes
+          updateProperties,
+          updateContents,
+          updateProductMedia
         );
 
         if (validationError) {
-          toast.error(validationError);
+          errorToast(validationError);
           return;
         }
 
@@ -560,8 +567,12 @@ export default function ProductsForm() {
           return;
         }
 
-        toast.success("Product updated successfully");
-        setIsEditing(false);
+        // successToast("Product updated successfully");
+        successToast("Product updated successfully");
+        setTimeout(() => {
+          setIsEditing(false);
+          router.push("/catalog/products");
+        }, 800);
 
         // Refresh product details
         if (!isCreateNew && productId) {
@@ -571,7 +582,7 @@ export default function ProductsForm() {
 
     } catch (err) {
       console.error("=== SUBMIT ERROR ===", err);
-      toast.error(err.message || `An error occurred while ${isCreateNew ? 'creating' : 'updating'} the product`);
+      errorToast(err.message || `An error occurred while ${isCreateNew ? 'creating' : 'updating'} the product`);
     } finally {
       setLoading(false);
     }
@@ -579,7 +590,6 @@ export default function ProductsForm() {
 
   return (
     <section className="min-h-screen bg-gray-50 p-6">
-      <Toaster position="top-right" />
 
       <div className="max-w-7xl">
         <div className="mb-6 flex items-center justify-between">
@@ -610,9 +620,9 @@ export default function ProductsForm() {
             className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg ${isCreateNew
               ? 'bg-blue-600 hover:bg-blue-700 text-white'
               : isEditing
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-              } ${loading ? 'opacity-50 cursor-not-allowed' : ''} cursor-pointer`}
+                ? 'bg-green-600 hover:bg-green-800 text-white'
+                : 'bg-blue-600 hover:bg-blue-800 text-white'
+              } ${loading ? 'opacity-60 cursor-not-allowed' : ''} cursor-pointer`}
           >
             {loading ? (
               <>
@@ -652,6 +662,8 @@ export default function ProductsForm() {
               setProducts={setProducts}
               isCreateNew={isCreateNew}
               isEditing={isEditing}
+              globalUom={globalUom}
+              setGlobalUom={setGlobalUom}
             />
           </div>
           <div className="col-span-4">
@@ -688,7 +700,6 @@ export default function ProductsForm() {
                 isEditing={isEditing}
                 pricingMode={pricingMode}
                 globalPricing={globalPricing}
-                // NEW PROPS
                 onPropertiesChange={setUpdateProperties}
                 onContentsChange={setUpdateContents}
                 onMediaChange={setUpdateProductMedia}
@@ -710,7 +721,9 @@ function MainProductInformation({
   setGlobalPricing,
   setProducts,
   isCreateNew,
-  isEditing
+  isEditing,
+  globalUom,
+  setGlobalUom
 }) {
   const [tagInput, setTagInput] = useState("");
   const [displayNameTouched, setDisplayNameTouched] = useState(false);
@@ -733,7 +746,6 @@ function MainProductInformation({
     }));
   };
 
-  const [globalUom, setGlobalUom] = useState("piece");
 
   const UOM_OPTIONS = [
     { id: 'sq_ft', name: 'Sq ft' },
@@ -762,7 +774,7 @@ function MainProductInformation({
       </div>
 
       {/* Product Type */}
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <label className="label">Product Type</label>
         <div className="flex gap-6">
           {["goods", "service"].map(type => (
@@ -779,7 +791,7 @@ function MainProductInformation({
             </label>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Name Row */}
       <div className="grid grid-cols-2 gap-6">
@@ -826,10 +838,15 @@ function MainProductInformation({
         required
         placeholder="e.g. 44129400"
         inputMode="numeric"
+        maxLength={8}
         value={formData.hsn_code}
-        onChange={e =>
-          setFormData(p => ({ ...p, hsn_code: e.target.value }))
-        }
+        onChange={e => {
+          const digitsOnly = e.target.value.replace(/\D/g, ""); // remove letters
+          setFormData(p => ({
+            ...p,
+            hsn_code: digitsOnly.slice(0, 8) // limit to 8 digits
+          }));
+        }}
         disabled={fieldsDisabled}
       />
 
@@ -856,99 +873,102 @@ function MainProductInformation({
       </div>
 
       {/* Global Pricing Mode Toggle */}
-      <div className="space-y-3 border-t pt-4 mt-4">
-        <label className="label">Pricing Mode</label>
+      {isCreateNew && (
+        <div className="space-y-3 border-t pt-4 mt-4">
+          <label className="label">Pricing Mode </label>
 
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="pricingMode"
-              value="conversion"
-              checked={pricingMode === "conversion"}
-              onChange={(e) => setPricingMode(e.target.value)}
-              className="accent-blue-600"
-              disabled={fieldsDisabled}
-            />
-            <span className="text-sm font-medium">Conversion Factor (MRP → Unit Price)</span>
-          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="pricingMode"
+                value="conversion"
+                checked={pricingMode === "conversion"}
+                onChange={(e) => setPricingMode(e.target.value)}
+                className="accent-blue-600"
+                disabled={fieldsDisabled}
+              />
+              <span className="text-sm font-medium">Conversion Factor (MRP → Unit Price)</span>
+            </label>
 
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="pricingMode"
-              value="multiplication"
-              checked={pricingMode === "multiplication"}
-              onChange={(e) => setPricingMode(e.target.value)}
-              className="accent-green-600"
-              disabled={fieldsDisabled}
-            />
-            <span className="text-sm font-medium">Multiplication Factor (Unit Price → MRP)</span>
-          </label>
-        </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="pricingMode"
+                value="multiplication"
+                checked={pricingMode === "multiplication"}
+                onChange={(e) => setPricingMode(e.target.value)}
+                className="accent-green-600"
+                disabled={fieldsDisabled}
+              />
+              <span className="text-sm font-medium">Multiplication Factor (Unit Price → MRP)</span>
+            </label>
+          </div>
 
-        {/* Global Pricing Inputs */}
-        <div className="grid grid-cols-3 gap-4 mt-3">
-          {pricingMode === "conversion" ? (
+          {/* Global Pricing Inputs */}
+          <div className="grid grid-cols-3 gap-4 mt-3">
+            {pricingMode === "conversion" ? (
+              <NumberInput
+                label="Conversion Factor"
+                value={globalPricing.conversion_factor}
+                onChange={value =>
+                  setGlobalPricing(p => ({ ...p, conversion_factor: value }))
+                }
+                disabled={fieldsDisabled}
+              />
+            ) : (
+              <NumberInput
+                label="Multiplication Factor"
+                value={globalPricing.multiplication_factor}
+                onChange={value =>
+                  setGlobalPricing(p => ({ ...p, multiplication_factor: value }))
+                }
+                disabled={fieldsDisabled}
+              />
+            )}
+
             <NumberInput
-              label="Conversion Factor"
-              value={globalPricing.conversion_factor}
+              label="Threshold Quantity"
+              value={globalPricing.threshold_quantity}
+              min={0}
               onChange={value =>
-                setGlobalPricing(p => ({ ...p, conversion_factor: value }))
+                setGlobalPricing(p => ({ ...p, threshold_quantity: value }))
               }
               disabled={fieldsDisabled}
             />
-          ) : (
-            <NumberInput
-              label="Multiplication Factor"
-              value={globalPricing.multiplication_factor}
-              onChange={value =>
-                setGlobalPricing(p => ({ ...p, multiplication_factor: value }))
-              }
-              disabled={fieldsDisabled}
-            />
-          )}
 
-          <NumberInput
-            label="Threshold Quantity"
-            value={globalPricing.threshold_quantity}
-            onChange={value =>
-              setGlobalPricing(p => ({ ...p, threshold_quantity: value }))
-            }
-            disabled={fieldsDisabled}
-          />
+            <SearchableDropdown
+              label="UOM"
+              options={UOM_OPTIONS}
+              value={globalUom}
+              placeholder="Select UOM"
+              onChange={(value) => {
+                setGlobalUom(value);
 
-          <SearchableDropdown
-            label="UOM"
-            options={UOM_OPTIONS}
-            value={globalUom}
-            placeholder="Select UOM"
-            onChange={(value) => {
-              setGlobalUom(value);
-
-              setProducts(prev =>
-                prev.map(product => ({
-                  ...product,
-                  product_skus: product.product_skus.map(sku => ({
-                    ...sku,
-                    uom: value
+                setProducts(prev =>
+                  prev.map(product => ({
+                    ...product,
+                    product_skus: product.product_skus.map(sku => ({
+                      ...sku,
+                      uom: value
+                    }))
                   }))
-                }))
-              );
-            }}
-            disabled={fieldsDisabled}
-          />
+                );
+              }}
+              disabled={fieldsDisabled}
+            />
 
-        </div>
+          </div>
 
-        <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
-          {pricingMode === "conversion" ? (
-            <p>📊 <strong>Conversion Mode:</strong> In SKU table, enter MRP → Unit Price will be auto-calculated as MRP ÷ Conversion Factor</p>
-          ) : (
-            <p>📊 <strong>Multiplication Mode:</strong> In SKU table, enter Unit Price → MRP & Selling Price will be auto-calculated as Unit Price × Multiplication Factor</p>
-          )}
+          <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+            {pricingMode === "conversion" ? (
+              <p>📊 <strong>Conversion Mode:</strong> In SKU table, enter MRP → Unit Price will be auto-calculated as MRP ÷ Conversion Factor</p>
+            ) : (
+              <p>📊 <strong>Multiplication Mode:</strong> In SKU table, enter Unit Price → MRP & Selling Price will be auto-calculated as Unit Price × Multiplication Factor</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tags */}
       <div className="space-y-2">
@@ -959,15 +979,15 @@ function MainProductInformation({
             value={tagInput}
             onChange={e => setTagInput(e.target.value)}
             placeholder="Enter tag"
-            className="input flex-1"
+            className={`input flex-1 ${fieldsDisabled ? 'opacity-60 bg-gray-50 border-gray-200 cursor-not-allowed' : ''}`}
             onKeyDown={e => e.key === "Enter" && addTag()}
             disabled={fieldsDisabled}
           />
           <button
             type="button"
             onClick={addTag}
-            className="h-11 w-11 border border-gray-300 rounded-md
-                       text-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`h-11 w-11 border border-gray-300 rounded-md
+                       text-lg hover:bg-gray-100 ${fieldsDisabled ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-100"}`}
             disabled={fieldsDisabled}
           >
             +
@@ -986,7 +1006,7 @@ function MainProductInformation({
                 {tag}
                 <button
                   onClick={() => removeTag(i)}
-                  className="text-blue-500 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-blue-500 hover:text-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
                   disabled={fieldsDisabled}
                 >
                   ×
@@ -1004,6 +1024,8 @@ function MainProductInformation({
 function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
 
   const [taxOptions, setTaxoptions] = useState([]);
+  const [isTaxPopupOpen, setIsTaxPopupOpen] = useState(false);
+  //const [categoryOptions, setCategoryOptions] = useState([]);
 
   useEffect(() => {
     fetchCategoryOptions();
@@ -1034,6 +1056,13 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
     }
   }
 
+  const handleTaxCreated = (newTax) => {
+    // Refresh tax options after creating a new tax type
+    fetchTaxOptions();
+    // Optionally set the newly created tax as selected
+    setFormData(prev => ({ ...prev, tax_type_id: newTax.id }));
+  };
+
   // Determine if fields should be disabled
   const fieldsDisabled = !isCreateNew && !isEditing;
 
@@ -1058,7 +1087,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
         ${formData.status === "active"
                 ? "border-green-500 bg-green-50 text-green-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <input
               type="radio"
@@ -1080,7 +1109,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
         ${formData.status === "inactive"
                 ? "border-gray-500 bg-gray-100 text-gray-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <input
               type="radio"
@@ -1102,7 +1131,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
         ${formData.status === "deleted"
                 ? "border-red-600 bg-gray-100 text-red-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <input
               type="radio"
@@ -1176,35 +1205,16 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
       {/* Toggle Fields */}
       <div className="space-y-2 my-2">
         {/* Taxable Toggle */}
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-700">Taxable</label>
-          <button
-            type="button"
-            onClick={() =>
-              setFormData(p => ({ ...p, taxable: !p.taxable }))
-            }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.taxable ? "bg-blue-600" : "bg-gray-300"
-              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={fieldsDisabled}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.taxable ? "translate-x-6" : "translate-x-1"
-                }`}
-            />
-          </button>
-        </div>
-
-        {/* Tax Type Dropdown (shown when taxable is enabled) */}
-        {formData.taxable && (
-          <SearchableDropdown
-            label="Tax Type"
-            options={taxOptions}
-            value={formData.tax_type_id}
-            onChange={(value) => setFormData(p => ({ ...p, tax_type_id: value }))}
-            placeholder="Select tax type"
-            disabled={fieldsDisabled}
-          />
-        )}
+        <TaxSelector
+          selectedTaxId={formData.tax_type_id}
+          onTaxSelect={(tax) => {
+            // Optional: you can add any additional logic here if needed
+            console.log('Selected tax:', tax);
+          }}
+          formData={formData}
+          setFormData={setFormData}
+          disabled={fieldsDisabled}
+        />
 
         {/* Returnable Toggle */}
         <div className="flex items-center justify-between">
@@ -1215,7 +1225,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
               setFormData(p => ({ ...p, returnable: !p.returnable }))
             }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.returnable ? "bg-blue-600" : "bg-gray-300"
-              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             disabled={fieldsDisabled}
           >
             <span
@@ -1234,7 +1244,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
               setFormData(p => ({ ...p, requires_inventory: !p.requires_inventory }))
             }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.requires_inventory ? "bg-blue-600" : "bg-gray-300"
-              } ${fieldsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             disabled={fieldsDisabled}
           >
             <span
@@ -1244,6 +1254,12 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
           </button>
         </div>
       </div>
+      {/* Tax Type Popup */}
+      <TaxTypePopup
+        isOpen={isTaxPopupOpen}
+        onClose={() => setIsTaxPopupOpen(false)}
+        onTaxCreated={handleTaxCreated}
+      />
     </div>
   );
 }
@@ -1259,7 +1275,7 @@ function Input({ label, required, disabled, ...props }) {
       )}
       <input
         {...props}
-        className={`input ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+        className={`input ${disabled ? 'opacity-60 text-gray-900 cursor-not-allowed' : ''}`}
         disabled={disabled}
       />
     </div>
@@ -1277,12 +1293,32 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
         value={value ?? ""}
         min={min}
         step="any"
-        className={`input ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+        className={`input ${disabled ? 'opacity-60 cursor-not-allowed text-gray-900' : ''}`}
         disabled={disabled}
+        onWheel={(e) => e.target.blur()}
 
         //  allow typing freely (string)
         onChange={(e) => {
-          onChange(e.target.value);
+          const raw = e.target.value;
+
+          if (raw === "") {
+            onChange("");
+            return;
+          }
+
+          // ⭐ If min = 0 → allow 0+
+          if (min === 0) {
+            if (/^\d+$/.test(raw)) {
+              onChange(raw);
+            }
+          }
+
+          // ⭐ If min = 1 → allow 1+
+          else {
+            if (/^[1-9]\d*$/.test(raw)) {
+              onChange(raw);
+            }
+          }
         }}
 
         // normalize ONLY on blur
@@ -1308,10 +1344,274 @@ function Textarea({ label, disabled, ...props }) {
       <textarea
         {...props}
         rows={4}
-        className={`input resize-none h-20 ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+        className={`input resize-none h-20 ${disabled ? 'opacity-60 cursor-not-allowed text-gray-900' : ''}`}
         disabled={disabled}
       />
     </div>
   );
 }
 
+function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    cgst: '',
+    sgst: '',
+    igst: 0,
+    percentage: 0
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  // Calculate IGST and percentage whenever CGST or SGST changes
+  useEffect(() => {
+    const cgst = parseFloat(formData.cgst) || 0;
+    const sgst = parseFloat(formData.sgst) || 0;
+    const calculatedIgst = cgst + sgst;
+
+    setFormData(prev => ({
+      ...prev,
+      igst: calculatedIgst,
+      percentage: calculatedIgst
+    }));
+  }, [formData.cgst, formData.sgst]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Validation
+    if (!formData.name.trim()) {
+      setError('Tax name is required');
+      return;
+    }
+    if (!formData.code.trim()) {
+      setError('Tax code is required');
+      return;
+    }
+    if (!formData.cgst || parseFloat(formData.cgst) < 0) {
+      setError('Valid CGST is required');
+      return;
+    }
+    if (!formData.sgst || parseFloat(formData.sgst) < 0) {
+      setError('Valid SGST is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/tax_types`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            code: formData.code.trim().toUpperCase(),
+            cgst: parseFloat(formData.cgst),
+            sgst: parseFloat(formData.sgst),
+            igst: formData.igst,
+            percentage: formData.percentage
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        let errorMessage = 'Failed to create tax type';
+
+        if (Array.isArray(errorData?.errors)) {
+          errorMessage = errorData.errors.join(', ');
+        } else if (errorData?.message) {
+          errorMessage = errorData.message;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      // Reset form
+      setFormData({
+        name: '',
+        code: '',
+        cgst: '',
+        sgst: '',
+        igst: 0,
+        percentage: 0
+      });
+
+      // Notify parent component
+      if (onTaxCreated) {
+        onTaxCreated(result.data);
+      }
+
+      onClose();
+      successToast("Tax type created");
+    } catch (err) {
+      setError(err.message);
+      errorToast(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFormData({
+      name: '',
+      code: '',
+      cgst: '',
+      sgst: '',
+      igst: 0,
+      percentage: 0
+    });
+    setError('');
+    onClose();
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Create Tax</h2>
+          <button
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            type="button"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Tax Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tax Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Enter tax name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Tax Code */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tax Code <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
+              placeholder="Enter tax code"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+            />
+          </div>
+
+          {/* CGST and SGST in a row */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* CGST */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                CGST (%) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.cgst}
+                onChange={(e) => setFormData(prev => ({ ...prev, cgst: e.target.value }))}
+                onWheel={(e) => e.target.blur()}
+                placeholder="Enter CGST"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* SGST */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                SGST (%) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.sgst}
+                onChange={(e) => setFormData(prev => ({ ...prev, sgst: e.target.value }))}
+                onWheel={(e) => e.target.blur()}
+                placeholder="Enter SGST"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* IGST (Auto-calculated, Read-only) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              IGST (%) <span className="text-xs text-gray-500">(Auto-calculated)</span>
+            </label>
+            <input
+              type="number"
+              value={formData.igst}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
+            />
+          </div>
+
+          {/* Percentage (Auto-calculated, Read-only) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Total Percentage (%) <span className="text-xs text-gray-500">(Auto-calculated)</span>
+            </label>
+            <input
+              type="number"
+              value={formData.percentage}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Creating...' : 'Create Tax'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
