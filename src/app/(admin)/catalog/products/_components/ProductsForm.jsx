@@ -830,6 +830,7 @@ function MainProductInformation({
           setFormData(p => ({ ...p, description: e.target.value }))
         }
         disabled={fieldsDisabled}
+        className="placeholder:text-gray-300"
       />
 
       {/* HSN */}

@@ -199,26 +199,88 @@ export default function ProductCreationAttributes({
     setProperties(p => [...p, { name: "", values: [], input: "" }]);
   };
 
-  const deletePropertyRow = (index) => {
-    if (properties.length === 1) {
+  const deletePropertyRow = async (index) => {
+
+    const propertyToDelete = properties[index];
+
+    // Detect if this is last property with values
+    const remainingProperties = properties.filter((_, i) => i !== index);
+    const hasOtherValidProperties = remainingProperties.some(
+      p => p.name && p.values && p.values.length > 0
+    );
+
+    let ok;
+
+    // CASE 1 — Last property structure
+    if (!hasOtherValidProperties) {
+
+      ok = await confirm(
+        `Deleting "${propertyToDelete.name || "this property"}" will remove ALL generated products and SKUs.\n\nContinue?`
+      );
+
+      if (!ok) return;
+
+      // Reset to empty structure row (UX friendly)
       setProperties([{ name: "", values: [], input: "" }]);
-    } else {
-      setProperties(p => p.filter((_, i) => i !== index));
+
+      // Clear derived data
+      setGeneratedProducts([]);
+      setProducts([]);
+
+      return;
     }
+
+    // CASE 2 — Normal recompute case
+    ok = await confirm(
+      `Deleting "${propertyToDelete.name || "this property"}" will change product combinations and may change SKU structure.\n\nContinue?`
+    );
+
+    if (!ok) return;
+
+    // Remove property row
+    const updatedProperties = properties.filter((_, i) => i !== index);
+
+    setProperties(updatedProperties);
+
+    // Rebuild generated products ALWAYS (source of truth pattern)
+    const newGeneratedProducts = generateProducts(formData.name, updatedProperties);
+
+    const validOptions = options.filter(
+      o => o.type && o.values.length > 0
+    );
+
+    // Update generated products with SKU count
+    setGeneratedProducts(
+      newGeneratedProducts.map(gp => ({
+        ...gp,
+        skuCount: generateSkus(gp.name, validOptions).length
+      }))
+    );
+
+    // Rebuild products + SKUs safely
+    setProducts(prevProducts =>
+      syncProductSkus(
+        prevProducts || [],
+        newGeneratedProducts,
+        options
+      )
+    );
+
   };
+
 
   const addPropertyValue = (index) => {
     const updated = [...properties];
     const value = updated[index].input.trim();
 
     if (!updated[index].name) {
-      alert("Please select property name first");
+      confirm("Please select property name first");
       return;
     }
 
     // CHECK IF PRODUCT NAME EXISTS
     if (!formData.name || !formData.name.trim()) {
-      alert("Please enter Product Name first in Main Product Information");
+      confirm("Please enter Product Name first in Main Product Information");
       return;
     }
 
@@ -360,8 +422,6 @@ export default function ProductCreationAttributes({
     //  Apply removal
     setProperties(updatedProperties);
 
-    if (generatedProducts.length === 0) return;
-
     setGeneratedProducts(newProducts);
 
     setProducts(prevProducts => {
@@ -404,20 +464,101 @@ export default function ProductCreationAttributes({
     setOptions(o => [...o, { type: "", values: [], input: "" }]);
   };
 
-  const deleteOptionRow = (index) => {
-    if (options.length === 1) {
+  const deleteOptionRow = async (index) => {
+
+    const optionToDelete = options[index];
+
+    //  Detect remaining valid options
+    const remainingOptions = options.filter((_, i) => i !== index);
+    const validRemainingOptions = remainingOptions.filter(
+      o => o.type && o.values && o.values.length > 0
+    );
+
+    let ok;
+
+    //  CASE 1 — Last Option (All SKUs will be removed)
+    if (validRemainingOptions.length === 0) {
+
+      ok = await confirm(
+        `Deleting "${optionToDelete.type || "this option"}" will remove ALL SKUs from all products.\n\nContinue?`
+      );
+
+      if (!ok) return;
+
+      // Reset option UI structure
       setOptions([{ type: "", values: [], input: "" }]);
-    } else {
-      setOptions(o => o.filter((_, i) => i !== index));
+
+      // Remove all SKUs but keep products
+      setProducts(prev =>
+        (prev || []).map(p => ({
+          ...p,
+          product_skus: []
+        }))
+      );
+
+      // Update SKU count in generated products
+      setGeneratedProducts(prev =>
+        (prev || []).map(gp => ({
+          ...gp,
+          skuCount: 0
+        }))
+      );
+
+      return;
     }
+
+    //  CASE 2 — Normal recompute case
+    ok = await confirm(
+      `Deleting "${optionToDelete.type || "this option"}" will change SKU combinations.\n\nContinue?`
+    );
+
+    if (!ok) return;
+
+    const updatedOptions = options.filter((_, i) => i !== index);
+
+    setOptions(updatedOptions);
+
+    //  If products missing → regenerate first
+    let ensuredGeneratedProducts = generatedProducts;
+
+    if (!ensuredGeneratedProducts || ensuredGeneratedProducts.length === 0) {
+      ensuredGeneratedProducts = generateProducts(formData.name, properties);
+    }
+
+    //  Rebuild SKUs using sync engine
+    setProducts(prev =>
+      syncProductSkus(
+        prev || [],
+        ensuredGeneratedProducts,
+        updatedOptions
+      )
+    );
+
+    //  Update SKU count
+    const validOptions = updatedOptions.filter(
+      o => o.type && o.values && o.values.length > 0
+    );
+
+    setGeneratedProducts(
+      ensuredGeneratedProducts.map(gp => ({
+        ...gp,
+        skuCount: generateSkus(gp.name, validOptions).length
+      }))
+    );
+
   };
 
-  const addOptionValue = (index) => {
+  const addOptionValue = async (index) => {
+
+    // GET FRESH PRODUCTS
+    const ensuredGeneratedProducts = await ensureProductsBeforeOptionChange();
+    if (!ensuredGeneratedProducts) return;
+
     const updated = [...options];
     const value = updated[index].input.trim();
 
     if (!updated[index].type) {
-      alert("Please select option type first");
+      confirm("Please select option type first");
       return;
     }
 
@@ -428,25 +569,22 @@ export default function ProductCreationAttributes({
     updated[index].input = "";
     setOptions(updated);
 
-    // AUTO-GENERATE/UPDATE SKUs for ALL products immediately
-    setTimeout(() => {
+    setProducts(prev =>
+      syncProductSkus(prev, ensuredGeneratedProducts, updated)
+    );
 
-      setProducts(prev =>
-        syncProductSkus(prev, generatedProducts, updated)
-      );
+    setGeneratedProducts(
+      ensuredGeneratedProducts.map(gp => ({
+        ...gp,
+        skuCount: generateSkus(
+          gp.name,
+          updated.filter(o => o.type && o.values.length > 0)
+        ).length
+      }))
+    );
 
-      setGeneratedProducts(prev =>
-        prev.map(gp => ({
-          ...gp,
-          skuCount: generateSkus(
-            gp.name,
-            updated.filter(o => o.type && o.values.length > 0)
-          ).length
-        }))
-      );
-
-    }, 0);
   };
+
 
   function syncProductSkus(existingProducts, generatedProducts, options) {
 
@@ -556,7 +694,77 @@ export default function ProductCreationAttributes({
     });
   }
 
+  const regenerateProductsFromProperties = () => {
+
+    const newGeneratedProducts = generateProducts(formData.name, properties);
+
+    const validOptions = options.filter(
+      o => o.type && o.values.length > 0
+    );
+
+    setGeneratedProducts(
+      newGeneratedProducts.map(gp => ({
+        ...gp,
+        skuCount: generateSkus(gp.name, validOptions).length
+      }))
+    );
+
+    setProducts(prevProducts =>
+      syncProductSkus(
+        prevProducts || [],
+        newGeneratedProducts,
+        options
+      )
+    );
+
+  };
+
+
+
+  const ensureProductsBeforeOptionChange = async () => {
+
+    if (generatedProducts.length > 0) {
+      return generatedProducts;
+    }
+
+    const proceed = await confirm(
+      "Products are not generated yet.\n\n" +
+      "Finalize property values first.\n\n" +
+      "Click OK to Regenerate Products.\n" +
+      "Click Cancel to go back."
+    );
+
+    if (!proceed) return null;
+
+    const newGeneratedProducts = generateProducts(formData.name, properties);
+
+    const validOptions = options.filter(
+      o => o.type && o.values.length > 0
+    );
+
+    setGeneratedProducts(
+      newGeneratedProducts.map(gp => ({
+        ...gp,
+        skuCount: generateSkus(gp.name, validOptions).length
+      }))
+    );
+
+    setProducts(prev =>
+      syncProductSkus(prev || [], newGeneratedProducts, options)
+    );
+
+    return newGeneratedProducts; // RETURN FRESH DATA
+  };
+
+
+
   const removeOptionValue = async (optIndex, valueIndex) => {
+
+    // ⭐ GET FRESH PRODUCTS
+    const ensuredGeneratedProducts = await ensureProductsBeforeOptionChange();
+
+    if (!ensuredGeneratedProducts) return;
+
     const option = options[optIndex];
     const valueToRemove = option.values[valueIndex];
 
@@ -564,16 +772,16 @@ export default function ProductCreationAttributes({
     if (valueIndex === 0) {
       if (optIndex === 0) {
         ok = await confirm(
-          `Removing "${valueToRemove}" can delete all skus of every products, do you want to delete it ??`
+          `Removing "${valueToRemove}" can delete all skus of every products if present, do you want to delete it ??`
         );
       } else {
         ok = await confirm(
-          `Removing "${valueToRemove}" can change corressponding skus name, do you want to delete it ??`
+          `Removing "${valueToRemove}" can change corressponding skus name if present, do you want to delete it ??`
         );
       }
     } else {
       ok = await confirm(
-        `Removing "${valueToRemove}" can delete corressponding skus also, do you want to delete it ??`
+        `Removing "${valueToRemove}" can delete corressponding skus also if any present, do you want to delete it ??`
       );
     }
 
@@ -586,21 +794,15 @@ export default function ProductCreationAttributes({
         : o
     );
 
-    const validOptions = updatedOptions.filter(
-      o => o.type && o.values.length > 0
-    );
-
-    const noOptionsLeft = validOptions.length === 0;
-
-
     setOptions(updatedOptions);
 
+    // ⭐ USE ENSURED PRODUCTS (NOT STATE)
     setProducts(prev =>
-      syncProductSkus(prev, generatedProducts, updatedOptions)
+      syncProductSkus(prev, ensuredGeneratedProducts, updatedOptions)
     );
 
-    setGeneratedProducts(prev =>
-      prev.map(gp => ({
+    setGeneratedProducts(
+      ensuredGeneratedProducts.map(gp => ({
         ...gp,
         skuCount: generateSkus(
           gp.name,
@@ -610,6 +812,8 @@ export default function ProductCreationAttributes({
     );
 
   };
+
+
 
 
   // General

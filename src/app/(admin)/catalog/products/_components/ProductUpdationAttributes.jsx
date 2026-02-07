@@ -14,6 +14,7 @@ import {
 import CreateSkuPopup from "./CreateSkuPopup";
 import SkuDetailsPopup from "./SkuDetailsPopup";
 import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
+import { errorToast } from "../../../../../../components/ui/toast";
 
 export default function ProductUpdationAttributes({
   productId,
@@ -1047,7 +1048,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
       setProductMedia((prev) => [...prev, ...newMedia]);
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload images");
+      errorToast("Failed to upload images");
     } finally {
       setUploading(false);
     }
@@ -1077,7 +1078,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
     const mediaToRemove = productMedia.find((m) => m.id === id);
 
     if (mediaToRemove?.sequence === 1) {
-      alert("Cannot remove primary image");
+      errorToast("Cannot remove primary image");
       return;
     }
 
