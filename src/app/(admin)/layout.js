@@ -7,202 +7,233 @@ import {
   ShoppingCart,
   Warehouse,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Layers,
   Tag,
   Box,
-  Boxes,
-  Percent
+  Users,
+  Cog,
+  ClipboardList,
+  Navigation,
+  DollarSign,
+  UserCog,
+  Download,
+  Menu,
+  Globe,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 /* ---------------- Sidebar Item ---------------- */
 const SidebarItem = ({
   icon: Icon,
   label,
+  shortName,
   isCollapsed,
   hasSubmenu = false,
-  submenuItems = [],
-  defaultHref
+  href,
+  isActive,
+  onMouseEnter,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const itemRef = useRef(null);
-  const router = useRouter();
-
-  const handleClick = () => {
-    if (hasSubmenu && defaultHref) {
-      router.push(defaultHref); 
-    }
-  };
-
   return (
     <div
-      className="relative"
-      onMouseEnter={() => hasSubmenu && setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      className="w-full font-normal hover:font-medium mb-2"
+      onMouseEnter={onMouseEnter}
     >
-      {/* Parent Item */}
-      <div
-        ref={itemRef}
-        className={`
-          flex items-center gap-2 mx-2 rounded-lg cursor-pointer
-          transition-all duration-200 ease-out
-          overflow-hidden
-          ${isCollapsed ? 'flex-col py-3 px-2' : 'px-4 py-2.5'}
-
-          ${isOpen
-            ? 'bg-blue-500/15 text-white scale-[1.03]'
-            : 'text-gray-300 hover:bg-gray-800/70 hover:text-white hover:scale-[1.03]'
-          }
-        `}
-        onClick={handleClick}
-      >
-        <Icon
+      <Link href={href || '#'}>
+        <button
           className={`
-            shrink-0 transition-all duration-200
-            ${isCollapsed ? 'w-4 h-4' : 'w-5 h-5'}
-          `}
-        />
-
-        <span
-          className={`
-            font-medium transition-all duration-200
-            ${isCollapsed ? 'text-[10px] text-center' : 'text-xs'}
+            ${
+              isActive
+                ? 'bg-opacity-50 text-white bg-[#1a2332] font-medium'
+                : 'text-gray-400'
+            }
+            flex flex-col items-center justify-center h-16 w-full
+            hover:scale-105 transition-all duration-300 hover:text-white
+            ${isCollapsed ? 'px-2' : 'px-4'}
+            relative
           `}
         >
-          {label}
-        </span>
+          {/* Active Indicator */}
+          {isActive && (
+            <div className="absolute left-0 h-16 w-1 bg-blue-500" />
+          )}
 
-        {!isCollapsed && hasSubmenu && (
-          <ChevronRight
-            className={`w-3.5 h-3.5 ml-auto transition-transform ${isOpen ? 'rotate-90 opacity-100' : 'opacity-60'
-              }`}
-          />
-        )}
-      </div>
-
-      {/* Flyout */}
-      {hasSubmenu && isOpen && (
-        <div
-          className={`
-            fixed z-30
-            ${isCollapsed ? 'left-20' : 'left-64'}
-            bg-linear-to-br from-gray-900 to-gray-800
-            border border-gray-700/50 rounded-xl shadow-2xl
-            min-w-56 py-2
-            animate-in fade-in slide-in-from-left-2 duration-150
-          `}
-          style={{
-            top: itemRef.current
-              ? `${itemRef.current.getBoundingClientRect().top}px`
-              : '0px',
-          }}
-        >
-          <div className="px-4 py-1 text-[10px] font-semibold text-gray-400 uppercase">
-            {label}
-          </div>
-
-          <div className="border-t border-gray-700/50 my-1" />
-
-          {submenuItems.map((item, index) => (
-            <Link key={index} href={item.href}>
-              <div
-                className="
-                  flex items-center gap-3 px-4 py-2 text-xs text-gray-300
-                  transition-all duration-200 ease-out
-                  hover:bg-gray-800/70 hover:text-white hover:scale-[1.03]
-                "
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span className="font-medium">{item.label}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+          <Icon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} mb-1`} />
+          
+          <span className={`${isCollapsed ? 'text-[9px]' : 'text-xs'} text-center leading-tight`}>
+            {isCollapsed ? shortName || label : label}
+          </span>
+        </button>
+      </Link>
     </div>
   );
 };
 
+/* ---------------- Floating Submenu ---------------- */
+const FloatingSubmenu = ({
+  hoveredItem,
+  isCollapsed,
+  submenuData,
+  onClose,
+  position,
+}) => {
+  const pathname = usePathname();
+
+  if (!hoveredItem || !submenuData) return null;
+
+  return (
+    <div
+      style={{
+        top: position.top,
+        left: isCollapsed ? '80px' : '220px',
+      }}
+      className="transition-all duration-300 select-none p-2 min-w-[300px] max-w-fit z-[9999] bg-[#0f1419] rounded-r-md fixed shadow-2xl border border-gray-800"
+      onMouseLeave={onClose}
+    >
+      <h2 className="font-semibold text-sm mb-2 text-white uppercase">
+        {hoveredItem.label}
+      </h2>
+
+      <div className="grid grid-cols-2 gap-3">
+        {submenuData.map((section, sectionIdx) => (
+          <div key={sectionIdx}>
+            <h4 className="text-[11px] mb-0.5 font-semibold uppercase text-gray-500">
+              {section.heading}
+            </h4>
+            
+            <div className="space-y-1">
+              {section.items.map((item, itemIdx) => {
+                const isActive = pathname.includes(item.href);
+                
+                return (
+                  <Link
+                    key={itemIdx}
+                    href={item.href}
+                    onClick={onClose}
+                    className={`
+                      block px-2 py-0.5 rounded text-sm
+                      transition-all duration-200
+                      ${
+                        isActive
+                          ? 'bg-[#1a2332] text-white font-semibold'
+                          : 'text-gray-400 hover:text-white hover:font-semibold'
+                      }
+                    `}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 /* ---------------- Layout ---------------- */
-
 const SidebarLayout = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState(null);
+  const itemRefs = useRef({});
+  const pathname = usePathname();
+
+  const toggleSidebar = () => setIsCollapsed((prev) => !prev);
 
   const menuItems = [
     {
-      label: 'Dashboard',
+      id: 'dashboard',
+      label: 'Home Dashboard',
+      shortName: 'Dashboard',
       icon: LayoutDashboard,
       href: '/dashboard',
     },
     {
+      id: 'catalog',
       label: 'Catalog',
+      shortName: 'Catalog',
       icon: Package,
       hasSubmenu: true,
-      defaultHref: '/catalog/categories',
-      submenuItems: [
-        { label: 'Categories', icon: Layers, href: '/catalog/categories' },
-        { label: 'Brands', icon: Tag, href: '/catalog/brands' },
-        { label: 'Products', icon: Box, href: '/catalog/products' },
+      href: '/catalog/categories',
+      submenuData: [
+        {
+          heading: 'Categories',
+          items: [
+            { label: 'Categories', href: '/catalog/categories' },
+            { label: 'Create category', href: '/catalog/categories/form?createNew=true' },
+          ],
+        },
+        {
+          heading: 'Brands',
+          items: [
+            { label: 'All Brands', href: '/catalog/brands' },
+            { label: 'Create Brand', href: '/catalog/brands/form?createNew=true' },
+          ],
+        },
+        {
+          heading: 'Products',
+          items: [
+            { label: 'Products', href: '/catalog/products' },
+            { label: 'Create Product', href: '/catalog/products/form?createNew=true' },
+          ],
+        },
       ],
     },
     {
-      label: 'Orders',
-      icon: ShoppingCart,
-      href: '/orders',
-    },
-    {
+      id: 'inventory',
       label: 'Inventory',
+      shortName: 'Inventory',
       icon: Warehouse,
-      href: '/inventory',
-    },
-    {
-      label: 'Pricing & Tax',
-      icon: Percent,
-      href: '/pricing',
-    },
-    {
-      label: 'Settings',
-      icon: Settings,
-      href: '/settings',
+      href: '/dashboard/inventory',
     },
   ];
 
+  const getSubmenuPosition = (itemId) => {
+    const ref = itemRefs.current[itemId];
+    if (!ref) return { top: '0px' };
+    
+    const rect = ref.getBoundingClientRect();
+    return { top: `${rect.top}px` };
+  };
+
   return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
       <aside
         className={`
-          fixed h-full flex flex-col
-          ${isCollapsed ? 'w-20' : 'w-64'}
-          bg-linear-to-b from-gray-900 to-gray-950
-          border-r border-gray-800/50
-           transition-[width] duration-450 ease-in-out  
+          ${isCollapsed ? 'w-[75px]' : 'w-[220px]'}
+          min-h-screen bg-[#0f1419] text-gray-400
+          fixed top-0 left-0 z-[9998]
+          transition-all duration-300 shadow-xl
         `}
       >
-
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800/50">
-          {!isCollapsed ? (
-            <span className="text-white font-semibold text-base">Ex Factory</span>
+        {/* Logo */}
+        <div className="h-16 flex items-center justify-center border-b border-gray-800 relative">
+          {isCollapsed ? (
+            <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-blue-600 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-lg">EX</span>
+            </div>
           ) : (
-            <span className="text-white font-bold text-sm mx-auto">EF</span>
+            <div className="px-4">
+              <div className="text-2xl font-bold">
+                <span className="text-yellow-500">EX</span>
+                <span className="text-blue-500">Factory</span>
+              </div>
+              <div className="text-[10px] text-gray-500 tracking-wider">
+                ALL MATERIALS AND PRODUCTS
+              </div>
+            </div>
           )}
-        </div>
-
-        {/* Collapse toggle */}
-        <div className="px-4 py-2">
+          
+          {/* Collapse Toggle Button */}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`
-              ${isCollapsed ? 'mx-auto' : 'ml-auto'}
-              p-1.5 rounded-lg bg-gray-800/50
-              text-gray-400 hover:text-white hover:bg-gray-700/50
-              transition-all
-            `}
+            onClick={toggleSidebar}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-6 h-6 bg-[#1a2332] hover:bg-[#2a3442] rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-200 hover:scale-110 z-[9999]"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -213,43 +244,79 @@ const SidebarLayout = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
-          {menuItems.map((item, index) =>
-            item.hasSubmenu ? (
-              <SidebarItem
-                key={index}
-                icon={item.icon}
-                label={item.label}
-                isCollapsed={isCollapsed}
-                hasSubmenu
-                submenuItems={item.submenuItems}
-                defaultHref={item.defaultHref}
-              />
-            ) : (
-              <Link key={index} href={item.href}>
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
+          {menuItems.map((item) => {
+            const isActive = pathname.includes(item.href);
+            
+            return (
+              <div
+                key={item.id}
+                ref={(el) => (itemRefs.current[item.id] = el)}
+              >
                 <SidebarItem
                   icon={item.icon}
                   label={item.label}
+                  shortName={item.shortName}
                   isCollapsed={isCollapsed}
+                  hasSubmenu={item.hasSubmenu}
+                  href={item.href}
+                  isActive={isActive}
+                  onMouseEnter={() =>
+                    item.hasSubmenu && setHoveredItem(item)
+                  }
                 />
-              </Link>
-            )
-          )}
+              </div>
+            );
+          })}
         </nav>
+
+        {/* Bottom Toggle Button (Alternative) */}
+        <div className="border-t border-gray-800 p-4">
+          <button
+            onClick={toggleSidebar}
+            className={`
+              w-full h-10 rounded-lg bg-[#1a2332] hover:bg-[#2a3442] 
+              text-gray-400 hover:text-white transition-all duration-200
+              flex items-center justify-center gap-2
+              ${isCollapsed ? 'px-2' : 'px-4'}
+            `}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-5 h-5" />
+            ) : (
+              <>
+                <ChevronLeft className="w-5 h-5" />
+                <span className="text-sm font-medium">Collapse</span>
+              </>
+            )}
+          </button>
+        </div>
       </aside>
+
+      {/* Floating Submenu */}
+      {hoveredItem?.hasSubmenu && (
+        <FloatingSubmenu
+          hoveredItem={hoveredItem}
+          isCollapsed={isCollapsed}
+          submenuData={hoveredItem.submenuData}
+          onClose={() => setHoveredItem(null)}
+          position={getSubmenuPosition(hoveredItem.id)}
+        />
+      )}
 
       {/* Main Content */}
       <main
         className={`
           flex-1 min-h-screen
-          ${isCollapsed ? 'ml-20' : 'ml-64'}
-          transition-[margin-left] duration-450 ease-in-out
-          bg-gray-50 text-gray-900
-          p-4
-          overflow-x-hidden   
+          ${isCollapsed ? 'ml-[85px]' : 'ml-[240px]'}
+          transition-[margin-left] duration-300
+          bg-gray-50
+          m-1
+          mt-2
         `}
+        onMouseEnter={() => hoveredItem && setHoveredItem(null)}
       >
-
         {children}
       </main>
     </div>

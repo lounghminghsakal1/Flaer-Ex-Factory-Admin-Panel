@@ -12,7 +12,7 @@ export default function CategoriesHeader() {
     }
 
     return(
-        <div className="flex justify-between items-center px-2">  
+        <div className="flex justify-between items-center px-2 mt-3">  
             <div>
                 <h1 className="text-center text-xl font-bold text-blue-800">All Categories</h1>
             </div> 

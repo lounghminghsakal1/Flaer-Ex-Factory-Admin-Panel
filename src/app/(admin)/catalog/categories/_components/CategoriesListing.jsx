@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import DataTable from "../../../../../../components/shared/DataTable";
-import { errorToast } from "../../../../../../components/ui/toast";
+import { toast } from "react-toastify";
 
 export default function CategoryListing({ tab }) {
 
@@ -13,21 +13,14 @@ export default function CategoryListing({ tab }) {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset when tab changes
-  }, [tab]);
+    fetchData(currentPage);
+  }, [currentPage]);
 
-  useEffect(() => {
-    fetchData(tab, currentPage);
-  }, [tab, currentPage]);
-
-  const fetchData = async (tab, page = 1) => {
+  const fetchData = async (page = 1) => {
     try {
       setLoading(true);
 
-      const baseUrl =
-        tab === "parent"
-          ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true`
-          : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?subcategories=true`;
+      const baseUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true`;
 
       const url = `${baseUrl}&page=${page}`;
 
@@ -41,7 +34,8 @@ export default function CategoryListing({ tab }) {
       setTotalPages(result.meta?.total_pages || 1);
 
     } catch (err) {
-      errorToast("Failed to fetch categories");
+      console.log("Failed to fetch categories",err);
+      toast.error("Failed to fetch categories");
     } finally {
       setLoading(false);
     }
@@ -99,21 +93,6 @@ export default function CategoryListing({ tab }) {
     },
   ];
 
-  if (tab !== "parent") {
-    columns.push({
-      key: "parent",
-      label: "Parent",
-      render: (value) =>
-        value ? (
-          <span className="inline-flex px-2.5 py-1 rounded bg-blue-50 text-blue-700 text-[11px] font-medium">
-            {value.name}
-          </span>
-        ) : (
-          <span className="text-gray-400">—</span>
-        ),
-    });
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 px-2 py-4">
       <div className="max-w-full mx-auto">
@@ -124,7 +103,7 @@ export default function CategoryListing({ tab }) {
           totalPages={totalPages}
           onPageChange={setCurrentPage}
           getDetailsLink={(row) =>
-            `/catalog/categories/form?id=${row.id}&tab=${tab}`
+            `/catalog/categories/form?id=${row.id}`
           }
         />
       </div>

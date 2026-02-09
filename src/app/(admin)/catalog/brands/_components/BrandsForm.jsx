@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Package, Tag, Save, Edit2, Upload, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { errorToast,successToast } from '../../../../../../components/ui/toast';
+import { toast } from 'react-toastify';
 
 const BrandsForm = () => {
   const router = useRouter();
@@ -45,7 +45,7 @@ const BrandsForm = () => {
       setIsLocked(true);
       fetchBrandData(brandId);
     }
-    
+
     // Fetch categories
     fetchCategories();
   }, []);
@@ -59,6 +59,7 @@ const BrandsForm = () => {
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      // toast.error("Failed to fetch categories");
     }
   };
 
@@ -87,6 +88,7 @@ const BrandsForm = () => {
 
     } catch (error) {
       console.error('Error fetching brand:', error);
+      toast.error("Error fetching brand");
     } finally {
       setLoading(false);
     }
@@ -94,14 +96,14 @@ const BrandsForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Handle priority to prevent 0 or negative values
     if (name === 'priority') {
       const numValue = parseInt(value) || 1;
       setFormData(prev => ({ ...prev, [name]: numValue < 1 ? 1 : numValue }));
       return;
     }
-    
+
     if (name.startsWith('meta.')) {
       const metaField = name.split('.')[1];
       setFormData(prev => ({
@@ -113,54 +115,15 @@ const BrandsForm = () => {
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setToastMessage('Please upload an image file');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-      return;
-    }
-
-    setUploadingImage(true);
-    const formDataImage = new FormData();
-    formDataImage.append('file', file);
-
-    try {
-      // Replace with your actual image upload endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/upload`, {
-        method: 'POST',
-        body: formDataImage
-      });
-
-      const result = await response.json();
-      
-      if (response.ok && result.url) {
-        setFormData(prev => ({ ...prev, image_url: result.url }));
-        setToastMessage('Image uploaded successfully!');
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-      } else {
-        throw new Error('Upload failed');
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      errorToast('Failed to upload image');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
   const handleSubmit = async () => {
     setLoading(true);
     const urlParams = new URLSearchParams(window.location.search);
     const brandId = urlParams.get('id');
 
     if (formData.brand_name === "") {
-      errorToast("Name cannot be blank");
+      toast.error("Name is required", {
+        toastId: "name-error"
+      });
       return;
     }
 
@@ -194,11 +157,12 @@ const BrandsForm = () => {
       });
 
       if (response.ok) {
-        successToast(brandId ? 'Brand updated successfully!' : 'Brand created successfully!');
+        toast.success(brandId ? 'Brand updated successfully!' : 'Brand created successfully!');
       }
       router.push("/catalog/brands");
     } catch (error) {
-      errorToast('Error saving brand');
+      console.log("Error saving brand",error);
+      toast.error('Error saving brand');
     } finally {
       setLoading(false);
     }
@@ -213,10 +177,6 @@ const BrandsForm = () => {
 
     // Save when already editing
     handleSubmit();
-  };
-
-  const navigateToCreateCategory = () => {
-    router.push('/catalog/categories/form?createNew=true');
   };
 
   return (
@@ -250,11 +210,10 @@ const BrandsForm = () => {
           <button
             onClick={toggleEdit}
             disabled={loading}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-colors ${
-              isLocked
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-colors ${isLocked
                 ? 'bg-blue-600 hover:bg-blue-700 text-white'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+              }`}
           >
             {isLocked ? (
               <>
@@ -281,7 +240,7 @@ const BrandsForm = () => {
       </div>
 
       {/* Form Content */}
-      <div className="max-w-5xl mx-auto p-6">
+      <div className="max-w-3xl p-4">
         {/* Basic Information */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center gap-2 mb-6">
@@ -289,7 +248,7 @@ const BrandsForm = () => {
             <h2 className="text-lg font-semibold text-gray-900">Basic Information</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 BRAND NAME <span className="text-red-500">*</span>
@@ -301,11 +260,11 @@ const BrandsForm = () => {
                 onChange={handleInputChange}
                 disabled={isLocked}
                 placeholder="Enter brand name"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 BRAND CODE <span className="text-red-500">*</span>
               </label>
@@ -318,7 +277,7 @@ const BrandsForm = () => {
                 placeholder="Enter brand code"
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
-            </div>
+            </div> */}
 
             {/* STATUS - Radio Buttons */}
             <div>
@@ -327,11 +286,10 @@ const BrandsForm = () => {
               </label>
               <div className="flex gap-4">
                 <label
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all cursor-pointer ${
-                    formData.status === 'active'
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all cursor-pointer ${formData.status === 'active'
                       ? 'border-green-500 bg-green-50'
                       : 'border-gray-200 bg-white hover:border-gray-300'
-                  } ${!isLocked ? '' : 'opacity-60 cursor-not-allowed'}`}
+                    } ${!isLocked ? '' : 'opacity-60 cursor-not-allowed'}`}
                 >
                   <input
                     type="radio"
@@ -343,20 +301,18 @@ const BrandsForm = () => {
                     className="w-4 h-4 text-green-600 focus:ring-green-500"
                   />
                   <span
-                    className={`text-sm font-medium ${
-                      formData.status === 'active' ? 'text-green-700' : 'text-gray-700'
-                    }`}
+                    className={`text-sm font-medium ${formData.status === 'active' ? 'text-green-700' : 'text-gray-700'
+                      }`}
                   >
                     Active
                   </span>
                 </label>
 
                 <label
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all cursor-pointer ${
-                    formData.status === 'inactive'
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all cursor-pointer ${formData.status === 'inactive'
                       ? 'border-gray-500 bg-gray-50'
                       : 'border-gray-200 bg-white hover:border-gray-300'
-                  } ${!isLocked ? '' : 'opacity-60 cursor-not-allowed'}`}
+                    } ${!isLocked ? '' : 'opacity-60 cursor-not-allowed'}`}
                 >
                   <input
                     type="radio"
@@ -368,9 +324,8 @@ const BrandsForm = () => {
                     className="w-4 h-4 text-gray-600 focus:ring-gray-500"
                   />
                   <span
-                    className={`text-sm font-medium ${
-                      formData.status === 'inactive' ? 'text-gray-700' : 'text-gray-700'
-                    }`}
+                    className={`text-sm font-medium ${formData.status === 'inactive' ? 'text-gray-700' : 'text-gray-700'
+                      }`}
                   >
                     Inactive
                   </span>
@@ -378,7 +333,7 @@ const BrandsForm = () => {
               </div>
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 PRIORITY <span className="text-red-500">*</span>
               </label>
@@ -393,7 +348,7 @@ const BrandsForm = () => {
                 placeholder="1"
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
-            </div>
+            </div> */}
 
             {/* <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -421,91 +376,9 @@ const BrandsForm = () => {
                 disabled={isLocked}
                 rows="4"
                 placeholder="Enter brand description"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 resize-none"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 resize-none"
               />
             </div>
-
-            {/* IMAGE UPLOAD */}
-            {/* <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                BRAND IMAGE
-              </label>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={formData.image_url}
-                    disabled
-                    placeholder="Image URL will appear here after upload"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-                  />
-                </div>
-                <label
-                  className={`flex items-center gap-2 px-4 py-2.5 border-2 border-blue-600 text-blue-600 rounded-lg font-medium transition-colors ${
-                    isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-50 cursor-pointer'
-                  }`}
-                >
-                  {uploadingImage ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4" />
-                      Upload Image
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isLocked || uploadingImage}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              {formData.image_url && (
-                <div className="mt-3">
-                  <img
-                    src={formData.image_url}
-                    alt="Brand preview"
-                    className="h-24 w-24 object-cover rounded-lg border border-gray-200"
-                  />
-                </div>
-              )}
-            </div> */}
-
-            {/* CATEGORY DROPDOWN */}
-            {/* <div className="col-span-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  CATEGORY
-                </label>
-                <button
-                  type="button"
-                  onClick={navigateToCreateCategory}
-                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Category
-                </button>
-              </div>
-              <select
-                name="category_id"
-                value={formData.category_id}
-                onChange={handleInputChange}
-                disabled={isLocked}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-              >
-                <option value="">Select a category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name} ({category.code})
-                  </option>
-                ))}
-              </select>
-            </div> */}
           </div>
         </div>
 
@@ -528,7 +401,7 @@ const BrandsForm = () => {
                 onChange={handleInputChange}
                 disabled={isLocked}
                 placeholder="e.g., Germany"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
             </div>
 
@@ -543,7 +416,7 @@ const BrandsForm = () => {
                 onChange={handleInputChange}
                 disabled={isLocked}
                 placeholder="e.g., 1923"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
             </div>
 
@@ -558,7 +431,7 @@ const BrandsForm = () => {
                 onChange={handleInputChange}
                 disabled={isLocked}
                 placeholder="e.g., Furniture Fittings"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
             </div>
           </div>

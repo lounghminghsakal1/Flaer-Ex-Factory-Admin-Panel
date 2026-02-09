@@ -10,7 +10,7 @@ import {
   Plus,
   ChevronDown,
 } from "lucide-react";
-import { successToast, errorToast } from "../../../../../../components/ui/toast";
+import { toast } from "react-toastify";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
 
@@ -118,7 +118,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       }
     } catch (err) {
       console.error(err);
-      errorToast("Failed to load SKU details");
+      toast.error("Failed to load SKU details");
     } finally {
       setLoading(false);
     }
@@ -134,7 +134,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      errorToast("Failed to load option types");
+      toast.error("Failed to load option types");
     }
   }
 
@@ -234,36 +234,44 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
 
   async function handleUpdate() {
     if (!form.sku_name.trim()) {
-      errorToast("SKU name is required");
+      toast.error("SKU name is required");
       return;
     }
 
     if (!form.display_name.trim()) {
-      errorToast("Display name is required");
+      toast.error("Display name is required");
       return;
     }
 
     if (!form.sku_code.trim()) {
-      errorToast("SKU code is required");
+      toast.error("SKU code is required");
       return;
     }
 
     if (form.selling_price > form.mrp) {
-      errorToast("Selling price cannot be greater than mrp");
+      toast.error("Selling price cannot be greater than mrp");
       return;
     }
 
-    if (pricingMode === "conversion" && Number(form.unit_price) != Number(form.mrp) / Number(form.conversion_factor)) {
-      errorToast("mrp and unit price not matching the conversion factor, check prices");
-      return;
+    if (pricingMode === "conversion") {
+      const expected = Number(form.mrp) / Number(form.conversion_factor);
+      const actual = Number(form.unit_price);
+
+      if (Math.abs(actual - expected) > 0.01) {
+        toast.error("MRP and unit price not matching conversion factor");
+        return;
+      }
     }
 
-    if (pricingMode === "multiplication" && Number(form.mrp) != Number(form.unit_price) * Number(form.multiplication_factor)) {
-      errorToast("mrp and unit price not matching with multiplication factor, check prices");
-      return;
+    if (pricingMode === "multiplication") {
+      const expected = Number(form.unit_price) * Number(form.multiplication_factor);
+      const actual = Number(form.mrp);
+
+      if (Math.abs(actual - expected) > 0.01) {
+        toast.error("MRP and unit price not matching multiplication factor");
+        return;
+      }
     }
-
-
 
     setUpdating(true);
 
@@ -378,18 +386,18 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
         } else if (result?.message) {
           errorMessage = result.message;
         }
-        errorToast(errorMessage);
+        toast.error(errorMessage);
         return;
       }
 
-      successToast("SKU updated successfully");
+      toast.success("SKU updated successfully");
       setIsEditing(false);
       onSuccess?.();
       onClose();
       fetchSkuDetails(); // Refresh data
     } catch (err) {
       console.error("Update SKU error:", err);
-      errorToast(err.message);
+      toast.error(err.message);
     } finally {
       setUpdating(false);
     }
@@ -1016,10 +1024,10 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
       }
 
       setSkuMedia((prev) => [...prev, ...newMedia]);
-      successToast(`${uploadedUrls.length} image(s) uploaded successfully`);
+      toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
     } catch (error) {
       console.error("Upload error:", error);
-      errorToast("Failed to upload images");
+      toast.error("Failed to upload images");
     } finally {
       setUploading(false);
     }
@@ -1049,7 +1057,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
     const mediaToRemove = skuMedia.find((m) => m.id === id);
 
     if (mediaToRemove?.sequence === 1) {
-      errorToast("Cannot remove primary image");
+      toast.error("Cannot remove primary image");
       return;
     }
 

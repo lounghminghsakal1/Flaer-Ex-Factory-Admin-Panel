@@ -59,6 +59,14 @@ module.exports = {
         bgBlue: '#f8f5f7',
         sidebarBlue: '#0c0a1d',
         sidebarText: '#d8dae0',
+        // Sidebar colors
+        sidebarBlue: '#1e3a5f',      // Main sidebar background
+        sidebarText: '#94a3b8',       // Default text color
+        darkBlue: '#0f172a',          // Active indicator
+        darkBlue1: '#1e40af',         // Active background
+        lightBlue: '#3b82f6',         // Hover accent
+        bgBlue: '#f8fafc',            // Main background
+        bgGray: '#f1f5f9',            // Secondary background
       },
       width: {
         tabMax: '1440px',

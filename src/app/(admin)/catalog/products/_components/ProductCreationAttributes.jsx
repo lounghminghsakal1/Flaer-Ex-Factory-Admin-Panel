@@ -9,8 +9,8 @@ import {
   Image
 } from "lucide-react";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
-import { successToast, errorToast } from "../../../../../../components/ui/toast";
 import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
+import { toast } from "react-toastify";
 
 function cartesian(arrays) {
   return arrays.reduce(
@@ -174,6 +174,7 @@ export default function ProductCreationAttributes({
       setPropertyNames(result.data);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch property names");
     }
   }
 
@@ -189,7 +190,7 @@ export default function ProductCreationAttributes({
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      errorToast("Failed to load option types");
+      toast.error("Failed to load option types");
     }
   }
 
@@ -209,7 +210,7 @@ export default function ProductCreationAttributes({
       p => p.name && p.values && p.values.length > 0
     );
 
-    let ok;
+    let ok = true;
 
     // CASE 1 — Last property structure
     if (!hasOtherValidProperties) {
@@ -231,10 +232,16 @@ export default function ProductCreationAttributes({
     }
 
     // CASE 2 — Normal recompute case
-    ok = await confirm(
-      `Deleting "${propertyToDelete.name || "this property"}" will change product combinations and may change SKU structure.\n\nContinue?`
-    );
+    const isValidProperty =
+      propertyToDelete.name &&
+      propertyToDelete.values &&
+      propertyToDelete.values.length > 0;
 
+    if (isValidProperty) {
+      ok = await confirm(
+        `Deleting "${propertyToDelete.name || "this property"}" will change product combinations and may change SKU structure.\n\nContinue?`
+      );
+    }
     if (!ok) return;
 
     // Remove property row
@@ -353,8 +360,8 @@ export default function ProductCreationAttributes({
               mrp: "",
               selling_price: "",
               unit_price: "",
-              conversion_factor: 1,
-              multiplication_factor: 1,
+              conversion_factor: undefined,
+              multiplication_factor: undefined,
               uom: "piece",
               threshold_quantity: 1,
               status: "active",
@@ -422,23 +429,36 @@ export default function ProductCreationAttributes({
     //  Apply removal
     setProperties(updatedProperties);
 
-    setGeneratedProducts(newProducts);
-
     setProducts(prevProducts => {
+
       const validOptions = options.filter(
         o => o.type && o.values.length > 0
       );
 
-      return newProducts.map(genProd => {
+      const rebuiltProducts = newProducts.map(genProd => {
 
-        const existing = prevProducts.find(
-          p => p.name === genProd.name
-        );
+        const existing = prevProducts.find(p => {
 
-        // If existing product → keep it
+          if (!p.product_properties) return false;
+
+          const prevProps = p.product_properties;
+
+          const newProps = genProd.properties.map(prop => ({
+            property_name: prop.name,
+            property_value: prop.value
+          }));
+
+          // Match if ALL new props exist in old product
+          return newProps.every(np =>
+            prevProps.some(pp =>
+              pp.property_name === np.property_name &&
+              pp.property_value === np.property_value
+            )
+          );
+        });
+
         if (existing) return existing;
 
-        // If new product → generate SKUs IF options exist
         return {
           name: genProd.name,
           display_name: genProd.name,
@@ -452,11 +472,42 @@ export default function ProductCreationAttributes({
               : []
         };
       });
-    });
 
+      // ⭐ AFTER PRODUCTS READY → Update Generated Products With Correct SKU COUNT
+      setGeneratedProducts(
+        newProducts.map(np => {
+          const prod = rebuiltProducts.find(p =>
+            isSameProductByProps(p, np)
+          );
+          return {
+            ...np,
+            skuCount: prod?.product_skus?.length || 0
+          };
+        })
+      );
+
+      return rebuiltProducts;
+    });
 
   };
 
+  const isSameProductByProps = (product, genProd) => {
+    if (!product?.product_properties) return false;
+
+    const prevProps = product.product_properties;
+
+    const newProps = genProd.properties.map(prop => ({
+      property_name: prop.name,
+      property_value: prop.value
+    }));
+
+    return newProps.every(np =>
+      prevProps.some(pp =>
+        pp.property_name === np.property_name &&
+        pp.property_value === np.property_value
+      )
+    );
+  };
 
   /* ================= OPTION HANDLERS ================= */
 
@@ -474,7 +525,7 @@ export default function ProductCreationAttributes({
       o => o.type && o.values && o.values.length > 0
     );
 
-    let ok;
+    let ok = true;
 
     //  CASE 1 — Last Option (All SKUs will be removed)
     if (validRemainingOptions.length === 0) {
@@ -508,9 +559,16 @@ export default function ProductCreationAttributes({
     }
 
     //  CASE 2 — Normal recompute case
-    ok = await confirm(
-      `Deleting "${optionToDelete.type || "this option"}" will change SKU combinations.\n\nContinue?`
-    );
+    const isValidOption =
+      optionToDelete.type &&
+      optionToDelete.values &&
+      optionToDelete.values.length > 0;
+
+    if (isValidOption) {
+      ok = await confirm(
+        `Deleting "${optionToDelete.type || "this option"}" will change SKU combinations.\n\nContinue?`
+      );
+    }
 
     if (!ok) return;
 
@@ -592,9 +650,7 @@ export default function ProductCreationAttributes({
 
     return generatedProducts.map(genProd => {
 
-      const existingProduct = existingProducts.find(
-        p => p.name === genProd.name
-      );
+      const existingProduct = findExistingProduct(existingProducts, genProd);
 
       if (!validOptions.length) {
         return {
@@ -630,8 +686,8 @@ export default function ProductCreationAttributes({
           mrp: "",
           selling_price: "",
           unit_price: "",
-          conversion_factor: 1,
-          multiplication_factor: 1,
+          conversion_factor: undefined,
+          multiplication_factor: undefined,
           uom: "piece",
           threshold_quantity: 1,
           status: "active",
@@ -655,71 +711,27 @@ export default function ProductCreationAttributes({
     });
   }
 
-  function rebuildAllSkus(products, options) {
-    const validOptions = options.filter(
-      o => o.type && o.values.length > 0
-    );
+  const findExistingProduct = (existingProducts, genProd) => {
+    return existingProducts.find(p => {
 
-    return products.map(product => {
+      if (!p.product_properties) return false;
 
-      if (validOptions.length === 0) {
-        return {
-          ...product,
-          product_skus: []
-        };
-      }
+      const prevProps = p.product_properties;
 
-      const newSkus = generateSkus(product.name, validOptions);
+      const newProps = genProd.properties.map(prop => ({
+        property_name: prop.name,
+        property_value: prop.value
+      }));
 
-      return {
-        ...product,
-        product_skus: newSkus.map((sku, idx) => ({
-          sku_name: sku.sku_name,
-          display_name: sku.sku_name,
-          display_name_edited: false,
-          sku_code: "",
-          mrp: "",
-          selling_price: "",
-          unit_price: "",
-          conversion_factor: 1,
-          multiplication_factor: 1,
-          uom: "piece",
-          threshold_quantity: 1,
-          status: "active",
-          master: idx === 0,
-          option_type_values: sku.option_type_values ?? [],
-          sku_media: []
-        }))
-      };
+      return newProps.every(np =>
+        prevProps.some(pp =>
+          pp.property_name === np.property_name &&
+          pp.property_value === np.property_value
+        )
+      );
+
     });
-  }
-
-  const regenerateProductsFromProperties = () => {
-
-    const newGeneratedProducts = generateProducts(formData.name, properties);
-
-    const validOptions = options.filter(
-      o => o.type && o.values.length > 0
-    );
-
-    setGeneratedProducts(
-      newGeneratedProducts.map(gp => ({
-        ...gp,
-        skuCount: generateSkus(gp.name, validOptions).length
-      }))
-    );
-
-    setProducts(prevProducts =>
-      syncProductSkus(
-        prevProducts || [],
-        newGeneratedProducts,
-        options
-      )
-    );
-
   };
-
-
 
   const ensureProductsBeforeOptionChange = async () => {
 
@@ -760,7 +772,7 @@ export default function ProductCreationAttributes({
 
   const removeOptionValue = async (optIndex, valueIndex) => {
 
-    // ⭐ GET FRESH PRODUCTS
+    //  GET FRESH PRODUCTS
     const ensuredGeneratedProducts = await ensureProductsBeforeOptionChange();
 
     if (!ensuredGeneratedProducts) return;
@@ -796,7 +808,7 @@ export default function ProductCreationAttributes({
 
     setOptions(updatedOptions);
 
-    // ⭐ USE ENSURED PRODUCTS (NOT STATE)
+    //  USE ENSURED PRODUCTS (NOT STATE)
     setProducts(prev =>
       syncProductSkus(prev, ensuredGeneratedProducts, updatedOptions)
     );
@@ -812,9 +824,6 @@ export default function ProductCreationAttributes({
     );
 
   };
-
-
-
 
   // General
   async function deleteGeneratedProduct(productId) {
@@ -884,8 +893,8 @@ export default function ProductCreationAttributes({
               unit_price: "",
               dimension: "",
               weight: "",
-              conversion_factor: 1,
-              multiplication_factor: 1,
+              conversion_factor: undefined,
+              multiplication_factor: undefined,
               uom: "piece",
               threshold_quantity: 1,
               status: "active",
@@ -918,12 +927,12 @@ export default function ProductCreationAttributes({
 
     const deletedProductName = pendingCascadeDelete;
 
-    // 1️⃣ Remove from generated products
+    // Remove from generated products
     setGeneratedProducts(prev =>
       prev.filter(p => p.name !== deletedProductName)
     );
 
-    // 2️⃣ Remove originating property value
+    // Remove originating property value
     setProperties(prev =>
       prev
         .map(prop => ({
@@ -935,7 +944,7 @@ export default function ProductCreationAttributes({
       // .filter(prop => prop.values.length > 0 || prop.name === "")
     );
 
-    // 3️⃣ Reset flag
+    // Reset flag
     setPendingCascadeDelete(null);
   }, [pendingCascadeDelete, formData.name]);
 
@@ -1184,8 +1193,9 @@ export default function ProductCreationAttributes({
                     <td className={tdBase}>{p.name}</td>
                     <td className={`${tdBase} text-center font-medium`}>
                       {
-                        products.find(prod => prod.name === p.name)
-                          ?.product_skus.length || 0
+                        products.find(prod =>
+                          isSameProductByProps(prod, p)
+                        )?.product_skus?.length || 0
                       }
                     </td>
                     <td className={`${tdBase} text-right`}>
@@ -1221,6 +1231,7 @@ export default function ProductCreationAttributes({
                         <th className="px-2 py-2 w-[160px] font-medium">SKU Name</th>
                         <th className="px-2 py-2 w-[160px] font-medium">Display Name</th>
                         <th className="px-2 py-2 w-[120px] font-medium">SKU Code</th>
+                        <th className="px-1 py-2 w-[70px] font-medium">{pricingMode === "conversion" ? "conv" : "mult"} </th>
 
                         {/*  DYNAMIC COLUMN ORDER BASED ON PRICING MODE */}
                         {pricingMode === "conversion" ? (
@@ -1387,6 +1398,65 @@ export default function ProductCreationAttributes({
                             </div>
                           </td>
 
+                          <td className="px-1">
+                            <input
+                              type="number"
+                              min="1"
+                              className={inputCell}
+                              value={
+                                pricingMode === "conversion"
+                                  ? sku.conversion_factor ?? globalPricing.conversion_factor
+                                  : sku.multiplication_factor ?? globalPricing.multiplication_factor
+                              }
+                              onWheel={(e) => e.target.blur()}
+                              onChange={(e) => {
+                                const newFactor = Number(e.target.value);
+
+                                setProducts(prev =>
+                                  prev.map((p, pIdx) => {
+                                    if (pIdx !== productIndex) return p;
+
+                                    return {
+                                      ...p,
+                                      product_skus: p.product_skus.map((s, sIdx) => {
+                                        if (sIdx !== skuIndex) return s;
+
+                                        if (pricingMode === "conversion") {
+                                          const newUnit =
+                                            s.mrp && newFactor
+                                              ? Number((Number(s.mrp) / newFactor).toFixed(2))
+                                              : "";
+
+                                          return {
+                                            ...s,
+                                            conversion_factor: newFactor,
+                                            unit_price: newUnit
+                                          };
+                                        }
+
+                                        if (pricingMode === "multiplication") {
+                                          const newMrp =
+                                            s.unit_price && newFactor
+                                              ? Number((Number(s.unit_price) * newFactor).toFixed(2))
+                                              : "";
+
+                                          return {
+                                            ...s,
+                                            multiplication_factor: newFactor,
+                                            mrp: newMrp,
+                                            selling_price: newMrp
+                                          };
+                                        }
+
+                                        return s;
+                                      })
+                                    };
+                                  })
+                                );
+                              }}
+                            />
+                          </td>
+
                           {/* MRP / SELLING / UNIT */}
                           {/*  DYNAMIC PRICING INPUTS WITH AUTO-CALCULATION */}
                           {pricingMode === "conversion" ? (
@@ -1401,8 +1471,11 @@ export default function ProductCreationAttributes({
                                   onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const mrpValue = e.target.value;
-                                    const unitPrice = mrpValue && globalPricing.conversion_factor
-                                      ? Number((Number(mrpValue) / globalPricing.conversion_factor).toFixed(2))
+                                    const factor =
+                                      sku.conversion_factor ?? globalPricing.conversion_factor;
+
+                                    const unitPrice = mrpValue && factor
+                                      ? Number((Number(mrpValue) / factor).toFixed(2))
                                       : "";
 
                                     setProducts(prev =>
@@ -1490,8 +1563,11 @@ export default function ProductCreationAttributes({
                                   onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const unitValue = e.target.value;
-                                    const calculatedPrice = unitValue && globalPricing.multiplication_factor
-                                      ? Number((Number(unitValue) * globalPricing.multiplication_factor).toFixed(2))
+                                    const factor =
+                                      sku.multiplication_factor ?? globalPricing.multiplication_factor;
+
+                                    const calculatedPrice = unitValue && factor
+                                      ? Number((Number(unitValue) * factor).toFixed(2))
                                       : "";
 
                                     setProducts(prev =>
@@ -1714,10 +1790,10 @@ export default function ProductCreationAttributes({
                                           )
                                         );
 
-                                        successToast(`${files.length} image(s) uploaded`);
+                                        toast.success(`${files.length} image(s) uploaded`);
                                       } catch (error) {
                                         console.error('Upload error:', error);
-                                        errorToast('Upload failed');
+                                        toast.error('Upload failed');
 
                                         // Remove loading state on error
                                         setProducts(prev =>
@@ -1755,7 +1831,7 @@ export default function ProductCreationAttributes({
                               {/* MEDIA PREVIEW (When media exists and not uploading) */}
                               {sku.sku_media?.length > 0 && !sku.sku_media.some(m => m.uploading) && (
                                 <div className="flex items-center gap-2">
-                                  {/* PRIMARY IMAGE (First image, bigger) */}
+                                  {/* PRIMARY IMAGE (First image, bigger)
                                   {(() => {
                                     const primary = sku.sku_media.find(m => m.sequence === 1) || sku.sku_media[0];
                                     return (
@@ -1770,10 +1846,10 @@ export default function ProductCreationAttributes({
                                         </span>
                                       </div>
                                     );
-                                  })()}
+                                  })()} */}
 
                                   {/* VIEW ALL BUTTON (if more than 1 image) */}
-                                  {sku.sku_media.length > 1 && (
+                                  {sku.sku_media.length > 0 && (
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -1827,7 +1903,7 @@ export default function ProductCreationAttributes({
                                           }
                                         })
                                       }
-                                      className="flex flex-col items-center justify-center w-12 h-12 border border-gray-300 rounded hover:border-blue-500 transition-colors cursor-pointer"
+                                      className="flex flex-col items-center justify-center w-10 h-10 border border-gray-300 rounded hover:border-blue-500 transition-colors cursor-pointer"
                                     >
                                       <Image size={16} className="text-gray-600" />
                                       <span className="text-[10px] font-semibold text-gray-700">
@@ -1837,7 +1913,7 @@ export default function ProductCreationAttributes({
                                   )}
 
                                   {/* ADD MORE BUTTON */}
-                                  <label className="cursor-pointer flex items-center justify-center w-12 h-12 border-2 border-dashed border-gray-300 rounded hover:border-blue-500 transition-colors">
+                                  <label className="cursor-pointer flex items-center justify-center w-10 h-10 border-2 border-dashed border-gray-300 rounded hover:border-blue-500 transition-colors">
                                     <Plus size={18} className="text-gray-400" />
                                     <input
                                       type="file"
@@ -1923,10 +1999,10 @@ export default function ProductCreationAttributes({
                                             )
                                           );
 
-                                          successToast(`${files.length} image(s) uploaded`);
+                                          toast.success(`${files.length} image(s) uploaded`);
                                         } catch (error) {
                                           console.error('Upload error:', error);
-                                          errorToast('Upload failed');
+                                          toast.error('Upload failed');
 
                                           // Remove loading items on error
                                           setProducts(prev =>
@@ -1998,7 +2074,6 @@ export default function ProductCreationAttributes({
                       ))}
                     </tbody>
                   </table>
-
                 </div>
               </div>
             </div>
@@ -2265,10 +2340,10 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
       }
 
       setProductMedia(prev => [...prev, ...newMedia]);
-      successToast(`${files.length} image(s) uploaded successfully`);
+      toast.success(`${files.length} image(s) uploaded successfully`);
     } catch (error) {
       console.error('Upload error:', error);
-      errorToast('Failed to upload images');
+      toast.error('Failed to upload images');
     } finally {
       setUploading(false);
     }
@@ -2304,7 +2379,7 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
     const mediaToRemove = productMedia.find(m => m.id === id);
 
     if (mediaToRemove?.sequence === 1) {
-      errorToast('Cannot remove primary image');
+      toast.error('Cannot remove primary image');
       return;
     }
 

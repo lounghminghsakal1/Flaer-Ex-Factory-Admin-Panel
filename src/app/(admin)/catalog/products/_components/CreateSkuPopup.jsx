@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, ChevronDown, RotateCcw, Upload, Image } from 'lucide-react';
-import { successToast, errorToast } from '../../../../../../components/ui/toast';
+import { toast } from 'react-toastify';
 
 function CreateSkuPopup({
   onClose,
@@ -66,7 +66,7 @@ function CreateSkuPopup({
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      errorToast("Failed to load option types");
+      toast.error("Failed to load option types");
     }
   }
 
@@ -166,55 +166,55 @@ function CreateSkuPopup({
 
   function validateForm() {
     if (!form.sku_name.trim()) {
-      errorToast("SKU name is required");
+      toast.error("SKU name is required");
       return false;
     }
 
     if (!form.display_name.trim()) {
-      errorToast("Display name is required");
+      toast.error("Display name is required");
       return false;
     }
 
     if (!form.sku_code.trim()) {
-      errorToast("SKU code is required");
+      toast.error("SKU code is required");
       return false;
     }
 
     if (existingSkus?.some(s => s.sku_name === form.sku_name.trim())) {
-      errorToast("SKU name already exists");
+      toast.error("SKU name already exists");
       return false;
     }
 
     if (existingSkus?.some(s => s.sku_code === form.sku_code.trim())) {
-      errorToast("SKU code already exists");
+      toast.error("SKU code already exists");
       return false;
     }
 
     // Validate media - at least one image required
     // if (skuMedia.length === 0) {
-    //   errorToast("At least one image is required");
+    //   toast.error("At least one image is required");
     //   return false;
     // }
 
     // Validate based on pricing mode
     if (pricingMode === "conversion") {
       if (!form.mrp || !form.selling_price) {
-        errorToast("MRP and Selling Price are required");
+        toast.error("MRP and Selling Price are required");
         return false;
       }
 
       if (Number(form.mrp) < 1 || Number(form.selling_price) < 1 || Number(form.unit_price) < 1) {
-        errorToast("All prices must be at least 1");
+        toast.error("All prices must be at least 1");
         return false;
       }
     } else {
       if (!form.unit_price) {
-        errorToast("Unit Price is required");
+        toast.error("Unit Price is required");
         return false;
       }
 
       if (Number(form.unit_price) < 1 || Number(form.mrp) < 1 || Number(form.selling_price) < 1) {
-        errorToast("All prices must be at least 1");
+        toast.error("All prices must be at least 1");
         return false;
       }
     }
@@ -308,16 +308,16 @@ function CreateSkuPopup({
         } else if (result?.message) {
           errorMessage = result.message;
         }
-        errorToast(errorMessage);
+        toast.error(errorMessage);
         return;
       }
 
-      successToast("SKU created successfully");
+      toast.success("SKU created successfully");
       onSuccess?.();
       onClose();
     } catch (err) {
       console.error("Create SKU error:", err);
-      errorToast(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -883,10 +883,10 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
       }
 
       setSkuMedia(prev => [...prev, ...newMedia]);
-      successToast(`${files.length} image(s) uploaded successfully`);
+      toast.success(`${files.length} image(s) uploaded successfully`);
     } catch (error) {
       console.error('Upload error:', error);
-      errorToast('Failed to upload images');
+      toast.error('Failed to upload images');
     } finally {
       setUploading(false);
     }
@@ -922,7 +922,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
     const mediaToRemove = skuMedia.find(m => m.id === id);
 
     if (mediaToRemove?.sequence === 1) {
-      errorToast('Cannot remove primary image');
+      toast.error('Cannot remove primary image');
       return;
     }
 

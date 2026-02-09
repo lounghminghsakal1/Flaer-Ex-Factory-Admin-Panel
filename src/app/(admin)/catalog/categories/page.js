@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import CategoriesHeader from "./_components/CategoriesHeader";
 import CategoryListing from "./_components/CategoriesListing";
-import CategoriesTabs from "./_components/CategoriesTabs";
+import PageHeader from "./_components/PageHeader";
 
 export default function CategoriesPage() {
 
@@ -13,9 +13,6 @@ export default function CategoriesPage() {
     return (
         <section className="space-y-4">
             <CategoriesHeader />
-
-            <CategoriesTabs activeTab={tab} />
-
             <CategoryListing tab={tab} />
         </section>
     );

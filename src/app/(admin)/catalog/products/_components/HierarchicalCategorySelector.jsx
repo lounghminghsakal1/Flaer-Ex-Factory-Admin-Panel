@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Minus, X } from 'lucide-react';
 import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
 import { DM_Sans } from 'next/font/google';
+import { toast } from 'react-toastify';
 
-const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, disabled }) => {
+const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCategory, onCategorySelect, disabled, required=false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState([]);
@@ -40,12 +41,26 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
   }, []);
 
   useEffect(() => {
-    if (!selectedCategoryId) return;
+    if (selectedParentCategory && selectedSubCategory && categories.length > 0) {
+      setSelectedParent(selectedParentCategory);
+      setSelectedCategory(selectedSubCategory);
 
-    findAndSetCategoryHierarchy(selectedCategoryId);
+      setExpandedCategories(prev =>
+        new Set([...prev, selectedParentCategory.id])
+      );
 
-  }, [selectedCategoryId]);
-
+      // preload children of selected parent 
+      fetchSubCategories(selectedParentCategory.id).then(children => {
+        setCategories(prev =>
+          prev.map(p =>
+            p.id === selectedParentCategory.id
+              ? { ...p, children }
+              : p
+          )
+        );
+      });
+    }
+  }, [selectedParentCategory, selectedSubCategory]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -83,6 +98,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
       setCategories(categoriesWithChildren);
     } catch (error) {
       console.error('Error fetching root categories:', error);
+      toast.error("Error fetching root categories");
     } finally {
       setLoading(false);
     }
@@ -112,59 +128,12 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
 
       return children;
 
-    } catch {
+    } catch(err) {
+      console.log(err);
+      toast.error("Failed to fetch sub categories");
       return [];
     }
   };
-
-  const findAndSetCategoryHierarchy = async (subcategoryId) => {
-    if (!subcategoryId) return;
-
-    // Ensure parents loaded
-    let parents = categories;
-
-    if (!parents.length) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`
-      );
-      const result = await res.json();
-
-      parents = (result.data || []).map(cat => ({
-        ...cat,
-        children: [],
-        hasChildren: true
-      }));
-
-      setCategories(parents);
-    }
-
-    // Find parent containing this subcategory
-    for (const parent of parents) {
-      let children = subcategoryCache.current[parent.id];
-
-      if (!children) {
-        children = await fetchSubCategories(parent.id);
-      }
-
-      const match = children.find(c => c.id === subcategoryId);
-
-      if (match) {
-        // Update category tree
-        setCategories(prev =>
-          prev.map(p =>
-            p.id === parent.id ? { ...p, children } : p
-          )
-        );
-
-        setSelectedParent(parent);
-        setSelectedCategory(match);
-        setExpandedCategories(prev => new Set([...prev, parent.id]));
-
-        return;
-      }
-    }
-  };
-
 
   const toggleCategory = async (category, event) => {
     event.stopPropagation();
@@ -208,7 +177,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
   const handleSubcategorySelect = (child, parent) => {
     setSelectedCategory(child);
     setSelectedParent(parent);
-    onCategorySelect?.(child);
+    onCategorySelect?.(child, parent);
     setIsOpen(false);
   };
 
@@ -290,6 +259,13 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
           });
         });
 
+        if (!isParentToggle && parentId) {
+          subcategoryCache.current[parentId] = [
+            ...(subcategoryCache.current[parentId] || []),
+            newCategory
+          ];
+        }
+
         // For parent category: expand it to show empty subcategory section
         if (isParentToggle) {
           setExpandedCategories(prev => new Set([...prev, newCategory.id]));
@@ -315,7 +291,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
           const parent = categories.find(c => c.id === parentId) || lockedParentForChild;
           setSelectedCategory(newCategory);
           setSelectedParent(parent);
-          onCategorySelect?.(newCategory);
+          onCategorySelect?.(newCategory, parent);
 
           // Reopen dropdown and scroll to parent
           setTimeout(() => {
@@ -334,6 +310,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
       setIsCreated(true);
     } catch (error) {
       console.error('Error creating category:', error);
+      toast.error("Error creating category");
     }
   };
 
@@ -448,7 +425,7 @@ const HierarchicalCategorySelector = ({ selectedCategoryId, onCategorySelect, di
       <div className="w-full">
         <div className="flex items-center justify-between mb-1">
           <label className="block text-sm font-medium text-gray-700">
-            Category
+            Category {required && (<span className='text-red-500'>*</span>)}
           </label>
           <button
             type="button"

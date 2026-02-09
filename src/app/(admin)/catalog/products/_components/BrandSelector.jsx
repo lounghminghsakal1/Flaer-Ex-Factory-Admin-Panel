@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Search, X } from 'lucide-react';
-import { errorToast } from '../../../../../../components/ui/toast';
+import { toast } from 'react-toastify';
 
 const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,6 +74,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
       setBrandOptions(namesArray);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch brands list");
     }
   }
 
@@ -113,7 +114,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
 
   const handleCreateBrand = async () => {
     if (formDataPopup.brand_name === "") {
-      errorToast("Name cannot be blank");
+      toast.error("Name cannot be blank");
       return;
     }
     try {
@@ -178,6 +179,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
       }
     } catch (error) {
       console.error('Error creating brand:', error);
+      toast.error("Error creating brand");
     }
   };
 

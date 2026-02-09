@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Search, X } from 'lucide-react';
-import { errorToast, successToast } from '../../../../../../components/ui/toast';
+import { toast } from 'react-toastify';
 
 const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -89,7 +89,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
       setTaxOptions(taxArray);
     } catch (err) {
       console.log(err);
-      errorToast("Failed to load tax types");
+      toast.error("Failed to load tax types");
     } finally {
       setLoading(false);
     }
@@ -128,19 +128,19 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
 
     // Validation
     if (!formDataPopup.name.trim()) {
-      errorToast('Tax name is required');
+      toast.error('Tax name is required');
       return;
     }
     if (!formDataPopup.code.trim()) {
-      errorToast('Tax code is required');
+      toast.error('Tax code is required');
       return;
     }
     if (!formDataPopup.cgst || parseFloat(formDataPopup.cgst) < 0) {
-      errorToast('Valid CGST is required');
+      toast.error('Valid CGST is required');
       return;
     }
     if (!formDataPopup.sgst || parseFloat(formDataPopup.sgst) < 0) {
-      errorToast('Valid SGST is required');
+      toast.error('Valid SGST is required');
       return;
     }
 
@@ -185,7 +185,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
       setShowCreatePopup(false);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
-      successToast("Tax type created successfully");
+      toast.success("Tax type created successfully");
 
       // Fetch updated tax list
       await fetchTaxOptions();
@@ -221,7 +221,8 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
       }, 100);
 
     } catch (err) {
-      errorToast(err.message);
+      console.log(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -280,7 +281,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
           >
             <div className="flex items-center justify-between">
               <span className={selectedTax ? 'text-gray-900' : 'text-gray-400'}>
-                {selectedTax ? `${selectedTax.name} (${selectedTax.percentage}%)` : 'Select tax type'}
+                {selectedTax ? `${selectedTax.name}` : 'Select tax type'}
               </span>
               <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </div>

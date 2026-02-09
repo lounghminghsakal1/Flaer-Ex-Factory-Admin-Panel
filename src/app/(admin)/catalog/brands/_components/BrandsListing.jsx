@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import DataTable from "../../../../../../components/shared/DataTable";
 import { Loader2 } from "lucide-react";
-import { errorToast } from "../../../../../../components/ui/toast";
 
 export default function BrandsListing() {
 
@@ -33,7 +32,8 @@ export default function BrandsListing() {
       setTotalPages(result.meta?.total_pages || 1);
 
     } catch (err) {
-      errorToast("Failed to fetch brands");
+      console.log("Failed to fetch brands",err);
+      toast.error("Failed to fetch brands");
     } finally {
       setLoading(false);
     }
@@ -64,6 +64,19 @@ export default function BrandsListing() {
     {
       key: "priority",
       label: "Priority",
+      render: (value) => (
+        <span className="ml-4">
+          {value}
+        </span>
+      )
+    },
+    {
+      key: "description",
+      label: "Description",
+    },
+    {
+      key: "slug",
+      label:"Slug"
     },
     {
       key: "status",

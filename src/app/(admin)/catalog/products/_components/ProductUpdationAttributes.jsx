@@ -14,7 +14,7 @@ import {
 import CreateSkuPopup from "./CreateSkuPopup";
 import SkuDetailsPopup from "./SkuDetailsPopup";
 import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
-import { errorToast } from "../../../../../../components/ui/toast";
+import { toast } from "react-toastify";
 
 export default function ProductUpdationAttributes({
   productId,
@@ -77,7 +77,7 @@ export default function ProductUpdationAttributes({
       setProductData(result.data);
     } catch (err) {
       console.error(err);
-      errorToast("Failed to load product details");
+      toast.error("Failed to load product details");
     } finally {
       setLoading(false);
     }
@@ -226,7 +226,7 @@ function PropertyTypesSection({
       setPropertyNames(result.data || []);
     } catch (err) {
       console.error(err);
-      errorToast("Failed to load property names");
+      toast.error("Failed to load property names");
     }
   }
 
@@ -639,152 +639,6 @@ function SkuTableSection({
   );
 }
 
-// SKU DETAILS POPUP 
-// function SkuDetailsPopup({ sku, onClose }) {
-//   return (
-//     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-//       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-//         {/* Header */}
-//         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-//           <div>
-//             <h3 className="text-lg font-semibold text-gray-900">SKU Details</h3>
-//             <p className="text-sm text-gray-500 mt-0.5">{sku.sku_code}</p>
-//           </div>
-//           <button
-//             onClick={onClose}
-//             className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 transition-colors"
-//           >
-//             <X size={24} />
-//           </button>
-//         </div>
-
-//         {/* Content */}
-//         <div className="flex-1 overflow-y-auto p-6">
-//           <div className="space-y-6">
-//             {/* Basic Information */}
-//             <div className="bg-gray-50 rounded-lg p-4">
-//               <h4 className="text-sm font-semibold text-gray-900 mb-4">Basic Information</h4>
-//               <div className="grid grid-cols-2 gap-4">
-//                 <InfoField label="SKU Name" value={sku.sku_name} />
-//                 <InfoField label="Display Name" value={sku.display_name} />
-//                 <InfoField label="SKU Code" value={sku.sku_code} />
-//                 <InfoField label="Status" value={
-//                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${sku.status === 'active' ? 'bg-green-100 text-green-800' :
-//                     sku.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-//                       'bg-red-100 text-red-800'
-//                     }`}>
-//                     {sku.status}
-//                   </span>
-//                 } />
-//               </div>
-//             </div>
-
-//             {/* Pricing Information */}
-//             <div className="bg-gray-50 rounded-lg p-4">
-//               <h4 className="text-sm font-semibold text-gray-900 mb-4">Pricing Information</h4>
-//               <div className="grid grid-cols-3 gap-4">
-//                 <InfoField label="MRP" value={`₹${parseFloat(sku.mrp).toFixed(2)}`} />
-//                 <InfoField label="Selling Price" value={`₹${parseFloat(sku.selling_price).toFixed(2)}`} />
-//                 <InfoField label="Unit Price" value={`₹${parseFloat(sku.unit_price).toFixed(2)}`} />
-//                 <InfoField label="Conversion Factor" value={sku.conversion_factor} />
-//                 <InfoField label="Multiplication Factor" value={sku.multiplication_factor} />
-//                 <InfoField label="Threshold Quantity" value={sku.threshold_quantity} />
-//               </div>
-//             </div>
-
-//             {/* Physical Attributes */}
-//             <div className="bg-gray-50 rounded-lg p-4">
-//               <h4 className="text-sm font-semibold text-gray-900 mb-4">Physical Attributes</h4>
-//               <div className="grid grid-cols-3 gap-4">
-//                 <InfoField label="UOM" value={sku.uom?.toUpperCase() || 'N/A'} />
-//                 <InfoField label="Dimension" value={sku.dimension || 'N/A'} />
-//                 <InfoField label="Weight" value={sku.weight ? `${sku.weight} kg` : 'N/A'} />
-//               </div>
-//             </div>
-
-//             {/* Option Type Values */}
-//             {sku.option_type_values && sku.option_type_values.length > 0 && (
-//               <div className="bg-gray-50 rounded-lg p-4">
-//                 <h4 className="text-sm font-semibold text-gray-900 mb-4">Option Values</h4>
-//                 <div className="flex flex-wrap gap-2">
-//                   {sku.option_type_values.map((opt, idx) => (
-//                     <div key={idx} className="bg-white border border-gray-200 rounded-lg px-3 py-2">
-//                       <div className="text-xs text-gray-500">{opt.option_type.name}</div>
-//                       <div className="text-sm font-medium text-gray-900">{opt.option_value.name}</div>
-//                     </div>
-//                   ))}
-//                 </div>
-//               </div>
-//             )}
-
-//             {/* SKU Media */}
-//             {sku.sku_media && sku.sku_media.length > 0 && (
-//               <div className="bg-gray-50 rounded-lg p-4">
-//                 <h4 className="text-sm font-semibold text-gray-900 mb-4">Media</h4>
-//                 <div className="grid grid-cols-4 gap-4">
-//                   {sku.sku_media
-//                     .sort((a, b) => a.sequence - b.sequence)
-//                     .map((media, idx) => (
-//                       <div key={media.id} className="relative">
-//                         <img
-//                           src={media.media_url}
-//                           alt={`SKU Media ${idx + 1}`}
-//                           className="w-full h-32 object-cover rounded-lg border border-gray-200"
-//                         />
-//                         {media.sequence === 1 && (
-//                           <span className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium">
-//                             Primary
-//                           </span>
-//                         )}
-//                         <span className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs">
-//                           {media.sequence}
-//                         </span>
-//                       </div>
-//                     ))}
-//                 </div>
-//               </div>
-//             )}
-
-//             {/* Master SKU Badge */}
-//             {sku.master && (
-//               <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-//                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-//                   <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-//                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-//                   </svg>
-//                 </div>
-//                 <div>
-//                   <div className="text-sm font-semibold text-green-900">Master SKU</div>
-//                   <div className="text-xs text-green-700">This is the primary variant for this product</div>
-//                 </div>
-//               </div>
-//             )}
-//           </div>
-//         </div>
-
-//         {/* Footer */}
-//         <div className="border-t border-gray-200 px-6 py-4">
-//           <button
-//             onClick={onClose}
-//             className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-//           >
-//             Close
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// ==================== HELPER COMPONENT ====================
-function InfoField({ label, value }) {
-  return (
-    <div>
-      <div className="text-xs font-medium text-gray-500 mb-1">{label}</div>
-      <div className="text-sm text-gray-900">{value}</div>
-    </div>
-  );
-}
 
 function ProductContentsSection({
   productData,
@@ -1048,7 +902,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
       setProductMedia((prev) => [...prev, ...newMedia]);
     } catch (error) {
       console.error("Upload error:", error);
-      errorToast("Failed to upload images");
+      toast.error("Failed to upload images");
     } finally {
       setUploading(false);
     }
@@ -1078,7 +932,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
     const mediaToRemove = productMedia.find((m) => m.id === id);
 
     if (mediaToRemove?.sequence === 1) {
-      errorToast("Cannot remove primary image");
+      toast.error("Cannot remove primary image");
       return;
     }
 

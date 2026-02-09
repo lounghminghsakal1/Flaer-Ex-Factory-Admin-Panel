@@ -1,8 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Toaster } from "react-hot-toast";
-import toast from "react-hot-toast";
+import { toast } from "react-toastify";
 import { Loader2, Save, Edit2, ArrowLeft, Plus, X } from 'lucide-react';
 import ProductCreationAttributes from "./ProductCreationAttributes";
 import ProductUpdationAttributes from "./ProductUpdationAttributes";
@@ -10,7 +9,6 @@ import HierarchicalCategorySelector from "./HierarchicalCategorySelector";
 import BrandSelector from "./BrandSelector";
 import TaxSelector from "./TaxSelector";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
-import { successToast, errorToast } from "../../../../../../components/ui/toast";
 
 export default function ProductsForm() {
   const router = useRouter();
@@ -36,8 +34,6 @@ export default function ProductsForm() {
   ]);
 
   const [productMedia, setProductMedia] = useState([]);
-
-
   const [createFormData, setCreateFormData] = useState({
     name: "",
     display_name: "",
@@ -110,7 +106,9 @@ export default function ProductsForm() {
       display_name: data.display_name,
       description: data.description || "",
       hsn_code: data.hsn_code || "",
-      category_id: data.category?.id ?? null,
+      category_id: data.sub_category?.id ?? null,
+      parent_category: data.parent_category ?? null,
+      sub_category: data.sub_category ?? null,
       brand_id: data.brand?.id ?? null,
       tax_type_id: data.tax_type?.id ?? null,
       min_order_quantity: data.min_order_quantity,
@@ -146,6 +144,7 @@ export default function ProductsForm() {
       mapBackendDataToViewFormData(result.data);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to fetch product details");
     } finally {
       setInitialLoading(false);
     }
@@ -183,10 +182,9 @@ export default function ProductsForm() {
         uploadedUrls.push(result.data.url);
       } catch (err) {
         console.error(`Error uploading file:`, err);
-        errorToast(`Failed to upload file`);
+        toast.error(`Failed to upload file`);
       }
     }
-
     return uploadedUrls;
   }
 
@@ -236,11 +234,11 @@ export default function ProductsForm() {
                 master: sku.master,
 
                 ...(isConversion && {
-                  conversion_factor: Number(globalPricing.conversion_factor) || 1
+                  conversion_factor: Number(sku.conversion_factor) || 1
                 }),
 
                 ...(isMultiplication && {
-                  multiplication_factor: Number(globalPricing.multiplication_factor) || 1
+                  multiplication_factor: Number(sku.multiplication_factor) || 1
                 }),
 
                 option_type_values: sku.option_type_values || [],
@@ -280,6 +278,13 @@ export default function ProductsForm() {
         return `Product "${p.name}" must have at least one SKU`;
       }
 
+      // MASTER SKU VALIDATION (Exactly one master per product)
+      const masterCount = p.product_skus.filter(sku => sku.master).length;
+
+      if (masterCount !== 1) {
+        return `Product "${p.name}" must have exactly one master SKU (Currently: ${masterCount})`;
+      }
+
       for (let sIndex = 0; sIndex < p.product_skus.length; sIndex++) {
         const sku = p.product_skus[sIndex];
 
@@ -305,10 +310,8 @@ export default function ProductsForm() {
       }
     }
 
-    return null; // All validations passed
+    return null;
   }
-
-  // Add these functions in ProductsForm component, after buildCreateProductPayload
 
   function buildUpdateProductPayload(formData, properties, contents, productMedia) {
     const payload = {
@@ -449,7 +452,7 @@ export default function ProductsForm() {
         // CREATE FLOW (existing logic)
         const validationError = validateBeforeSubmit(formData, products);
         if (validationError) {
-          errorToast(validationError);
+          toast.error(validationError);
           return;
         }
 
@@ -502,25 +505,17 @@ export default function ProductsForm() {
           } else if (result?.message) {
             errorMessage = result.message;
           }
-          errorToast(errorMessage);
+          toast.error(errorMessage);
           return;
         }
 
-        // successToast("Product created successfully");
-        successToast("Product created successfully");
+        // toast.success("Product created successfully");
+        toast.success("Product created successfully");
         setProducts([]);
         setGeneratedProducts([]);
         router.push("/catalog/products");
 
       } else {
-        // UPDATE FLOW (new logic)
-        // Get data from ProductUpdationAttributes component
-        // You'll need to pass these as refs or state from ProductUpdationAttributes
-
-        // For now, we'll get them from the component's internal state
-        // This requires modifications to ProductUpdationAttributes to expose these values
-
-        // Validation
         const validationError = validateUpdateProduct(
           formData,
           updateProperties,
@@ -529,7 +524,7 @@ export default function ProductsForm() {
         );
 
         if (validationError) {
-          errorToast(validationError);
+          toast.error(validationError);
           return;
         }
 
@@ -563,12 +558,12 @@ export default function ProductsForm() {
           } else if (result?.message) {
             errorMessage = result.message;
           }
-          errorToast(errorMessage);
+          toast.error(errorMessage);
           return;
         }
 
-        // successToast("Product updated successfully");
-        successToast("Product updated successfully");
+        // toast.success("Product updated successfully");
+        toast.success("Product updated successfully");
         setTimeout(() => {
           setIsEditing(false);
           router.push("/catalog/products");
@@ -582,7 +577,7 @@ export default function ProductsForm() {
 
     } catch (err) {
       console.error("=== SUBMIT ERROR ===", err);
-      errorToast(err.message || `An error occurred while ${isCreateNew ? 'creating' : 'updating'} the product`);
+      toast.error(err.message || `An error occurred while ${isCreateNew ? 'creating' : 'updating'} the product`);
     } finally {
       setLoading(false);
     }
@@ -854,7 +849,7 @@ function MainProductInformation({
       {/* Quantities */}
       <div>
         <label className="label">Order Quantities</label>
-        <div className="grid grid-cols-3 gap-6 mt-2">
+        <div className="grid grid-cols-3 gap-6 ">
           {[
             ["Min Order Qty", "min_order_quantity"],
             ["Max Order Qty", "max_order_quantity"],
@@ -1042,6 +1037,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
       setCategoryOptions(namesArray);
     } catch (err) {
       console.log(err);
+      // toast.error("Failed to fetch categories");
     }
   }
 
@@ -1054,6 +1050,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
       setTaxoptions(namesArray);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch Tax options");
     }
   }
 
@@ -1130,7 +1127,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
           <label
             className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer
         ${formData.status === "deleted"
-                ? "border-red-600 bg-gray-100 text-red-700"
+                ? "border-red-600 bg-red-100 text-red-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
               } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
@@ -1152,16 +1149,18 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
 
       {/* Category */}
       <HierarchicalCategorySelector
-        selectedCategoryId={formData.category_id}
-        onCategorySelect={(category) => {
+        selectedParentCategory={formData.parent_category}
+        selectedSubCategory={formData.sub_category}
+        onCategorySelect={(child, parent) => {
           setFormData(prev => ({
             ...prev,
-            category_id: category.id
+            category_id: child.id,
+            parent_category: parent,
+            sub_category: child
           }));
         }}
-        formData={formData}
-        setFormData={setFormData}
         disabled={fieldsDisabled}
+        required={true}
       />
 
       {/* Brand */}
@@ -1377,6 +1376,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
     }));
   }, [formData.cgst, formData.sgst]);
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -1452,10 +1452,11 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
       }
 
       onClose();
-      successToast("Tax type created");
+      toast.success("Tax type created");
     } catch (err) {
       setError(err.message);
-      errorToast(err.message);
+      toast.error(err.message);
+      console.log(err);
     } finally {
       setIsSubmitting(false);
     }
