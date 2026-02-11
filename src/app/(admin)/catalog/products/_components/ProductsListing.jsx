@@ -3,6 +3,7 @@ import DataTable from "../../../../../../components/shared/DataTable";
 import { useState, useEffect } from "react";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 import useDebounce from "../../../../../../components/hooks/useDebounce";
+import { SearchIcon } from "lucide-react";
 
 export default function ProductsListing() {
 
@@ -14,6 +15,7 @@ export default function ProductsListing() {
 
   const defaultFilters = {
     starts_with: "",
+    parent_category_id: "",
     sub_category_id: "",
     brand_id: "",
     status: ""
@@ -27,6 +29,7 @@ export default function ProductsListing() {
   const [parentCategoryOptions, setParentCategoryOptions] = useState([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState([]);
   const [parentCategory, setParentCategory] = useState("");
+  const [isSearch, setIsSearch] = useState(false);
 
   const hasActiveFilters =
     filters.starts_with ||
@@ -38,7 +41,7 @@ export default function ProductsListing() {
 
   useEffect(() => {
     fetchProductDetails(currentPage);
-  }, [currentPage, filters]);
+  }, [currentPage, isSearch]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -75,7 +78,7 @@ export default function ProductsListing() {
 
   async function fetchCategoriesOptions() {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`);
       const result = await response.json();
       setParentCategoryOptions(result.data);
     } catch (err) {
@@ -85,7 +88,7 @@ export default function ProductsListing() {
 
   async function fetchSubCategoriesOptions(parentId) {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${parentId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${parentId}&only_names=true`);
       const result = await response.json();
       setSubCategoryOptions(result.data);
     } catch (err) {
@@ -103,6 +106,8 @@ export default function ProductsListing() {
         ...(filters.status && { status: filters.status }),
         ...(filters.brand_id && { brand_id: filters.brand_id }),
         ...(filters.sub_category_id && { sub_category_id: filters.sub_category_id }),
+        ...(filters.parent_category_id && { parent_category_id: filters.parent_category_id })
+
       }).toString();
 
       const response = await fetch(
@@ -141,7 +146,7 @@ export default function ProductsListing() {
     {
       key: 'category',
       label: 'Category',
-      render: (_, row) => row.sub_category?.name ?? '—',
+      render: (_, row) => (<span>{row.parent_category?.name ?? "-"} {'>>'} {row.sub_category?.name} </span>),
     },
     {
       key: 'brand',
@@ -174,23 +179,40 @@ export default function ProductsListing() {
       <div className="max-w-full mx-auto">
         <div className="flex flex-wrap items-end gap-4 mb-5 p-4 bg-white shadow-sm border border-gray-200
  rounded-lg ">
-          {/* Search */}
-          <input
-            type="text"
-            placeholder="Search product by name..."
-            className="border text-gray-600 text-sm border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition px-3 h-9 w-52 rounded"
-            value={searchInput}
-            onChange={(e) =>
-              setSearchInput(e.target.value)
-            }
-          />
+          <div className="flex justify-center items-center">
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search product by name..."
+              className="border text-gray-600 text-sm border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition px-3 h-9 w-52 rounded-l"
+              value={searchInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFilters(prev => ({ ...prev, starts_with: value }));
+                setSearchInput(value);
+                if (value.trim() === "") {
+                  setIsSearch(!isSearch);
+                }
+              }
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setIsSearch(!isSearch);
+                }
+              }}
+            />
+            <span className="h-9 px-2 py-1 rounded-r border bg-blue-500 border-gray-300 focus:border-blue-700 hover:bg-blue-700 cursor-pointer" onClick={() => setIsSearch(!isSearch)} ><SearchIcon color="white" /></span>
+          </div>
 
           {/* Status */}
           <select
             className="border border-gray-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition px-3 h-9 w-32 rounded"
             value={filters.status}
-            onChange={(e) =>
-              setFilters(prev => ({ ...prev, status: e.target.value }))
+            onChange={(e) => {
+              const value = e.target.value;
+              setFilters(prev => ({ ...prev, status: value }));
+              if (value === "") setIsSearch(!isSearch);
+            }
             }
           >
             <option value="">All Status</option>
@@ -218,7 +240,7 @@ export default function ProductsListing() {
                 placeholder="Select Category"
                 options={parentCategoryOptions}
                 value={parentCategory}
-                onChange={(value) => { setParentCategory(value); setFilters(prev => ({ ...prev, sub_category_id: "" })) }}
+                onChange={(value) => { setParentCategory(value); setFilters(prev => ({ ...prev, sub_category_id: "", parent_category_id: value })) }}
               />
             </div>
             {/* Sub Category */}
@@ -234,9 +256,14 @@ export default function ProductsListing() {
               </div>
             )}
           </div>
+          {hasActiveFilters && (
+            <button className="h-10 px-4 bg-blue-700 text-gray-100 border rounded-md hover:bg-gray-100 hover:text-blue-600 hover:scale-110 cursor-pointer transition-all duration-200 ease-in-out" onClick={() => setIsSearch(!isSearch)}>
+              Apply
+            </button>
+          )}
 
           <div>
-            {hasActiveFilters && (<button className="h-10 px-4 bg-gray-100 border-2 border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-gray-100 rounded cursor-pointer" onClick={() => { setFilters(defaultFilters); setParentCategory(""); setSearchInput("") }} >
+            {hasActiveFilters && (<button className="h-10 px-4 bg-red-700 border text-gray-100 hover:bg-gray-100 hover:text-red-700 rounded cursor-pointer hover:scale-110 transition-all duration-200 ease-in-out" onClick={() => { setFilters(defaultFilters); setParentCategory(""); setSearchInput(""); setIsSearch(!isSearch) }} >
               Clear
             </button>)}
           </div>

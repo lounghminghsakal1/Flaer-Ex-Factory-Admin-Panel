@@ -21,6 +21,7 @@ import {
   Globe,
   ChevronLeft,
   ChevronRight,
+  ChevronLeftCircleIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -170,7 +171,7 @@ const SidebarLayout = ({ children }) => {
         {
           heading: 'Brands',
           items: [
-            { label: 'All Brands', href: '/catalog/brands' },
+            { label: 'Brands', href: '/catalog/brands' },
             { label: 'Create Brand', href: '/catalog/brands/form?createNew=true' },
           ],
         },
@@ -182,6 +183,13 @@ const SidebarLayout = ({ children }) => {
           ],
         },
       ],
+    },
+    {
+      id: 'collections',
+      label: "Collections",
+      shortName: "Collections",
+      icon: ChevronLeftCircleIcon,
+      href: '/collections'
     },
     {
       id: 'inventory',
@@ -201,7 +209,7 @@ const SidebarLayout = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <aside
         className={`

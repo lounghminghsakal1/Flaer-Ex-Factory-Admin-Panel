@@ -105,56 +105,65 @@ export default function ProductUpdationAttributes({
   }
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm p-6 space-y-8">
-      {/* Option Types Section */}
-      <PropertyTypesSection
-        productData={productData}
-        showUpdateSkuSection={showUpdateSkuSection}
-        setShowUpdateSkuSection={setShowUpdateSkuSection}
-        properties={properties}
-        setProperties={setProperties}
-        hasChanges={hasChanges}
-        setHasChanges={setHasChanges}
-        isEditing={isEditing}
-      />
+    <div className="w-full mx-auto">
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-8 space-y-6">
+          <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-2">
+            {/* Option Types Section */}
+            <PropertyTypesSection
+              productData={productData}
+              showUpdateSkuSection={showUpdateSkuSection}
+              setShowUpdateSkuSection={setShowUpdateSkuSection}
+              properties={properties}
+              setProperties={setProperties}
+              hasChanges={hasChanges}
+              setHasChanges={setHasChanges}
+              isEditing={isEditing}
+            />
+          </div>
+          <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-2">
+            {/* Product Contents Section */}
+            <ProductContentsSection
+              productData={productData}
+              contents={contents}
+              setContents={setContents}
+              hasChanges={hasContentsChanges}
+              setHasChanges={setHasContentsChanges}
+              isEditing={isEditing}
+            />
+          </div>
+          <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-2">
+            <ProductMediaSection
+              productData={productData}
+              isEditing={isEditing}
+              onMediaChange={onMediaChange}
+            />
+          </div>
+        </div>
+      </div>
 
-      {/* SKU Table Section */}
-      <SkuTableSection
-        productData={productData}
-        setSkuDetailsPopup={setSkuDetailsPopup}
-        options={options}
-        pricingMode={pricingMode}
-        globalPricing={globalPricing}
-        onRefresh={fetchProductDetails}
-        isEditing={isEditing}
-        setSkuForSkuDetailsPopup={setSkuForSkuDetailsPopup}
-      />
-
-      {/* Details Popup */}
-      {skuDetailsPopup && (
-        <SkuDetailsPopup
-          sku={skuForSkuDetailsPopup}
-          onClose={() => setSkuDetailsPopup(null)}
-          onSuccess={fetchProductDetails}
+      <div className="mt-4 bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-2">
+        {/* SKU Table Section */}
+        <SkuTableSection
+          productData={productData}
+          setSkuDetailsPopup={setSkuDetailsPopup}
+          options={options}
+          pricingMode={pricingMode}
+          globalPricing={globalPricing}
+          onRefresh={fetchProductDetails}
+          isEditing={isEditing}
+          setSkuForSkuDetailsPopup={setSkuForSkuDetailsPopup}
         />
-      )}
 
-      {/* Product Contents Section */}
-      <ProductContentsSection
-        productData={productData}
-        contents={contents}
-        setContents={setContents}
-        hasChanges={hasContentsChanges}
-        setHasChanges={setHasContentsChanges}
-        isEditing={isEditing}
-      />
-
-      <ProductMediaSection
-        productData={productData}
-        isEditing={isEditing}
-        onMediaChange={onMediaChange}
-      />
-
+        {/* Details Popup */}
+        {skuDetailsPopup && (
+          <SkuDetailsPopup
+            sku={skuForSkuDetailsPopup}
+            onClose={() => setSkuDetailsPopup(null)}
+            onSuccess={fetchProductDetails}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -551,17 +560,15 @@ function SkuTableSection({
       {/* Header with Create Button */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">Product SKUs</h3>
-        {isEditing && (
-          <button
-            onClick={() => {
-              setShowCreateSkuPopup(true);
-            }}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
-          >
-            <Plus size={18} />
-            Create Product SKU
-          </button>
-        )}
+        <button
+          onClick={() => {
+            setShowCreateSkuPopup(true);
+          }}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+        >
+          <Plus size={18} />
+          Create Product SKU
+        </button>
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -750,28 +757,6 @@ function ProductContentsSection({
       )}
     </div>
   );
-}
-
-// Helper function to get contents payload (can be exported and used in parent component)
-function getContentsPayload(contents) {
-  return contents
-    .filter(c => c.content_type && c.content_value) // Only include filled contents
-    .map(c => {
-      if (c.isExisting) {
-        // For existing contents, include ID
-        return {
-          id: c.id,
-          content_type: c.content_type,
-          content_value: c.content_value
-        };
-      } else {
-        // For new contents, no ID
-        return {
-          content_type: c.content_type,
-          content_value: c.content_value
-        };
-      }
-    });
 }
 
 function ContentRow({
@@ -1008,7 +993,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
               {/* PRIMARY IMAGE - Larger */}
               {primary && (
                 <div className="relative group">
-                  <div className="w-64 h-48 rounded-lg overflow-hidden border-2 border-blue-500">
+                  <div className="w-56 h-48 rounded-lg overflow-hidden border-2 border-blue-500">
                     <img
                       src={primary.media_url}
                       className="w-full h-full object-cover"
@@ -1033,7 +1018,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
               {/* OTHER IMAGES - Smaller (show first 3) */}
               {visibleOthers.map((media) => (
                 <div key={media.id} className="relative group">
-                  <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-300">
+                  <div className="w-56 h-48 rounded-lg overflow-hidden border border-gray-300">
                     <img
                       src={media.media_url}
                       className="w-full h-full object-cover"
@@ -1253,6 +1238,5 @@ function MediaPopup({
     </div>
   );
 }
-
 
 
