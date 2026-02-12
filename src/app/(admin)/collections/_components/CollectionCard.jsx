@@ -265,7 +265,7 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
         {/* Edit Button - Top Right */}
         <button
           onClick={handleEditClick}
-          className="edit-button absolute top-3 right-3 p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-blue-100 hover:text-blue-600 transition-all opacity-0 group-hover:opacity-100 z-10"
+          className="edit-button absolute top-3 right-3 p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-blue-100 hover:text-blue-600 transition-all opacity-0 group-hover:opacity-100 z-10 cursor-pointer"
         >
           <Edit2 size={16} />
         </button>

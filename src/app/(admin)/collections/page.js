@@ -24,7 +24,7 @@ export default function CollectionsPage() {
   const hasActiveFilters = filters.starts_with || filters.active !== "";
 
   useEffect(() => {
-    fetchCollectionsData(1);
+    setIsSearch(prev => !prev);
   }, []);
 
   async function fetchCollectionsData(page = 1, isLoadMore = false) {
@@ -70,7 +70,7 @@ export default function CollectionsPage() {
   useEffect(() => {
     if (page >= totalPages) return;
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !loadingMore) {
+      if (entries[0].isIntersecting && !loadingMore && !loading) {
         const nextPage = page + 1;
         fetchCollectionsData(nextPage, true);
       }
@@ -85,8 +85,11 @@ export default function CollectionsPage() {
   }, [page, totalPages, loadingMore]);
 
   useEffect(() => {
+    setCollectionsListData([]);
+    setPage(1);
     fetchCollectionsData(1);
   }, [isSearch]);
+
 
   return (
     <div className="p-5">
@@ -108,13 +111,13 @@ export default function CollectionsPage() {
                 const value = e.target.value;
                 setFilters(prev => ({ ...prev, starts_with: value }));
                 if (value.trim() === "") {
-                  setIsSearch(!isSearch);
+                  setIsSearch(prev => !prev);
                 }
               }
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  setIsSearch(!isSearch);
+                  setIsSearch(prev => !prev);
                 }
               }}
             />
@@ -130,7 +133,7 @@ export default function CollectionsPage() {
                 ...prev,
                 active: e.target.value
               }));
-              if (e.target.value === "") setIsSearch(!isSearch);
+              if (e.target.value === "") setIsSearch(prev => !prev);
             }}
           >
             <option value="">All Status</option>
@@ -139,10 +142,11 @@ export default function CollectionsPage() {
           </select>
 
           {hasActiveFilters && (
-            <button className="h-10 px-6 bg-blue-700 text-gray-100 border rounded-md hover:bg-gray-100 hover:text-blue-600 hover:scale-110 cursor-pointer transition-all duration-200 ease-in-out"
+            <button className="h-10 px-6 bg-blue-700 text-gray-100 border rounded-md hover:bg-gray-100 hover:text-blue-600 hover:scale-105 cursor-pointer transition-all duration-200 ease-in-out"
               onClick={() => {
                 setCollectionsListData([]);
                 setPage(1);
+                setTotalPages(1);
                 setIsSearch(prev => !prev);
               }}
             >
@@ -151,7 +155,7 @@ export default function CollectionsPage() {
           )}
 
           <div>
-            {hasActiveFilters && (<button className="h-10 px-4 bg-red-700 border text-gray-100 hover:bg-gray-100 hover:text-red-700 rounded cursor-pointer hover:scale-110 transition-all duration-200 ease-in-out"
+            {hasActiveFilters && (<button className="h-10 px-4 bg-red-700 border text-gray-100 hover:bg-gray-100 hover:text-red-700 rounded cursor-pointer hover:scale-105 transition-all duration-200 ease-in-out"
               onClick={() => {
                 setFilters(defaultFilters);
                 setCollectionsListData([]);
@@ -168,7 +172,7 @@ export default function CollectionsPage() {
       <CollectionsListing collectionsListData={collectionsListData} onUpdateCollection={fetchCollectionsData} />
       <div ref={loadMoreRef} className="h-40 flex justify-center items-center">
         {loadingMore && <p className="text-center text-2xl text-blue-800 m-20 font-bold ">Loading more ...</p>}
-        {page >= totalPages && <p className="flex justify-center items-center text-2xl text-blue-800 gap-4 font-bold m-20"><Package /> No more collections</p>}
+        {page >= totalPages && <p className="flex justify-center items-center text-2xl text-blue-800 gap-3 font-bold m-20"><Package /> No more collections</p>}
       </div>
     </div>
   )

@@ -47,10 +47,17 @@ const ImagePreviewPopup = ({ imageUrl, productName, showPopup, setShowPopup }) =
   );
 };
 
-const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds }) => {
+const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, isReordering = null }) => {
   const [showImagePreview, setShowImagePreview] = useState(false);
 
   const isMarkedForRemoval = removingIds?.includes(collectionItem.id);
+
+  const productName = collectionItem?.product?.name || collectionItem?.name;
+  const productCode = collectionItem?.product?.code || collectionItem?.code;
+  const productImage = collectionItem?.media || collectionItem?.sku_master_media;
+  const productActive = collectionItem?.active !== undefined ? collectionItem?.active : true;
+  const productSequence = collectionItem?.sequence;
+  const skuData = collectionItem?.sku_master || collectionItem;
 
   const handleRemove = () => {
     if (isMarkedForRemoval) {
@@ -63,7 +70,7 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds })
   };
 
   const handleImageClick = () => {
-    if (collectionItem?.sku_master_media) {
+    if (productImage) {
       setShowImagePreview(true);
     }
   };
@@ -72,22 +79,22 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds })
     <>
       <div
         className={`group relative bg-white rounded-xl border p-3 transition-all duration-300 ${isMarkedForRemoval
-            ? 'border-gray-300 bg-gray-100 opacity-50'
-            : 'border-gray-200 hover:shadow-md hover:border-blue-200'
+          ? 'border-gray-300 bg-gray-100 opacity-50'
+          : 'border-gray-200 hover:shadow-md hover:border-blue-200'
           }`}
       >
         {/* Horizontal Layout */}
         <div className="flex gap-3">
           {/* Image Section - Left Side */}
           <div
-            className={`shrink-0 ${collectionItem?.sku_master_media ? 'cursor-pointer' : ''}`}
+            className={`shrink-0 ${productImage ? 'cursor-pointer' : ''}`}
             onClick={handleImageClick}
           >
-            {collectionItem?.sku_master_media ? (
+            {productImage ? (
               <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden group/image">
                 <img
-                  src={collectionItem.sku_master_media}
-                  alt={collectionItem?.product?.name}
+                  src={productImage}
+                  alt={productName}
                   className={`w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-110 ${isMarkedForRemoval ? 'grayscale' : ''
                     }`}
                 />
@@ -107,7 +114,7 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds })
           <div className="flex-1 min-w-0">
             {/* Product Name */}
             <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 leading-tight">
-              {collectionItem?.product?.name}
+              {productName}
             </h3>
 
             {/* Product Code & Status - Same Row */}
@@ -115,18 +122,18 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds })
               <div className="flex items-center gap-1.5">
                 <Code size={10} className="text-gray-400" />
                 <p className="text-xs text-gray-600 font-mono">
-                  {collectionItem?.product?.code}
+                  {productCode}
                 </p>
               </div>
 
               {/* Status Badge */}
               <span
-                className={`flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${collectionItem?.active
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-red-100 text-red-700 border border-red-200'
+                className={`flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${productActive
+                  ? 'bg-green-100 text-green-700 border border-green-200'
+                  : 'bg-red-100 text-red-700 border border-red-200'
                   }`}
               >
-                {collectionItem?.active ? (
+                {productActive ? (
                   <>
                     <CheckCircle size={9} />
                     Active
@@ -138,25 +145,27 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds })
                   </>
                 )}
               </span>
-              <div className='px-3 mx-2 border border-purple-600 rounded-full text-purple-700'>
-                {collectionItem.sequence}
-              </div>
+              {productSequence !== undefined && isReordering && (
+                <div className='flex items-center justify-center w-5 h-5 bg-yellow-600 text-white text-[10px] font-semibold rounded-full'>
+                  {productSequence}
+                </div>
+              )}
             </div>
 
             {/* Pricing */}
-            {collectionItem?.sku_master && (
+            {skuData && (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-green-600 font-medium">MRP:</span>
                   <span className="text-sm font-bold text-green-700">
-                    ₹{parseFloat(collectionItem.sku_master.mrp)}
+                    ₹{parseFloat(skuData.mrp)}
                   </span>
                 </div>
                 <div className="w-px h-3 bg-gray-300"></div>
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-blue-600 font-medium">Selling:</span>
                   <span className="text-sm font-bold text-blue-700">
-                    ₹{parseFloat(collectionItem.sku_master.selling_price)}
+                    ₹{parseFloat(skuData.selling_price)}
                   </span>
                 </div>
               </div>
@@ -169,8 +178,8 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds })
               <button
                 onClick={handleRemove}
                 className={`p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${isMarkedForRemoval
-                    ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 opacity-100'
-                    : 'bg-red-100 text-red-600 hover:bg-red-200 opacity-0 group-hover:opacity-100'
+                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 opacity-100'
+                  : 'bg-red-100 text-red-600 hover:bg-red-200 opacity-0 group-hover:opacity-100'
                   }`}
                 title={isMarkedForRemoval ? 'Undo removal' : 'Mark for removal'}
               >
@@ -187,8 +196,8 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds })
 
       {/* Image Preview Popup */}
       <ImagePreviewPopup
-        imageUrl={collectionItem?.sku_master_media}
-        productName={collectionItem?.product?.name}
+        imageUrl={productImage}
+        productName={productName}
         showPopup={showImagePreview}
         setShowPopup={setShowImagePreview}
       />

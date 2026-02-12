@@ -4,28 +4,13 @@ import React, { useState, useRef } from 'react';
 import {
   LayoutDashboard,
   Package,
-  ShoppingCart,
   Warehouse,
-  Settings,
-  Layers,
-  Tag,
-  Box,
-  Users,
-  Cog,
-  ClipboardList,
-  Navigation,
-  DollarSign,
-  UserCog,
-  Download,
-  Menu,
-  Globe,
   ChevronLeft,
   ChevronRight,
   ChevronLeftCircleIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image';
 
 /* ---------------- Sidebar Item ---------------- */
 const SidebarItem = ({
@@ -37,34 +22,42 @@ const SidebarItem = ({
   href,
   isActive,
   onMouseEnter,
+  onMouseLeave,
 }) => {
   return (
     <div
-      className="w-full font-normal hover:font-medium mb-2"
+      className="w-full mb-1"
       onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <Link href={href || '#'}>
         <button
           className={`
             ${
               isActive
-                ? 'bg-opacity-50 text-white bg-[#1a2332] font-medium'
-                : 'text-gray-400'
+                ? 'bg-[#1a2332] text-white font-semibold border-l-4 border-blue-500'
+                : 'text-gray-400 border-l-4 border-transparent'
             }
-            flex flex-col items-center justify-center h-16 w-full
-            hover:scale-105 transition-all duration-300 hover:text-white
-            ${isCollapsed ? 'px-2' : 'px-4'}
+            ${
+              isCollapsed
+                ? 'flex flex-col items-center justify-center h-16 px-2'
+                : 'flex flex-row items-center h-12 px-4 gap-3'
+            }
+            w-full
+            hover:bg-[#1a2332] hover:text-white hover:border-l-4 hover:border-blue-400
+            transition-all duration-200
             relative
+            group
           `}
         >
-          {/* Active Indicator */}
-          {isActive && (
-            <div className="absolute left-0 h-16 w-1 bg-blue-500" />
-          )}
-
-          <Icon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} mb-1`} />
+          <Icon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} ${isCollapsed ? 'mb-1' : ''} flex-shrink-0`} />
           
-          <span className={`${isCollapsed ? 'text-[9px]' : 'text-xs'} text-center leading-tight`}>
+          <span
+            className={`
+              ${isCollapsed ? 'text-[9px] text-center leading-tight' : 'text-sm flex-1 text-left'}
+              group-hover:font-medium
+            `}
+          >
             {isCollapsed ? shortName || label : label}
           </span>
         </button>
@@ -78,7 +71,8 @@ const FloatingSubmenu = ({
   hoveredItem,
   isCollapsed,
   submenuData,
-  onClose,
+  onMouseEnter,
+  onMouseLeave,
   position,
 }) => {
   const pathname = usePathname();
@@ -91,21 +85,22 @@ const FloatingSubmenu = ({
         top: position.top,
         left: isCollapsed ? '80px' : '220px',
       }}
-      className="transition-all duration-300 select-none p-2 min-w-[300px] max-w-fit z-[9999] bg-[#0f1419] rounded-r-md fixed shadow-2xl border border-gray-800"
-      onMouseLeave={onClose}
+      className="transition-all duration-200 select-none p-1 min-w-[280px] max-w-fit z-[9999] bg-[#0f1419] rounded-r-md fixed shadow-2xl border border-gray-700"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
-      <h2 className="font-semibold text-sm mb-2 text-white uppercase">
+      <h2 className="font-semibold text-xs mb-1 px-1 text-white uppercase tracking-wide">
         {hoveredItem.label}
       </h2>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-1">
         {submenuData.map((section, sectionIdx) => (
-          <div key={sectionIdx}>
-            <h4 className="text-[11px] mb-0.5 font-semibold uppercase text-gray-500">
+          <div key={sectionIdx} className="p-1">
+            <h4 className="text-[10px] mb-0.5 font-semibold uppercase text-gray-500 px-1">
               {section.heading}
             </h4>
             
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {section.items.map((item, itemIdx) => {
                 const isActive = pathname.includes(item.href);
                 
@@ -113,14 +108,13 @@ const FloatingSubmenu = ({
                   <Link
                     key={itemIdx}
                     href={item.href}
-                    onClick={onClose}
                     className={`
-                      block px-2 py-0.5 rounded text-sm
-                      transition-all duration-200
+                      block px-1 py-0.5 rounded text-xs
+                      transition-all duration-150
                       ${
                         isActive
-                          ? 'bg-[#1a2332] text-white font-semibold'
-                          : 'text-gray-400 hover:text-white hover:font-semibold'
+                          ? 'bg-[#1a2332] text-white font-semibold border-l-2 border-blue-500'
+                          : 'text-gray-400 hover:bg-[#1a2332] hover:text-white hover:font-medium hover:border-l-2 hover:border-blue-400 border-l-2 border-transparent'
                       }
                     `}
                   >
@@ -142,8 +136,36 @@ const SidebarLayout = ({ children }) => {
   const [hoveredItem, setHoveredItem] = useState(null);
   const itemRefs = useRef({});
   const pathname = usePathname();
+  const hoverTimeoutRef = useRef(null);
 
   const toggleSidebar = () => setIsCollapsed((prev) => !prev);
+
+  const handleMouseEnter = (item) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    if (item.hasSubmenu) {
+      setHoveredItem(item);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredItem(null);
+    }, 150);
+  };
+
+  const handleSubmenuMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+  };
+
+  const handleSubmenuMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredItem(null);
+    }, 150);
+  };
 
   const menuItems = [
     {
@@ -186,10 +208,10 @@ const SidebarLayout = ({ children }) => {
     },
     {
       id: 'collections',
-      label: "Collections",
-      shortName: "Collections",
+      label: 'Collections',
+      shortName: 'Collections',
       icon: ChevronLeftCircleIcon,
-      href: '/collections'
+      href: '/collections',
     },
     {
       id: 'inventory',
@@ -252,7 +274,7 @@ const SidebarLayout = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2">
           {menuItems.map((item) => {
             const isActive = pathname.includes(item.href);
             
@@ -269,16 +291,15 @@ const SidebarLayout = ({ children }) => {
                   hasSubmenu={item.hasSubmenu}
                   href={item.href}
                   isActive={isActive}
-                  onMouseEnter={() =>
-                    item.hasSubmenu && setHoveredItem(item)
-                  }
+                  onMouseEnter={() => handleMouseEnter(item)}
+                  onMouseLeave={handleMouseLeave}
                 />
               </div>
             );
           })}
         </nav>
 
-        {/* Bottom Toggle Button (Alternative) */}
+        {/* Bottom Toggle Button */}
         <div className="border-t border-gray-800 p-4">
           <button
             onClick={toggleSidebar}
@@ -308,7 +329,8 @@ const SidebarLayout = ({ children }) => {
           hoveredItem={hoveredItem}
           isCollapsed={isCollapsed}
           submenuData={hoveredItem.submenuData}
-          onClose={() => setHoveredItem(null)}
+          onMouseEnter={handleSubmenuMouseEnter}
+          onMouseLeave={handleSubmenuMouseLeave}
           position={getSubmenuPosition(hoveredItem.id)}
         />
       )}
@@ -323,7 +345,7 @@ const SidebarLayout = ({ children }) => {
           m-1
           mt-2
         `}
-        onMouseEnter={() => hoveredItem && setHoveredItem(null)}
+        onMouseEnter={handleMouseLeave}
       >
         {children}
       </main>
