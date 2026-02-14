@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Package, GripVertical } from 'lucide-react';
+import { Package, GripVertical,Plus } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ProductCard from './ProductCard';
 
@@ -57,14 +57,14 @@ const SortableProductCard = ({ product, isReordering, removingIds, setRemovingId
         collectionItem={product}
         isEditing={!isReordering}
         removingIds={removingIds}
-        setRemovingIds={setRemovingIds} 
+        setRemovingIds={setRemovingIds}
         isReordering={isReordering}
       />
     </div>
   );
 };
 
-const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectionData = null }) => {
+const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectionData = null, setIsRightModalOpen = null }) => {
   const [isReordering, setIsReordering] = useState(false);
   const [removingIds, setRemovingIds] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -135,7 +135,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       if (!response.ok) throw new Error("Failed to update sequence");
 
       const result = await response.json();
-      
+
       // Replace old products with updated temp products
       setProducts(tempProducts);
       setTempProducts([]);
@@ -211,16 +211,17 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       if (!response.ok) throw new Error("Failed to remove items");
 
       const result = await response.json();
-      
+
       // Update the actual products state
       setProducts(resequencedProducts);
-      
+
       // If in reordering mode, also update temp products
       if (isReordering) {
         setTempProducts(resequencedProducts);
       }
-      
+
       setRemovingIds([]);
+      refreshProductsList();
       toast.success("Items removed successfully!");
     } catch (err) {
       console.error(err);
@@ -229,6 +230,17 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       setIsRemovingItems(false);
     }
   };
+
+  async function refreshProductsList() {
+    try {
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}`;
+      const response = await fetch(url);
+      const result = await response.json();
+      setCollectionData(result.data);
+    } catch (err) {
+      console.log(err);
+    }
+  }
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
@@ -244,7 +256,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
 
     // Work with appropriate products array
     const workingProducts = collectionId && isReordering ? tempProducts : products;
-    
+
     const oldIndex = workingProducts.findIndex((item) => item.id === active.id);
     const newIndex = workingProducts.findIndex((item) => item.id === over.id);
 
@@ -262,7 +274,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
     } else {
       setProducts(resequencedProducts);
     }
-    
+
     setActiveId(null);
   };
 
@@ -286,27 +298,34 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
             <button
               onClick={collectionId ? handleUpdateSequenceToBackend : handleUpdateSequence}
               disabled={isUpdatingSequence}
-              className={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${
-                isReordering
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
-              } ${isUpdatingSequence ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${isReordering
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
+                } ${isUpdatingSequence ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isUpdatingSequence ? 'Saving...' : isReordering ? 'Save Sequence' : 'Update Sequence'}
             </button>
+            {isReordering && (
+              <button className='px-3 py-2 rounded-lg font-medium bg-red-600 text-gray-200 hover:bg-red-500 cursor-pointer ' onClick={() => setIsReordering(false)}>
+                cancel
+              </button>
+            )}
             <button
               onClick={collectionId ? handleRemoveToBackend : handleRemoveMarked}
               disabled={removingIds.length === 0 || isRemovingItems}
-              className={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${
-                removingIds.length > 0
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              } ${isRemovingItems ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${removingIds.length > 0
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                } ${isRemovingItems ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isRemovingItems ? 'Removing...' : `Remove ${removingIds.length > 0 ? `(${removingIds.length})` : ''}`}
             </button>
           </div>
         )}
+        <button className="px-3 py-2 flex justify-center items-center border border-dashed rounded-lg gap-2 text-blue-800 cursor-pointer hover:bg-blue-800 hover:text-gray-100 transition-colors duration-200 ease-in-out" onClick={() => setIsRightModalOpen(true)}>
+          <Plus size={16} />
+          <h2>Add Products to Collection</h2>
+        </button>
       </div>
 
       {/* Products Grid */}
@@ -342,7 +361,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
                   collectionItem={activeProduct}
                   isEditing={false}
                   removingIds={[]}
-                  setRemovingIds={() => {}}
+                  setRemovingIds={() => { }}
                 />
               </div>
             ) : null}

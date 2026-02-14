@@ -31,7 +31,7 @@ export default function BrandsListing() {
 
       const query = new URLSearchParams({
         page,
-        ...(filters.starts_with && { starts_with: filters.starts_with }),
+        ...(filters.starts_with && { starts_with: filters.starts_with.trim() }),
         ...(filters.status && { status: filters.status })
       });
 

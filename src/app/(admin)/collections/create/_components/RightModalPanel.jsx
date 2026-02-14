@@ -3,19 +3,21 @@ import { X, Package, Search } from 'lucide-react';
 import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
 import { toast } from 'react-toastify';
 
-const ProductCard = ({ product, isSelected, onToggle }) => {
+const ProductCard = ({ product, isSelected, onToggle, isAlreadyAdded }) => {
+  const [showImagePreview, setShowImagePreview] = useState(false);
+
   const handleImageClick = (e) => {
     e.stopPropagation();
-    //image preview functionality
+    setShowImagePreview(true);
   };
 
   return (
     <div
-      onClick={onToggle}
-      className={`group w-92 relative bg-white rounded-lg border p-2 transition-all duration-300 cursor-pointer ${isSelected
+      onClick={!isAlreadyAdded ? onToggle : undefined}
+      className={`group w-full relative bg-white rounded-lg border p-2 transition-all duration-300 cursor-pointer ${isSelected
         ? 'border-blue-400 bg-blue-50 shadow-md'
         : 'border-gray-200 hover:shadow-md hover:border-blue-200'
-        }`}
+        }  ${isAlreadyAdded ? 'opacity-50' : ''} `}
     >
       {/* Horizontal Layout */}
       <div className="flex gap-1.5">
@@ -25,6 +27,7 @@ const ProductCard = ({ product, isSelected, onToggle }) => {
             type="checkbox"
             checked={isSelected}
             onChange={onToggle}
+            disabled={isAlreadyAdded}
             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           />
@@ -63,26 +66,84 @@ const ProductCard = ({ product, isSelected, onToggle }) => {
             <p className="text-xs text-gray-600 font-mono">
               {product?.code}
             </p>
+            {isAlreadyAdded && (
+              <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">
+                Already Added
+              </span>
+            )}
           </div>
 
           {/* Pricing */}
           {product?.mrp && (
             <div className="flex items-center gap-1">
               <div className="flex items-center gap-1">
-                <span className="text-xs text-green-600 font-medium">MRP:</span>
+                <span className="text-xs text-green-600 font-medium">Selling:</span>
                 <span className="text-sm font-bold text-green-700">
-                  ₹{parseFloat(product.mrp)}
+                  ₹{parseFloat(product.selling_price)}
                 </span>
               </div>
               <div className="w-px h-3 bg-gray-300"></div>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-blue-600 font-medium">Selling:</span>
+                <span className="text-xs text-blue-600 font-medium">MRP:</span>
                 <span className="text-sm font-bold text-blue-700">
-                  ₹{parseFloat(product.selling_price)}
+                  ₹{parseFloat(product.mrp)}
                 </span>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Image Preview Popup */}
+        <ImagePreviewPopup
+          imageUrl={product?.media}
+          productName={product?.name}
+          showPopup={showImagePreview}
+          setShowPopup={setShowImagePreview}
+        />
+      </div>
+    </div>
+  );
+};
+
+const ImagePreviewPopup = ({ imageUrl, productName, showPopup, setShowPopup }) => {
+  if (!showPopup) return null;
+
+  const handleClose = () => {
+    setShowPopup(false);
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+        {/* Close Button */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-2 bg-white/90 hover:bg-white rounded-full shadow-lg transition-colors z-10 cursor-pointer"
+        >
+          <X size={24} className="text-gray-700" />
+        </button>
+
+        {/* Image */}
+        <div className="p-6">
+          <img
+            src={imageUrl}
+            alt={productName}
+            className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+          />
+        </div>
+
+        {/* Image Name */}
+        <div className="px-6 pb-6">
+          <p className="text-center text-sm font-medium text-gray-700">{productName}</p>
         </div>
       </div>
     </div>
@@ -91,78 +152,41 @@ const ProductCard = ({ product, isSelected, onToggle }) => {
 
 export default function RightModalPanelCreate({ onClose, productsList, setProductsList, collectionId = null, existingProducts = [], setCollectionData = null }) {
   const [filterType, setFilterType] = useState(null);
-  const [filterTypeOptions, setFilterTypeOptions] = useState([
+  const [filterTypeOptions] = useState([
     { id: 1, name: 'Brand' },
     { id: 2, name: "Category" },
-    { id: 3, name: "Product Name" }
   ]);
   const [brandOptions, setBrandOptions] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [selectedParentCategory, setSelectedParentCategory] = useState(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
-  const [productNameSearch, setProductNameSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isMappingProducts, setIsMappingProducts] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalProducts, setTotalProducts] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   const [parentCategoryOptions, setParentCategoryOptions] = useState([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState([]);
 
+  const existingProductIds = new Set(productsList.map(p => p.id));
+  const isProductAlreadyAdded = (productId) => {
+    return existingProductIds.has(productId);
+  };
+
+  // Fetch options when filter type changes
   useEffect(() => {
     if (filterType === 1) {
       fetchBrandOptions();
-      // Clear category selections and search
-      setSelectedParentCategory(null);
-      setSelectedSubCategory(null);
-      setProductNameSearch('');
-    } else if (filterType === 2) { // 2 = Category
-      // Clear brand selection and search
-      setSelectedBrand(null);
-      setProductNameSearch('');
-      // Fetch parent categories
+    } else if (filterType === 2) {
       fetchParentCategoriesOptions();
-    } else if (filterType === 3) { // 3 = Product Name
-      // Clear brand and category selections
-      setSelectedBrand(null);
-      setSelectedParentCategory(null);
-      setSelectedSubCategory(null);
-      setProductNameSearch('');
     }
-    // Clear products when filter type changes
-    setProducts([]);
-    setSelectedProducts([]);
-    setCurrentPage(1);
   }, [filterType]);
 
-  // Use effect to handle product fetching for brand and category
-  useEffect(() => {
-    const shouldFetchProducts =
-      (filterType === 1 && selectedBrand) || // Brand selected
-      (filterType === 2 && selectedParentCategory); // Parent category selected
-
-    if (shouldFetchProducts) {
-      if (filterType === 1) {
-        fetchProducts(selectedBrand, currentPage);
-      } else if (filterType === 2) {
-        if (selectedSubCategory) {
-          fetchProductsBySubCategory(selectedSubCategory, currentPage);
-        } else {
-          fetchProductsByParentCategory(selectedParentCategory, currentPage);
-        }
-      }
-    } else {
-      // Clear products if conditions not met
-      if (filterType !== 3) {
-        setProducts([]);
-        setSelectedProducts([]);
-      }
-    }
-  }, [selectedBrand, selectedParentCategory, selectedSubCategory, filterType, currentPage]);
-
+  // Fetch subcategories when parent category changes
   useEffect(() => {
     if (selectedParentCategory) {
       fetchSubCategoriesOptionsOfAParent(selectedParentCategory);
@@ -172,11 +196,16 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
     }
   }, [selectedParentCategory]);
 
-  const getRemainingProducts = (allProducts, productsList) => {
-    const existingIds = new Set(productsList.map(product => product.id));
-    const remainingProducts = allProducts.filter(product => !existingIds.has(product.id));
-    return remainingProducts;
-  };
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchProducts(1);
+  },[selectedBrand, selectedParentCategory, selectedSubCategory]);
+
+  useEffect(() => {
+    if (searchText === "") {
+      fetchProducts(1);
+    }
+  },[searchText])
 
   async function fetchBrandOptions() {
     try {
@@ -217,88 +246,41 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
     }
   }
 
-  async function fetchProducts(brandId, page = 1) {
+  async function fetchProducts(page = 1) {
     setIsLoading(true);
     try {
-      const url = collectionId ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?collection_id=${collectionId}&brand_id=${brandId}&page=${page}` : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?brand_id=${brandId}&page=${page}`;
+      // Build URL with all active filters
+      let url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?page=${page}`;
+      
+      if (collectionId) {
+        url += `&collection_id=${collectionId}`;
+      }
+      
+      if (searchText.trim()) {
+        url += `&starts_with=${encodeURIComponent(searchText.trim())}`;
+      }
+      
+      if (filterType === 1 && selectedBrand) {
+        url += `&brand_id=${selectedBrand}`;
+      } else if (filterType === 2) {
+        if (selectedSubCategory) {
+          url += `&sub_category_id=${selectedSubCategory}`;
+        } else if (selectedParentCategory) {
+          url += `&parent_category_id=${selectedParentCategory}`;
+        }
+      }
+
+      if (!selectedBrand && !selectedParentCategory && !searchText) return;
+
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch products");
       const result = await response.json();
-      const remainingProducts = getRemainingProducts(result.data, productsList);
-      setProducts(remainingProducts);
+      setProducts(result.data);
       setTotalPages(result.meta.total_pages || 1);
       setTotalProducts(result.meta.total_data_count || 0);
       setSelectedProducts([]);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch products");
-      setProducts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function fetchProductsByParentCategory(parentCategoryId, page = 1) {
-    setIsLoading(true);
-    try {
-      const url = collectionId ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?collection_id=${collectionId}&parent_category_id=${parentCategoryId}&page=${page}`
-        : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?parent_category_id=${parentCategoryId}&page=${page}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch products");
-      const result = await response.json();
-      setProducts(result.data || []);
-      setTotalPages(result.meta.total_pages || 1);
-      setTotalProducts(result.meta.total_data_count || 0);
-      setSelectedProducts([]);
-    } catch (error) {
-      console.error('Error fetching products by parent category:', error);
-      toast.error("Failed to fetch products");
-      setProducts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function fetchProductsBySubCategory(subCategoryId, page = 1) {
-    setIsLoading(true);
-    try {
-      const url = collectionId ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?collection_id=${collectionId}&sub_category_id=${subCategoryId}&page=${page}`
-        : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?sub_category_id=${subCategoryId}&page=${page}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch products");
-      const result = await response.json();
-      setProducts(result.data || []);
-      setTotalPages(result.meta.total_pages || 1);
-      setTotalProducts(result.meta.total_data_count || 0);
-      setSelectedProducts([]);
-    } catch (error) {
-      console.error('Error fetching products by category:', error);
-      toast.error("Failed to fetch products");
-      setProducts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function fetchProductsByName(page = 1) {
-    if (!productNameSearch.trim()) {
-      toast.error("Please enter a product name to search");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const url = collectionId ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?collection_id=${collectionId}&starts_with=${productNameSearch}&page=${page}`
-        : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?starts_with=${productNameSearch}&page=${page}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch products");
-      const result = await response.json();
-      setProducts(result.data || []);
-      setTotalPages(result.meta.total_pages || 1);
-      setTotalProducts(result.meta.total_data_count || 0);
-      setSelectedProducts([]);
-    } catch (error) {
-      console.error('Error fetching products by name:', error);
       toast.error("Failed to fetch products");
       setProducts([]);
     } finally {
@@ -315,10 +297,31 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
   };
 
   const handleSelectAll = () => {
-    if (selectedProducts.length === products.length) {
-      setSelectedProducts([]);
+    const selectableProducts = products.filter(
+      p => !existingProductIds.has(p.id)
+    );
+
+    const selectableIds = selectableProducts.map(p => p.id);
+
+    const allSelectableSelected = selectableIds.length > 0 && 
+      selectableIds.every(id => selectedProducts.includes(id));
+
+    if (allSelectableSelected) {
+      // Deselect all selectable products from current page
+      setSelectedProducts(prev =>
+        prev.filter(id => !selectableIds.includes(id))
+      );
     } else {
-      setSelectedProducts(products.map(p => p.id));
+      // Select all selectable products from current page
+      setSelectedProducts(prev => {
+        const newSelected = [...prev];
+        selectableIds.forEach(id => {
+          if (!newSelected.includes(id)) {
+            newSelected.push(id);
+          }
+        });
+        return newSelected;
+      });
     }
   };
 
@@ -330,20 +333,15 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
 
     setIsMappingProducts(true);
     try {
-      // Get the selected product objects
       const selectedProductObjects = products.filter(product =>
         selectedProducts.includes(product.id)
       );
 
-      // Get existing product IDs
       const existingProductIds = productsList.map(p => p.id);
-
-      // Filter out products that are already in the list
       const newProducts = selectedProductObjects.filter(
         product => !existingProductIds.includes(product.id)
       );
 
-      // Count how many were duplicates
       const duplicateCount = selectedProductObjects.length - newProducts.length;
 
       if (newProducts.length === 0) {
@@ -352,11 +350,9 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
         return;
       }
 
-      // Append only new products to existing productsList
       const updatedProductsList = [...productsList, ...newProducts];
       setProductsList(updatedProductsList);
 
-      // Show appropriate success message
       if (duplicateCount > 0) {
         toast.success(
           `${newProducts.length} product(s) added successfully! ${duplicateCount} duplicate(s) skipped.`
@@ -375,59 +371,33 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    setSelectedProducts([]); // Clear selections when changing page
-
-    // Re-fetch based on current filter
-    if (filterType === 1 && selectedBrand) {
-      fetchProducts(selectedBrand, page);
-    } else if (filterType === 2) {
-      if (selectedSubCategory) {
-        fetchProductsBySubCategory(selectedSubCategory, page);
-      } else if (selectedParentCategory) {
-        fetchProductsByParentCategory(selectedParentCategory, page);
-      }
-    } else if (filterType === 3 && productNameSearch.trim()) {
-      fetchProductsByName(page);
-    }
+    setSelectedProducts([]);
+    fetchProducts(page);
   };
 
-  const handleProductNameSearch = () => {
+  const handleSearch = () => {
     setCurrentPage(1);
-    fetchProductsByName(1);
+    fetchProducts(1);
+  };
+
+  const handleClearAll = () => {
+    setSearchText('');
+    setFilterType(null);
+    setSelectedBrand(null);
+    setSelectedParentCategory(null);
+    setSelectedSubCategory(null);
+    setProducts([]);
+    setSelectedProducts([]);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalProducts(0);
   };
 
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
-      handleProductNameSearch();
+      handleSearch();
     }
   };
-
-  let emptyStateMessage = null;
-
-  if (!filterType) {
-    emptyStateMessage = "Select Filter Type";
-  }
-  else if (filterType === 1) { // Brand
-    if (!selectedBrand) {
-      emptyStateMessage = "Select Brand";
-    }
-    else if (!isLoading && products.length === 0) {
-      emptyStateMessage = "No Products Found";
-    }
-  }
-  else if (filterType === 2) { // Category
-    if (!selectedParentCategory) {
-      emptyStateMessage = "Select Parent Category";
-    }
-    else if (!isLoading && products.length === 0) {
-      emptyStateMessage = "No Products Found";
-    }
-  }
-  else if (filterType === 3) { // Product Name
-    if (!isLoading && products.length === 0) {
-      emptyStateMessage = "Enter product name and click search";
-    }
-  }
 
   const handleMapProductsToBackend = async () => {
     if (selectedProducts.length === 0) {
@@ -435,9 +405,9 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
       return;
     }
 
-    const newIndex = existingProducts[existingProducts.length-1]?.sequence || 0;
-
+    const newIndex = existingProducts[existingProducts.length - 1]?.sequence || 0;
     setIsMappingProducts(true);
+
     try {
       const payload = {
         collection_items: {
@@ -453,19 +423,24 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}/collection_item_mapping`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         }
       );
 
       if (!response.ok) throw new Error("Failed to map products");
 
-      const result = await response.json();
-      toast.success("Product(s) mapped successfully!");
-      refreshProductsList();
+      const newlyMappedProducts = products.filter(p =>
+        selectedProducts.includes(p.id)
+      );
 
+      setProductsList(prev => [...prev, ...newlyMappedProducts]);
+      setSelectedProducts([]);
+      toast.success("Product(s) mapped successfully!");
+      
+      setCurrentPage(1);
+      fetchProducts(1);
+      refreshProductsList();
     } catch (err) {
       console.log(err);
       toast.error("Failed to map products");
@@ -485,17 +460,25 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
     }
   }
 
+  const hasActiveFilters = searchText.trim() || filterType || selectedBrand || selectedParentCategory || selectedSubCategory;
+  
+  // Check if there are selectable products (not already added)
+  const selectableProducts = products.filter(p => !existingProductIds.has(p.id));
+  const selectableIds = selectableProducts.map(p => p.id);
+  const allSelectableSelected = selectableIds.length > 0 && 
+    selectableIds.every(id => selectedProducts.includes(id));
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-end z-50">
       <div
-        className="w-[50vw] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right"
+        className="w-[42vw] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right"
         style={{
           animation: 'slideInRight 0.3s ease-out'
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Add Products</h2>
+        <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-gray-900">Add Products</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
@@ -505,12 +488,48 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-3 py-4">
-          {/* All Filters in One Row */}
-          <div className="mb-6">
-            <div className="flex gap-4 items-end">
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Search Bar - Always Visible */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Search Products
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
+                placeholder="Enter product name..."
+                className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={handleSearch}
+                className="px-3 py-1.5 bg-white border border-primary text-primary text-sm font-medium rounded-lg hover:scale-105 transition-transform cursor-pointer flex items-center gap-1.5"
+              >
+                <Search size={16} />
+                Search
+              </button>
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearAll}
+                  className="px-3 py-1.5 bg-white border border-gray-400 text-gray-600 text-sm font-medium rounded-lg hover:scale-105 transition-transform cursor-pointer flex items-center gap-1.5"
+                >
+                  <X size={16} />
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Optional Filters */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Filters
+            </label>
+            <div className="flex gap-3 items-end flex-wrap">
               {/* Filter Type Dropdown */}
-              <div className="w-64">
+              <div className="w-44">
                 <SearchableDropdown
                   label="Filter Type"
                   placeholder="Choose a type"
@@ -518,17 +537,17 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                   value={filterType}
                   onChange={(value) => {
                     setFilterType(value);
-                    setProducts([]);
-                    setSelectedProducts([]);
-                    setCurrentPage(1);
+                    setSelectedBrand(null);
+                    setSelectedParentCategory(null);
+                    setSelectedSubCategory(null);
                   }}
                   searchPlaceholder="Search type..."
                 />
               </div>
 
-              {/* Brand Dropdown - Only show when filter type is 'brand' (id: 1) */}
+              {/* Brand Dropdown */}
               {filterType === 1 && (
-                <div className="w-64">
+                <div className="w-44">
                   <SearchableDropdown
                     label="Select Brand"
                     placeholder="Choose a brand"
@@ -536,17 +555,16 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                     value={selectedBrand}
                     onChange={(value) => {
                       setSelectedBrand(value);
-                      setCurrentPage(1);
                     }}
                     searchPlaceholder="Search brands..."
                   />
                 </div>
               )}
 
-              {/* Category Dropdowns - Only show when filter type is 'category' (id: 2) */}
+              {/* Category Dropdowns */}
               {filterType === 2 && (
                 <>
-                  <div className="flex-1">
+                  <div className="w-44">
                     <SearchableDropdown
                       label="Parent Category"
                       placeholder="Choose parent category"
@@ -555,51 +573,23 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                       onChange={(value) => {
                         setSelectedParentCategory(value);
                         setSelectedSubCategory(null);
-                        setCurrentPage(1);
                       }}
                       searchPlaceholder="Search categories..."
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="w-44">
                     <SearchableDropdown
-                      label="Sub Category (Optional)"
+                      label="Sub Category"
                       placeholder="Choose sub category"
                       options={subCategoryOptions}
                       value={selectedSubCategory}
                       onChange={(value) => {
                         setSelectedSubCategory(value);
-                        setCurrentPage(1);
                       }}
                       searchPlaceholder="Search sub categories..."
                     />
                   </div>
                 </>
-              )}
-
-              {/* Product Name Search - Only show when filter type is 'product name' (id: 3) */}
-              {filterType === 3 && (
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Search by Product Name
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={productNameSearch}
-                      onChange={(e) => setProductNameSearch(e.target.value)}
-                      onKeyPress={handleSearchKeyPress}
-                      placeholder="Enter product name..."
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <button
-                      onClick={handleProductNameSearch}
-                      className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2"
-                    >
-                      <Search size={18} />
-                      Search
-                    </button>
-                  </div>
-                </div>
               )}
             </div>
           </div>
@@ -607,30 +597,51 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
           {/* Products Section */}
           {products.length > 0 && (
             <div>
-              {/* Select All */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  Products ({totalProducts})
-                </h3>
-                <button
-                  onClick={handleSelectAll}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                >
-                  {selectedProducts.length === products.length ? 'Deselect All' : 'Select All'}
-                </button>
-              </div>
+              {/* Select All - Only show when more than 1 product and there are selectable products */}
+              {products.length > 1 && selectableProducts.length > 0 && (
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-gray-700">
+                    Products ({totalProducts})
+                  </h3>
+                  <button
+                    onClick={handleSelectAll}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                  >
+                    {allSelectableSelected ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+              )}
+
+              {/* Show product count when select all is not shown */}
+              {(products.length === 1 || selectableProducts.length === 0) && (
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-gray-700">
+                    Products ({totalProducts})
+                  </h3>
+                </div>
+              )}
+
+              {/* Loading State */}
+              {isLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              )}
 
               {/* Products List */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {products.map(product => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    isSelected={selectedProducts.includes(product.id)}
-                    onToggle={() => handleToggleProduct(product.id)}
-                  />
-                ))}
-              </div>
+              {!isLoading && (
+                <div className="grid grid-cols-2 gap-2.5 mb-4">
+                  {products.map(product => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      isSelected={selectedProducts.includes(product.id)}
+                      onToggle={() => handleToggleProduct(product.id)}
+                      isAlreadyAdded={isProductAlreadyAdded(product.id)}
+                    />
+                  ))}
+                </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -639,7 +650,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                   <button
                     onClick={() => handlePageChange(1)}
                     disabled={currentPage === 1}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${currentPage === 1
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === 1
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
@@ -652,7 +663,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${currentPage === 1
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === 1
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
@@ -661,12 +672,11 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                     &lt;
                   </button>
 
-                  {/* Page Numbers (showing 3 at a time) */}
+                  {/* Page Numbers */}
                   {(() => {
                     let startPage = Math.max(1, currentPage - 1);
                     let endPage = Math.min(totalPages, startPage + 2);
 
-                    // Adjust if we're near the end
                     if (endPage - startPage < 2) {
                       startPage = Math.max(1, endPage - 2);
                     }
@@ -678,7 +688,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                       <button
                         key={page}
                         onClick={() => handlePageChange(page)}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${currentPage === page
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === page
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
@@ -692,7 +702,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${currentPage === totalPages
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === totalPages
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
@@ -705,7 +715,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                   <button
                     onClick={() => handlePageChange(totalPages)}
                     disabled={currentPage === totalPages}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${currentPage === totalPages
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === totalPages
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
@@ -718,33 +728,28 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
             </div>
           )}
 
-          {/* Loading State */}
-          {isLoading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          )}
-
           {/* Empty State */}
-          {!isLoading && emptyStateMessage && (
+          {!isLoading && products.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Package size={48} className="mb-3 text-gray-400" />
-              <p className="text-sm font-medium">{emptyStateMessage}</p>
+              <p className="text-sm font-medium">
+                {hasActiveFilters ? 'No products found matching your criteria' : 'Enter a search term or apply filters to find products'}
+              </p>
             </div>
           )}
         </div>
 
         {/* Footer */}
         {products.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="px-5 py-3 border-t border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''} selected
               </p>
               <button
                 onClick={collectionId ? handleMapProductsToBackend : handleMapProducts}
                 disabled={selectedProducts.length === 0 || isMappingProducts}
-                className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 {isMappingProducts ? 'Adding...' : 'Add Products'}
               </button>

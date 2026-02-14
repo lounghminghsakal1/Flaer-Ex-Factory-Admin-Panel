@@ -102,7 +102,7 @@ export default function ProductsListing() {
 
       const query = new URLSearchParams({
         page,
-        ...(filters.starts_with && { starts_with: filters.starts_with }),
+        ...(filters.starts_with && { starts_with: filters.starts_with.trim() }),
         ...(filters.status && { status: filters.status }),
         ...(filters.brand_id && { brand_id: filters.brand_id }),
         ...(filters.sub_category_id && { sub_category_id: filters.sub_category_id }),

@@ -8,8 +8,8 @@ const CollectionForm = ({
   initialData = null,
   onFormDataChange = null,
   collection = null,
-  setCreateCollectionForm,
-  setCollection
+  setCreateCollectionForm = null,
+  setCollection = null
 }) => {
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
@@ -28,38 +28,49 @@ const CollectionForm = ({
     if (collection) {
       setFormData(prev => {
         return {
-          ...prev, 
-          name : collection.name,
-          description : collection.description,
-          collection_type : collection.collection_type,
+          ...prev,
+          name: collection.name,
+          description: collection.description,
+          collection_type: collection.collection_type,
           active: collection.active
         };
       });
       return;
-    } else if (collectionId) {
+    } else if (collectionId && collection) {
       console.log("Collection id is there so setting data ");
       setFormData(prev => {
         return {
           ...prev,
-          name : collection.name,
-          description : collection.description,
-          collection_type : collection.collection_type,
-          active : collection.active
+          name: collection.name,
+          description: collection.description,
+          collection_type: collection.collection_type,
+          active: collection.active
         }
       })
-      
+
       //fetchCollectionData();
     }
   }, [collectionId]);
 
   useEffect(() => {
-    setCreateCollectionForm(prev => ({
-      ...prev,
-      collection: {
-        ...prev.collection,
+    // For Create page
+    if (!isEditing && setCreateCollectionForm) {
+      setCreateCollectionForm(prev => ({
+        ...prev,
+        collection: {
+          ...prev.collection,
+          ...formData
+        }
+      }));
+    }
+    // For EDit page
+    if (isEditing && setCollection) {
+      setCollection(prev => ({
+        ...prev,
         ...formData
-      }
-    }));
+      }));
+    }
+
   }, [formData]);
 
   const fetchCollectionData = async () => {
@@ -86,30 +97,6 @@ const CollectionForm = ({
 
   };
 
-  useEffect(() => {
-    setCreateCollectionForm(prev => {
-      return {
-        ...prev,
-        collection: {
-          name: formData.name,
-          description: formData.description,
-          collection_type: formData.collection_type,
-          active: formData.active,
-        }
-      }
-    });
-
-    setCollection(prev => {
-      return {
-        ...prev,
-          name: formData.name,
-          description: formData.description,
-          collection_type: formData.collection_type,
-          active: formData.active,
-      }
-    });
-  }, [formData]);
-
   const handleToggleActive = () => {
     if (isFieldsDisabled) return;
     setFormData(prev => ({
@@ -129,7 +116,7 @@ const CollectionForm = ({
   return (
     <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm">
       <div className="px-4 py-3 space-y-3">
-        {/* Row 1: Collection Name + Active Toggle */}
+        {/* Row 1: Collection Name and Active Toggle */}
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
@@ -143,13 +130,13 @@ const CollectionForm = ({
               onChange={handleInputChange}
               placeholder="Enter collection name"
               disabled={isFieldsDisabled}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-100 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               required
             />
           </div>
 
           {/* Active Toggle */}
-          <div className="flex-shrink-0">
+          <div className="w-full flex-shrink-0">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
               Active Status
             </label>
@@ -162,7 +149,7 @@ const CollectionForm = ({
                 onClick={handleToggleActive}
                 disabled={isFieldsDisabled}
                 className={`relative w-11 h-6 rounded-full transition-colors ${formData.active ? 'bg-green-500' : 'bg-gray-300'
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  } disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer`}
               >
                 <span
                   className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${formData.active ? 'translate-x-5' : 'translate-x-0'

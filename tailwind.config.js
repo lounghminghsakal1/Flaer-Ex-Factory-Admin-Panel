@@ -1,8 +1,7 @@
+import defaultTheme from 'tailwindcss/defaultTheme';
+
 /** @type {import('tailwindcss').Config} */
-
-const defaultTheme = require('tailwindcss/defaultTheme');
-
-module.exports = {
+export default {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -30,43 +29,18 @@ module.exports = {
       },
 
       colors: {
-        headingBlack: '#323036',
-        ur: '#C00000',
-        pGray: '#4F4E56',
-        lightRed: '#FF8080',
-        darkBlue: '#4059BF',
-        borderGray: '#DDDCE0',
-        gray2: '#656565',
-        bGray: '#323036',
-        bGray2: '#DDDCE0',
-        iHeading: '#3A3A3A',
-        iText: '#616161',
-        sGray: '#F6F6F6',
-        dot: '#B0AFB6',
-        imageGray: '#9DA3A7',
-        headingBlue: '#4B4885',
-        solidGray: '#F3F3F3',
-        darkBlue1: '#344054',
-        darkBlue2: '#2A254B',
-        descBlue: '#505977',
-        borderBlue: '#4E4D93',
-        bgGray: '#EAEAEA',
-        offGreen: '#299E22',
-        bannerBlue: '#2E3E77',
-        navGray: '#6F6F6F',
-        verified: '#1d771d',
-        lightBlue: '#ECEFF8',
-        bgBlue: '#f8f5f7',
-        sidebarBlue: '#0c0a1d',
-        sidebarText: '#d8dae0',
-        // Sidebar colors
-        sidebarBlue: '#1e3a5f',      // Main sidebar background
-        sidebarText: '#94a3b8',       // Default text color
-        darkBlue: '#0f172a',          // Active indicator
-        darkBlue1: '#1e40af',         // Active background
-        lightBlue: '#3b82f6',         // Hover accent
-        bgBlue: '#f8fafc',            // Main background
-        bgGray: '#f1f5f9',            // Secondary background
+        primary: "#1d4ed8",
+        secondary: "#2563eb",
+        textPrimary: "#1d4ed8",
+        textSecondary: "#2563eb",
+        textMuted: "#64748b",
+        heading: "#0f172a",
+        background: "#f8fafc",
+        card: "#ffffff",
+        border: "#e2e8f0",
+        success: "#22c55e",
+        danger: "#ef4444",
+        warning: "#f59e0b",
       },
       width: {
         tabMax: '1440px',
