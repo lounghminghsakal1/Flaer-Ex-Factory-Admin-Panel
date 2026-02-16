@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Package, Search } from 'lucide-react';
+import { X, Package, Search, IndentIcon } from 'lucide-react';
 import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
 import { toast } from 'react-toastify';
+import Skeleton from 'react-loading-skeleton';
 
 const ProductCard = ({ product, isSelected, onToggle, isAlreadyAdded }) => {
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -199,13 +200,13 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
   useEffect(() => {
     setCurrentPage(1);
     fetchProducts(1);
-  },[selectedBrand, selectedParentCategory, selectedSubCategory]);
+  }, [selectedBrand, selectedParentCategory, selectedSubCategory]);
 
   useEffect(() => {
     if (searchText === "") {
       fetchProducts(1);
     }
-  },[searchText])
+  }, [searchText])
 
   async function fetchBrandOptions() {
     try {
@@ -251,15 +252,15 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
     try {
       // Build URL with all active filters
       let url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?page=${page}`;
-      
+
       if (collectionId) {
         url += `&collection_id=${collectionId}`;
       }
-      
+
       if (searchText.trim()) {
         url += `&starts_with=${encodeURIComponent(searchText.trim())}`;
       }
-      
+
       if (filterType === 1 && selectedBrand) {
         url += `&brand_id=${selectedBrand}`;
       } else if (filterType === 2) {
@@ -303,7 +304,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
 
     const selectableIds = selectableProducts.map(p => p.id);
 
-    const allSelectableSelected = selectableIds.length > 0 && 
+    const allSelectableSelected = selectableIds.length > 0 &&
       selectableIds.every(id => selectedProducts.includes(id));
 
     if (allSelectableSelected) {
@@ -437,7 +438,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
       setProductsList(prev => [...prev, ...newlyMappedProducts]);
       setSelectedProducts([]);
       toast.success("Product(s) mapped successfully!");
-      
+
       setCurrentPage(1);
       fetchProducts(1);
       refreshProductsList();
@@ -461,17 +462,17 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
   }
 
   const hasActiveFilters = searchText.trim() || filterType || selectedBrand || selectedParentCategory || selectedSubCategory;
-  
+
   // Check if there are selectable products (not already added)
   const selectableProducts = products.filter(p => !existingProductIds.has(p.id));
   const selectableIds = selectableProducts.map(p => p.id);
-  const allSelectableSelected = selectableIds.length > 0 && 
+  const allSelectableSelected = selectableIds.length > 0 &&
     selectableIds.every(id => selectedProducts.includes(id));
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-end z-50">
       <div
-        className="w-[42vw] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right"
+        className="w-[43vw] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right"
         style={{
           animation: 'slideInRight 0.3s ease-out'
         }}
@@ -491,7 +492,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
         <div className="flex-1 overflow-y-auto p-4">
           {/* Search Bar - Always Visible */}
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Search Products
             </label>
             <div className="flex gap-2">
@@ -501,7 +502,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                 onChange={(e) => setSearchText(e.target.value)}
                 onKeyPress={handleSearchKeyPress}
                 placeholder="Enter product name..."
-                className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-60 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
                 onClick={handleSearch}
@@ -564,7 +565,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
               {/* Category Dropdowns */}
               {filterType === 2 && (
                 <>
-                  <div className="w-44">
+                  <div className="w-48">
                     <SearchableDropdown
                       label="Parent Category"
                       placeholder="Choose parent category"
@@ -622,26 +623,22 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
               )}
 
               {/* Loading State */}
-              {isLoading && (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              {isLoading ? (
+                <div className='grid grid-cols-2 gap-2.5'>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((_, index) => (<SkeletonProductCardForRightModalPanel key={index} />))}
                 </div>
-              )}
-
-              {/* Products List */}
-              {!isLoading && (
-                <div className="grid grid-cols-2 gap-2.5 mb-4">
-                  {products.map(product => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      isSelected={selectedProducts.includes(product.id)}
-                      onToggle={() => handleToggleProduct(product.id)}
-                      isAlreadyAdded={isProductAlreadyAdded(product.id)}
-                    />
-                  ))}
-                </div>
-              )}
+              ) : (<div className="grid grid-cols-2 gap-2.5 mb-4">
+                {products.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isSelected={selectedProducts.includes(product.id)}
+                    onToggle={() => handleToggleProduct(product.id)}
+                    isAlreadyAdded={isProductAlreadyAdded(product.id)}
+                  />
+                ))}
+              </div>)
+              }
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -733,7 +730,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Package size={48} className="mb-3 text-gray-400" />
               <p className="text-sm font-medium">
-                {hasActiveFilters ? 'No products found matching your criteria' : 'Enter a search term or apply filters to find products'}
+                {hasActiveFilters ? 'No products found' : 'Enter a search term or apply filters to find products'}
               </p>
             </div>
           )}
@@ -749,7 +746,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
               <button
                 onClick={collectionId ? handleMapProductsToBackend : handleMapProducts}
                 disabled={selectedProducts.length === 0 || isMappingProducts}
-                className="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 {isMappingProducts ? 'Adding...' : 'Add Products'}
               </button>
@@ -768,6 +765,21 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
           }
         }
       `}</style>
+    </div>
+  );
+}
+
+
+function SkeletonProductCardForRightModalPanel() {
+  return (
+    <div className="p-2 border border-gray-300 rounded-lg flex gap-3">
+      <Skeleton height={20} width={20} />
+      <Skeleton height={60} width={60} />
+      <div className="flex-1">
+        <Skeleton height={18} />
+        <Skeleton height={14} width="40%" className="mt-1" />
+        <Skeleton height={14} width="60%" className="mt-2" />
+      </div>
     </div>
   );
 }

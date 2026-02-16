@@ -248,7 +248,9 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
     if (e.target.closest('.edit-button')) {
       return;
     }
-    router.push(`/collections/${collection.id}`);
+    const params = new URLSearchParams(window.location.search);
+
+    router.push(`/collections/${collection.id}?returnTo=${encodeURIComponent(params.toString())}`);
   };
 
   const handleEditClick = (e) => {
@@ -259,7 +261,7 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
   return (
     <React.Fragment key={collection.id}>
       <div
-        className="group bg-white rounded-xl border border-gray-200 p-4 transition-all duration-300 hover:shadow-lg hover:border-blue-300 hover:-translate-y-1 cursor-pointer relative"
+        className="group bg-white rounded-xl border border-gray-200 p-4 transition-all duration-300 hover:shadow-lg hover:border-secondary hover:-translate-y-1 hover:scale-101 cursor-pointer relative"
         onClick={handleCardClick}
       >
         {/* Edit Button - Top Right */}
@@ -302,15 +304,15 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
         <div className="flex items-center justify-between pt-3 border-t border-gray-200">
           <span
             className={`px-2.5 py-1 text-sm font-semibold rounded-full ${collection.active
-                ? 'bg-green-100 text-green-700 border border-green-200'
-                : 'bg-red-100 text-red-700 border border-red-200'
+              ? 'bg-green-100 text-green-700 border border-green-200'
+              : 'bg-red-100 text-red-700 border border-red-200'
               }`}
           >
             {collection.active ? 'Active' : 'Inactive'}
           </span>
 
           <div className="p-2 rounded-full bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
-            <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
+            <ArrowRight size={24} className=" transition-transform" />
           </div>
         </div>
       </div>

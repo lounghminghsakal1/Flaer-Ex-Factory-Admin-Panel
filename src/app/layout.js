@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmProvider from "../../components/shared/ConfirmProvider";
 import { Outfit } from "next/font/google";
+import 'react-loading-skeleton/dist/skeleton.css';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

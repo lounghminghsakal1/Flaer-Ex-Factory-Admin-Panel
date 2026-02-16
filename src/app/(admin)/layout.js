@@ -7,7 +7,7 @@ import {
   Warehouse,
   ChevronLeft,
   ChevronRight,
-  ChevronLeftCircleIcon,
+  Layers,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -74,6 +74,7 @@ const FloatingSubmenu = ({
   onMouseEnter,
   onMouseLeave,
   position,
+  onLinkClick,
 }) => {
   const pathname = usePathname();
 
@@ -96,18 +97,32 @@ const FloatingSubmenu = ({
       <div className="grid grid-cols-2 gap-1">
         {submenuData.map((section, sectionIdx) => (
           <div key={sectionIdx} className="p-1">
-            <h4 className="text-[10px] mb-0.5 font-semibold uppercase text-gray-500 px-1">
+            <h4 className="text-[10px] mb-1 font-semibold uppercase text-gray-500 px-1">
               {section.heading}
             </h4>
             
             <div className="space-y-0.5">
               {section.items.map((item, itemIdx) => {
-                const isActive = pathname.includes(item.href);
+                // Check if this exact path or a child path matches
+                // But prioritize exact matches over parent paths
+                const isExactMatch = pathname === item.href;
+                const isChildRoute = pathname.startsWith(item.href + '/');
+                
+                // If it's a child route, only mark as active if no other item in the same section is an exact match
+                let isActive = false;
+                if (isExactMatch) {
+                  isActive = true;
+                } else if (isChildRoute) {
+                  // Check if any other item in this section is an exact match
+                  const hasExactMatch = section.items.some(otherItem => pathname === otherItem.href);
+                  isActive = !hasExactMatch;
+                }
                 
                 return (
                   <Link
                     key={itemIdx}
                     href={item.href}
+                    onClick={onLinkClick}
                     className={`
                       block px-1 py-0.5 rounded text-xs
                       transition-all duration-150
@@ -144,8 +159,11 @@ const SidebarLayout = ({ children }) => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
+    // Only show submenu if this specific item has a submenu
     if (item.hasSubmenu) {
       setHoveredItem(item);
+    } else {
+      setHoveredItem(null);
     }
   };
 
@@ -165,6 +183,11 @@ const SidebarLayout = ({ children }) => {
     hoverTimeoutRef.current = setTimeout(() => {
       setHoveredItem(null);
     }, 150);
+  };
+
+  const handleSubmenuLinkClick = () => {
+    // Close submenu immediately when a link is clicked
+    setHoveredItem(null);
   };
 
   const menuItems = [
@@ -187,21 +210,21 @@ const SidebarLayout = ({ children }) => {
           heading: 'Categories',
           items: [
             { label: 'Categories', href: '/catalog/categories' },
-            { label: 'Create category', href: '/catalog/categories/form?createNew=true' },
+            { label: 'Create category', href: '/catalog/categories/form' },
           ],
         },
         {
           heading: 'Brands',
           items: [
             { label: 'Brands', href: '/catalog/brands' },
-            { label: 'Create Brand', href: '/catalog/brands/form?createNew=true' },
+            { label: 'Create Brand', href: '/catalog/brands/form' },
           ],
         },
         {
           heading: 'Products',
           items: [
             { label: 'Products', href: '/catalog/products' },
-            { label: 'Create Product', href: '/catalog/products/form?createNew=true' },
+            { label: 'Create Product', href: '/catalog/products/form' },
           ],
         },
       ],
@@ -210,7 +233,7 @@ const SidebarLayout = ({ children }) => {
       id: 'collections',
       label: 'Collections',
       shortName: 'Collections',
-      icon: ChevronLeftCircleIcon,
+      icon: Layers,
       href: '/collections',
     },
     {
@@ -230,6 +253,17 @@ const SidebarLayout = ({ children }) => {
     return { top: `${rect.top}px` };
   };
 
+  // Check if current path matches any submenu item
+  const isSubmenuItemActive = (item) => {
+    if (!item.hasSubmenu || !item.submenuData) return false;
+    
+    return item.submenuData.some(section =>
+      section.items.some(subItem => 
+        pathname === subItem.href || pathname.startsWith(subItem.href + '/')
+      )
+    );
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -242,41 +276,44 @@ const SidebarLayout = ({ children }) => {
         `}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-center border-b border-gray-800 relative">
+        <div className="h-16 flex items-center justify-between border-b border-gray-800 px-4">
           {isCollapsed ? (
-            <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-blue-600 rounded flex items-center justify-center">
-              <span className="text-white font-bold text-lg">EX</span>
-            </div>
+            <button
+              onClick={toggleSidebar}
+              className="w-10 h-10 bg-[#1a2332] hover:bg-[#2a3442] rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 mx-auto"
+              title="Expand sidebar"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           ) : (
-            <div className="px-4">
-              <div className="text-2xl font-bold">
-                <span className="text-yellow-500">EX</span>
-                <span className="text-blue-500">Factory</span>
+            <>
+              <div className="flex-1">
+                <div className="text-2xl font-bold">
+                  <span className="text-yellow-500">EX</span>
+                  <span className="text-blue-500">Factory</span>
+                </div>
+                <div className="text-[10px] text-gray-500 tracking-wider">
+                  ALL MATERIALS AND PRODUCTS
+                </div>
               </div>
-              <div className="text-[10px] text-gray-500 tracking-wider">
-                ALL MATERIALS AND PRODUCTS
-              </div>
-            </div>
+              
+              <button
+                onClick={toggleSidebar}
+                className="w-8 h-8 bg-[#1a2332] hover:bg-[#2a3442] rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-200 hover:scale-110"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </>
           )}
-          
-          {/* Collapse Toggle Button */}
-          <button
-            onClick={toggleSidebar}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-6 h-6 bg-[#1a2332] hover:bg-[#2a3442] rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-200 hover:scale-110 z-[9999]"
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2">
           {menuItems.map((item) => {
-            const isActive = pathname.includes(item.href);
+            const isActive = pathname === item.href || 
+                           pathname.startsWith(item.href + '/') || 
+                           isSubmenuItemActive(item);
             
             return (
               <div
@@ -298,29 +335,6 @@ const SidebarLayout = ({ children }) => {
             );
           })}
         </nav>
-
-        {/* Bottom Toggle Button */}
-        <div className="border-t border-gray-800 p-4">
-          <button
-            onClick={toggleSidebar}
-            className={`
-              w-full h-10 rounded-lg bg-[#1a2332] hover:bg-[#2a3442] 
-              text-gray-400 hover:text-white transition-all duration-200
-              flex items-center justify-center gap-2
-              ${isCollapsed ? 'px-2' : 'px-4'}
-            `}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="w-5 h-5" />
-            ) : (
-              <>
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Collapse</span>
-              </>
-            )}
-          </button>
-        </div>
       </aside>
 
       {/* Floating Submenu */}
@@ -331,6 +345,7 @@ const SidebarLayout = ({ children }) => {
           submenuData={hoveredItem.submenuData}
           onMouseEnter={handleSubmenuMouseEnter}
           onMouseLeave={handleSubmenuMouseLeave}
+          onLinkClick={handleSubmenuLinkClick}
           position={getSubmenuPosition(hoveredItem.id)}
         />
       )}
@@ -341,9 +356,9 @@ const SidebarLayout = ({ children }) => {
           flex-1 min-h-screen
           ${isCollapsed ? 'ml-[85px]' : 'ml-[240px]'}
           transition-[margin-left] duration-300
-          bg-gray-50
+          bg-gray-100
           m-1
-          mt-2
+          mt-2 
         `}
         onMouseEnter={handleMouseLeave}
       >

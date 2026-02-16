@@ -121,7 +121,7 @@ const CollectionForm = ({
           <div className="flex-1">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
               <Tag size={14} className="text-blue-500" />
-              Collection Name
+              Collection Name <span className='text-red-600'>*</span>
             </label>
             <input
               type="text"

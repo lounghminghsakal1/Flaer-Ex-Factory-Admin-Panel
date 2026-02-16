@@ -1,6 +1,6 @@
 // ProductCard 
 import { useState } from 'react';
-import { Package, Hash, Code, Link2, Eye, CheckCircle, XCircle, DollarSign, ImageIcon, X, Trash2 } from 'lucide-react';
+import { Package, Hash, Code, Link2, Eye, CheckCircle, XCircle, DollarSign, ImageIcon, X, Trash2, Undo } from 'lucide-react';
 
 const ImagePreviewPopup = ({ imageUrl, productName, showPopup, setShowPopup }) => {
   if (!showPopup) return null;
@@ -113,14 +113,13 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
           {/* Content Section - Middle */}
           <div className="flex-1 min-w-0">
             {/* Product Name */}
-            <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 leading-tight">
+            <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 truncate leading-tight">
               {productName}
             </h3>
 
             {/* Product Code & Status - Same Row */}
             <div className="flex items-center gap-2 mb-2">
               <div className="flex items-center gap-1.5">
-                <Code size={10} className="text-gray-400" />
                 <p className="text-xs text-gray-600 font-mono">
                   {productCode}
                 </p>
@@ -146,7 +145,7 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
                 )}
               </span>
               {productSequence !== undefined && isReordering && (
-                <div className='flex items-center justify-center w-5 h-5 bg-yellow-600 text-white text-[10px] font-semibold rounded-full'>
+                <div className='flex items-center justify-center w-5 h-5 bg-blue-800 text-white text-[10px] font-semibold rounded-full'>
                   {productSequence}
                 </div>
               )}
@@ -156,16 +155,16 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
             {skuData && (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs text-green-600 font-medium">MRP:</span>
+                  <span className="text-xs text-green-600 font-medium">Selling:</span>
                   <span className="text-sm font-bold text-green-700">
-                    ₹{parseFloat(skuData.mrp)}
+                    ₹{parseFloat(skuData.selling_price)}
                   </span>
                 </div>
                 <div className="w-px h-3 bg-gray-300"></div>
                 <div className="flex items-center gap-1">
-                  <span className="text-xs text-blue-600 font-medium">Selling:</span>
+                  <span className="text-xs text-blue-600 font-medium">MRP:</span>
                   <span className="text-sm font-bold text-blue-700">
-                    ₹{parseFloat(skuData.selling_price)}
+                    ₹{parseFloat(skuData.mrp)}
                   </span>
                 </div>
               </div>
@@ -184,7 +183,7 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
                 title={isMarkedForRemoval ? 'Undo removal' : 'Mark for removal'}
               >
                 {isMarkedForRemoval ? (
-                  <Package size={16} />
+                  <Undo size={16} />
                 ) : (
                   <X size={16} />
                 )}

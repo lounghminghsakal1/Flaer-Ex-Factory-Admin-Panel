@@ -509,11 +509,14 @@ export default function ProductsForm() {
           return;
         }
 
-        // toast.success("Product created successfully");
         toast.success("Product created successfully");
         setProducts([]);
         setGeneratedProducts([]);
-        router.push("/catalog/products");
+        const returnTo = searchParams.get("returnTo");
+
+        router.push(
+          `/catalog/products${returnTo ? `?${decodeURIComponent(returnTo)}` : ""}`
+        );
 
       } else {
         const validationError = validateUpdateProduct(
@@ -566,7 +569,11 @@ export default function ProductsForm() {
         toast.success("Product updated successfully");
         setTimeout(() => {
           setIsEditing(false);
-          router.push("/catalog/products");
+          const returnTo = searchParams.get("returnTo");
+
+          router.push(
+            `/catalog/products${returnTo ? `?${decodeURIComponent(returnTo)}` : ""}`
+          );
         }, 800);
 
         // Refresh product details

@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Package, GripVertical,Plus } from 'lucide-react';
+import { Package, GripVertical, Plus } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ProductCard from './ProductCard';
 
@@ -150,17 +150,6 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
     }
   };
 
-  async function refreshProductsList() {
-    try {
-      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}`;
-      const response = await fetch(url);
-      const result = await response.json();
-      setCollectionData(result.data);
-    } catch (err) {
-      console.log(err);
-    }
-  }
-
   const handleRemoveMarked = () => {
     if (removingIds.length === 0) return;
 
@@ -287,45 +276,89 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
   return (
     <div className="w-full">
       {/* Title Row */}
-      <div className="flex items-center justify-between my-6 pb-4 border-b border-gray-200">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Products</h2>
-          <p className="text-sm text-gray-600">{displayProducts.length} products</p>
+      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+
+        {/* LEFT SECTION */}
+        <div className="flex items-center gap-6">
+
+          {/* Title and Count */}
+          <div className="flex flex-col">
+            <h2 className="text-xl font-semibold text-gray-900">Products</h2>
+            <p className="text-sm text-gray-500">
+              {displayProducts.length} product{displayProducts.length !== 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
 
-        {displayProducts.length > 0 && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={collectionId ? handleUpdateSequenceToBackend : handleUpdateSequence}
-              disabled={isUpdatingSequence}
-              className={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${isReordering
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
-                } ${isUpdatingSequence ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isUpdatingSequence ? 'Saving...' : isReordering ? 'Save Sequence' : 'Update Sequence'}
-            </button>
-            {isReordering && (
-              <button className='px-3 py-2 rounded-lg font-medium bg-red-600 text-gray-200 hover:bg-red-500 cursor-pointer ' onClick={() => setIsReordering(false)}>
-                cancel
+        <div className='flex items-center gap-2'>
+          {/* BULK ACTIONS */}
+          {displayProducts.length > 0 && (
+            <div className="flex items-center gap-2">
+
+              {/* UPDATE SEQUENCE */}
+              <button
+                onClick={collectionId ? handleUpdateSequenceToBackend : handleUpdateSequence}
+                disabled={isUpdatingSequence}
+                className={`px-4 py-2 rounded-md border text-sm font-medium transition-transform cursor-pointer
+                  ${isReordering
+                    ? "border-primary bg-primary/90 text-white hover:bg-primary/80"
+                    : "border-gray-400 bg-white text-gray-700 hover:border-gray-500"
+                  }
+                  ${isUpdatingSequence ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}
+                `}
+              >
+                {isUpdatingSequence
+                  ? "Saving..."
+                  : isReordering
+                    ? "Save Sequence"
+                    : "Update Sequence"}
               </button>
-            )}
-            <button
-              onClick={collectionId ? handleRemoveToBackend : handleRemoveMarked}
-              disabled={removingIds.length === 0 || isRemovingItems}
-              className={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${removingIds.length > 0
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                } ${isRemovingItems ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isRemovingItems ? 'Removing...' : `Remove ${removingIds.length > 0 ? `(${removingIds.length})` : ''}`}
-            </button>
-          </div>
-        )}
-        <button className="px-3 py-2 flex justify-center items-center border border-dashed rounded-lg gap-2 text-blue-800 cursor-pointer hover:bg-blue-800 hover:text-gray-100 transition-colors duration-200 ease-in-out" onClick={() => setIsRightModalOpen(true)}>
-          <Plus size={16} />
-          <h2>Add Products to Collection</h2>
-        </button>
+
+              {/* CANCEL REORDER */}
+              {isReordering && (
+                <button
+                  onClick={() => {
+                    setIsReordering(false);
+                    setTempProducts([]);
+                  }}
+                  className="px-4 py-2 rounded-md border border-gray-400 bg-white text-gray-700 text-sm font-medium hover:scale-105 hover:border-gray-500 transition-transform cursor-pointer"
+                >
+                  Cancel
+                </button>
+              )}
+
+              {/* REMOVE */}
+              {removingIds.length > 0 && (
+                <button
+                  onClick={collectionId ? handleRemoveToBackend : handleRemoveMarked}
+                  disabled={removingIds.length === 0 || isRemovingItems}
+                  className={`px-4 py-2 rounded-md border text-sm font-medium transition-transform cursor-pointer
+                  ${removingIds.length > 0
+                      ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
+                      : "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }
+                  ${isRemovingItems || removingIds.length === 0 ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}
+                `}
+                >
+                  {isRemovingItems
+                    ? "Removing..."
+                    : `Remove${removingIds.length > 0 ? ` (${removingIds.length})` : ""}`}
+                </button>
+
+              )}
+
+            </div>
+          )}
+
+          {/* RIGHT PRIMARY CTA - CTA means call to action */}
+          <button
+            onClick={() => { if (isReordering) { toast.warn("Finish sequencing first"); return; }; setIsRightModalOpen(true); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md border border-primary bg-primary text-white text-sm font-medium hover:bg-primary/90 hover:scale-105 transition-transform cursor-pointer ${isUpdatingSequence ? "cursor-not-allowed" : ""}`}
+          >
+            <Plus size={18} />
+            Add Products
+          </button>
+        </div>
       </div>
 
       {/* Products Grid */}
@@ -341,7 +374,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
             items={displayProducts.map(p => p.id)}
             strategy={rectSortingStrategy}
           >
-            <div className={`grid grid-cols-3 gap-6 ${isReordering ? 'pl-10' : ''}`}>
+            <div className={`grid grid-cols-3 gap-6 mt-6 ${isReordering ? 'pl-10' : ''}`}>
               {displayProducts.map((product) => (
                 <SortableProductCard
                   key={product.id}
@@ -368,11 +401,11 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
           </DragOverlay>
         </DndContext>
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-          <div className="w-20 h-20 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center py-16 text-gray-500 mt-6">
+          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
             <Package size={40} className="text-gray-400" />
           </div>
-          <p className="text-lg font-medium text-gray-600">No Products Added</p>
+          <p className="text-lg font-medium text-gray-600 mt-4">No Products Added</p>
           <p className="text-sm text-gray-500 mt-1">Click "Add Products" to get started</p>
         </div>
       )}

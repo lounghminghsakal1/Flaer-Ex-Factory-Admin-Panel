@@ -1410,7 +1410,8 @@ export default function ProductCreationAttributes({
                               }
                               onWheel={(e) => e.target.blur()}
                               onChange={(e) => {
-                                const newFactor = Number(e.target.value);
+                                const raw = e.target.value;
+                                const newFactor = raw === "" ? "" : Number(raw);
 
                                 setProducts(prev =>
                                   prev.map((p, pIdx) => {
@@ -1465,7 +1466,7 @@ export default function ProductCreationAttributes({
                               <td className="px-2 py-1">
                                 <input
                                   type="number"
-                                  min="0"
+                                  min="1"
                                   className={inputCell}
                                   value={sku.mrp ?? ""}
                                   onWheel={(e) => e.target.blur()}
@@ -1500,7 +1501,7 @@ export default function ProductCreationAttributes({
                               <td className="px-2 py-1">
                                 <input
                                   type="number"
-                                  min="0"
+                                  min="1"
                                   className={`${inputCell} bg-gray-100`}
                                   value={sku.unit_price ?? ""}
                                   onWheel={(e) => e.target.blur()}
@@ -1528,7 +1529,7 @@ export default function ProductCreationAttributes({
                               <td className="px-2 py-1">
                                 <input
                                   type="number"
-                                  min="0"
+                                  min="1"
                                   className={inputCell}
                                   value={sku.selling_price ?? ""}
                                   onWheel={(e) => e.target.blur()}
@@ -1557,7 +1558,7 @@ export default function ProductCreationAttributes({
                               <td className="px-2 py-1">
                                 <input
                                   type="number"
-                                  min="0"
+                                  min="1"
                                   className={inputCell}
                                   value={sku.unit_price ?? ""}
                                   onWheel={(e) => e.target.blur()}
@@ -1597,7 +1598,7 @@ export default function ProductCreationAttributes({
                               <td className="px-2 py-1">
                                 <input
                                   type="number"
-                                  min="0"
+                                  min="1"
                                   className={`${inputCell} bg-gray-100`}
                                   value={sku.mrp ?? ""}
                                   onWheel={(e) => e.target.blur()}
@@ -1625,7 +1626,7 @@ export default function ProductCreationAttributes({
                               <td className="px-2 py-1">
                                 <input
                                   type="number"
-                                  min="0"
+                                  min="1"
                                   className={`${inputCell} bg-gray-100`}
                                   value={sku.selling_price ?? ""}
                                   onWheel={(e) => e.target.blur()}

@@ -129,7 +129,7 @@ export default function DataTable({
                       <button className="
                         inline-flex items-center gap-2
                         px-4 py-2
-                        bg-blue-800 hover:bg-blue-700
+                        bg-primary hover:bg-primary/80
                         text-white text-[12px] font-semibold
                         rounded-lg
                         transition-all
@@ -186,7 +186,7 @@ export default function DataTable({
                 key={page}
                 onClick={() => goToPage(page)}
                 className={`min-w-9 h-9 px-3 rounded-lg text-[11px] font-medium transition-all ${currentPage === page
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-primary text-white shadow-md'
                   : 'text-gray-700 hover:bg-gray-200'
                   }`}
               >

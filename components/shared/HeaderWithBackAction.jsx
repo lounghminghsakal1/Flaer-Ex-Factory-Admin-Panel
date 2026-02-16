@@ -19,7 +19,7 @@ export default function HeaderWithBackAction({
 
   return (
     <div className="w-full border-b border-gray-200 ">
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between px-6 py-3">
 
         {/* LEFT */}
         <div className="flex items-center gap-3">
@@ -41,12 +41,12 @@ export default function HeaderWithBackAction({
           disabled={loading}
           onClick={onActionClick}
           className={`flex items-center gap-2 px-5 py-2 rounded-md font-medium shadow-sm transition 
-          hover:scale-105 disabled:opacity-60 disabled:hover:scale-100
+          hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 cursor-pointer
           
           ${
             isEditing
               ? "bg-green-600 text-white hover:bg-green-700"
-              : "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-primary text-white hover:bg-primary/90"
           }
           `}
         >
