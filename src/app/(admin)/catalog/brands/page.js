@@ -5,9 +5,9 @@ import BrandsFilter from "./_components/BrandsFilter";
 import BrandsListing from "./_components/BrandsListing";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useSearchParams, useRouter } from "next/navigation";
+import TablePageSkeleton from "../../../../../components/shared/TablePageSkeleton";
 
 export default function BrandsPage() {
 
@@ -80,9 +80,10 @@ export default function BrandsPage() {
   };
 
   // APPLY filters
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (override) => {
+    const next = override ?? draftFilters;
     setCurrentPage(1);
-    setAppliedFilters(draftFilters);
+    setAppliedFilters(next);
   };
 
   // CLEAR filters
@@ -96,9 +97,7 @@ export default function BrandsPage() {
 
   if (loading && currentPage === 1) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
+      <TablePageSkeleton columns={7} rows={8} showFilter showSearch />
     );
   }
 

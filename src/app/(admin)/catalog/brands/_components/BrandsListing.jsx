@@ -53,8 +53,6 @@ export default function BrandsListing({
       currentPage={currentPage}
       totalPages={totalPages}
       onPageChange={setCurrentPage}
-
-      // ⭐ FIX HERE
       getDetailsLink={(row) =>
         `/catalog/brands/form?id=${row.id}&returnTo=${getReturnTo()}`
       }

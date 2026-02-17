@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 
 import CategoryForm from "../_components/CategoryForm";
 import HeaderWithBackAction from "../../../../../../components/shared/HeaderWithBackAction";
+import CategoryDetailsSkeleton from "../_components/CategoryDetailsSkeleton";
 
 export default function CategoryFormPage() {
 
@@ -104,7 +105,7 @@ export default function CategoryFormPage() {
     handleSubmit();
   };
 
-  if (initialLoading) return <div className="p-6">Loading...</div>;
+  if (initialLoading && !isCreateNew) return <CategoryDetailsSkeleton /> ;
 
   return (
     <div className="px-2 py-4">
@@ -114,6 +115,7 @@ export default function CategoryFormPage() {
         isEditing={isEditing}
         loading={loading}
         onActionClick={handleHeaderAction}
+        defaultBackPath="/catalog/categories"
       />
 
       <div className="w-full mt-4">

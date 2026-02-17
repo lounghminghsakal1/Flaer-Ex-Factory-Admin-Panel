@@ -32,7 +32,7 @@ export default function BrandsForm({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Brand Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -42,12 +42,12 @@ export default function BrandsForm({
               onChange={handleInputChange}
               disabled={!isEditing}
               placeholder="Enter brand name"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Status <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-3">
@@ -72,16 +72,16 @@ export default function BrandsForm({
                     cursor-pointer
                   " 
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-800">
                   Active
                 </span>
               </label>
 
               <label
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all cursor-pointer ${formData.status === 'inactive'
-                  ? 'border-red-500 bg-red-50'
+                  ? 'border-gray-500 bg-gray-50'
                   : 'border-gray-200 bg-white hover:border-gray-300'
-                  } ${!isEditing ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  } ${!isEditing ? 'opacity-60' : ''}`}
               >
                 <input
                   type="radio"
@@ -92,14 +92,14 @@ export default function BrandsForm({
                   disabled={!isEditing}
                   className="
                     w-4 h-4 
-                    accent-red-600 
+                    accent-gray-600 
                     focus:ring-0 focus:outline-none 
                     disabled:accent-gray-400
                     cursor-pointer
                   "
                 />
 
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-800">
                   Inactive
                 </span>
               </label>
@@ -107,7 +107,7 @@ export default function BrandsForm({
           </div>
 
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Description
             </label>
             <textarea
@@ -117,7 +117,7 @@ export default function BrandsForm({
               disabled={!isEditing}
               rows="3"
               placeholder="Enter brand description"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 resize-none"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 resize-none placeholder:text-gray-300"
             />
           </div>
 
@@ -135,7 +135,7 @@ export default function BrandsForm({
         <div className="grid grid-cols-2 gap-3">
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Country
             </label>
             <input
@@ -145,12 +145,12 @@ export default function BrandsForm({
               onChange={handleInputChange}
               disabled={!isEditing}
               placeholder="e.g., Germany"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Founded
             </label>
             <input
@@ -160,12 +160,12 @@ export default function BrandsForm({
               onChange={handleInputChange}
               disabled={!isEditing}
               placeholder="e.g., 1923"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
 
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Specialization
             </label>
             <input
@@ -174,8 +174,8 @@ export default function BrandsForm({
               value={formData.meta.specialization}
               onChange={handleInputChange}
               disabled={!isEditing}
-              placeholder="e.g., Furniture Fittings"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+              placeholder="e.g., Furniture "
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Plus, Loader2, X, Save, Edit2Icon } from "lucide-react";
+import { Package, Plus, Loader2, X, Save, Edit2Icon, SquarePen } from "lucide-react";
 import { toast } from "react-toastify";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 
@@ -13,7 +13,7 @@ export default function CategoryForm({
 }) {
   const [categories, setCategories] = useState([]);
   const [isParentToggle, setIsParentToggle] = useState(true);
-  
+
   const [subcategories, setSubcategories] = useState([]);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
 
@@ -31,8 +31,8 @@ export default function CategoryForm({
   });
 
   // Get category ID from URL
-  const categoryId = typeof window !== 'undefined' 
-    ? new URLSearchParams(window.location.search).get('id') 
+  const categoryId = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('id')
     : null;
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function CategoryForm({
     setPopupFormData({
       name: subcategory.name || "",
       title: subcategory.title || subcategory.name || "",
-      status: subcategory.status || "active",
+      status: (subcategory.status || "active").toLowerCase(),
       description: subcategory.description || "",
       parent_id: subcategory.parent?.id || null
     });
@@ -202,23 +202,21 @@ export default function CategoryForm({
 
             <button
               onClick={() => setIsParentToggle(!isParentToggle)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                isParentToggle
-                  ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                  : "bg-gray-300 hover:bg-gray-400 cursor-pointer"
-              }`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isParentToggle
+                ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                : "bg-gray-300 hover:bg-gray-400 cursor-pointer"
+                }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
-                  isParentToggle ? "translate-x-6" : "translate-x-1"
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${isParentToggle ? "translate-x-6" : "translate-x-1"
+                  }`}
               />
             </button>
           </div>
 
           {!isParentToggle && (
             <div className="pt-2 border-t border-gray-200">
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label className="block text-xs font-medium text-gray-800 mb-1.5">
                 Parent Category <span className="text-red-500">*</span>
               </label>
 
@@ -247,7 +245,7 @@ export default function CategoryForm({
 
           {/* Category Name */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Category Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -257,17 +255,16 @@ export default function CategoryForm({
               onChange={handleInputChange}
               disabled={!isEditing && !isCreateNew}
               placeholder="Enter category name"
-              className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${
-                isEditing || isCreateNew
-                  ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
-                  : "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-              } outline-none`}
+              className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditing || isCreateNew
+                ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                : "border-gray-200 bg-gray-50 text-gray-500 "
+                } outline-none placeholder:text-gray-300 `}
             />
           </div>
 
           {/* Display Title */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Display Title <span className="text-red-500">*</span>
             </label>
             <input
@@ -277,26 +274,24 @@ export default function CategoryForm({
               onChange={handleInputChange}
               disabled={!isEditing && !isCreateNew}
               placeholder="Enter display title"
-              className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${
-                isEditing || isCreateNew
-                  ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
-                  : "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-              } outline-none`}
+              className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditing || isCreateNew
+                ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                : "border-gray-200 bg-gray-50 text-gray-500 "
+                } outline-none placeholder:text-gray-300 `}
             />
           </div>
 
           {/* Status */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Status <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <label
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.status === "active"
-                    ? "border-green-500 bg-green-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                } ${!isEditing && !isCreateNew ? "opacity-60 cursor-not-allowed" : ""}`}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${formData.status === "active"
+                  ? "border-green-500 bg-green-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+                  } ${!isEditing && !isCreateNew ? "opacity-60 " : ""}`}
               >
                 <input
                   type="radio"
@@ -305,17 +300,16 @@ export default function CategoryForm({
                   checked={formData.status === "active"}
                   onChange={handleInputChange}
                   disabled={!isEditing && !isCreateNew}
-                  className="w-4 h-4 cursor-pointer accent-green-500 disabled:cursor-not-allowed"
+                  className="w-4 h-4 cursor-pointer focus:ring-0 focus:outline-none accent-green-600 disabled:accent-gray-400"
                 />
                 <span className="text-sm font-medium text-gray-700">Active</span>
               </label>
 
               <label
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.status === "inactive"
-                    ? "border-red-500 bg-red-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                } ${!isEditing && !isCreateNew ? "opacity-60 cursor-not-allowed" : ""}`}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${formData.status === "inactive"
+                  ? "border-gray-500 bg-gray-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+                  } ${!isEditing && !isCreateNew ? "opacity-60" : ""}`}
               >
                 <input
                   type="radio"
@@ -324,7 +318,7 @@ export default function CategoryForm({
                   checked={formData.status === "inactive"}
                   onChange={handleInputChange}
                   disabled={!isEditing && !isCreateNew}
-                  className="w-4 h-4 cursor-pointer accent-red-500 disabled:cursor-not-allowed"
+                  className="w-4 h-4 cursor-pointer focus:ring-0 focus:outline-none accent-gray-600 disabled:accent-gray-400"
                 />
                 <span className="text-sm font-medium text-gray-700">Inactive</span>
               </label>
@@ -333,7 +327,7 @@ export default function CategoryForm({
 
           {/* Description - Full Width */}
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-800 mb-1.5">
               Description
             </label>
             <textarea
@@ -343,11 +337,10 @@ export default function CategoryForm({
               disabled={!isEditing && !isCreateNew}
               rows="3"
               placeholder="Enter category description"
-              className={`w-full px-3 py-2 text-sm border rounded-lg transition-all resize-none ${
-                isEditing || isCreateNew
-                  ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
-                  : "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-              } outline-none`}
+              className={`w-full px-3 py-2 text-sm border rounded-lg transition-all resize-none ${isEditing || isCreateNew
+                ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                : "border-gray-200 bg-gray-50 text-gray-500 "
+                } outline-none placeholder:text-gray-300 `}
             />
           </div>
 
@@ -364,7 +357,7 @@ export default function CategoryForm({
             </div>
             <button
               onClick={handleCreateSubcategory}
-              className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary/90 hover:scale-105 text-white rounded-lg text-sm font-medium transition-all cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 hover:scale-105 text-white rounded-lg text-sm font-medium transition-all cursor-pointer"
             >
               <Plus size={16} />
               Create Subcategory
@@ -425,11 +418,10 @@ export default function CategoryForm({
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <span
-                          className={`px-2 py-1 inline-flex text-xs font-medium rounded-full ${
-                            subcategory.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
+                          className={`px-2 py-1 inline-flex text-xs font-medium rounded-full ${subcategory.status === "active"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                            }`}
                         >
                           {subcategory.status === "active" ? "Active" : "Inactive"}
                         </span>
@@ -437,9 +429,9 @@ export default function CategoryForm({
                       <td className="px-3 py-2 whitespace-nowrap text-center">
                         <button
                           onClick={() => handleViewDetails(subcategory)}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+                          className="inline-flex items-center gap-1 px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-medium transition-all hover:scale-105 cursor-pointer"
                         >
-                          <Edit2Icon size={14} />
+                          <SquarePen size={12} />
                           Edit
                         </button>
                       </td>
@@ -492,11 +484,10 @@ export default function CategoryForm({
                     value={popupFormData.name}
                     onChange={handlePopupInputChange}
                     disabled={!isEditingPopup}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${
-                      isEditingPopup
-                        ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
-                        : "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-                    } outline-none`}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditingPopup
+                      ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                      : "border-gray-200 bg-gray-50 text-gray-500 "
+                      } outline-none`}
                   />
                 </div>
 
@@ -510,11 +501,10 @@ export default function CategoryForm({
                     value={popupFormData.title}
                     onChange={handlePopupInputChange}
                     disabled={!isEditingPopup}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${
-                      isEditingPopup
-                        ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
-                        : "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-                    } outline-none`}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditingPopup
+                      ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                      : "border-gray-200 bg-gray-50 text-gray-500 "
+                      } outline-none`}
                   />
                 </div>
 
@@ -524,11 +514,10 @@ export default function CategoryForm({
                   </label>
                   <div className="flex gap-2">
                     <label
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${
-                        popupFormData.status === "active"
-                          ? "border-green-500 bg-green-50"
-                          : "border-gray-200 bg-white"
-                      } ${!isEditingPopup ? "cursor-not-allowed opacity-60" : ""}`}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${popupFormData.status === "active"
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-200 bg-white"
+                        } ${!isEditingPopup ? "opacity-60" : ""}`}
                     >
                       <input
                         type="radio"
@@ -537,17 +526,23 @@ export default function CategoryForm({
                         checked={popupFormData.status === "active"}
                         onChange={handlePopupInputChange}
                         disabled={!isEditingPopup}
-                        className="w-4 h-4 accent-green-500"
+                        className="hidden"
                       />
+
+                      <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center
+    border-green-600">
+                        {popupFormData.status === "active" && (
+                          <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                        )}
+                      </div>
+
                       <span className="text-sm font-medium text-gray-700">Active</span>
                     </label>
-
                     <label
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${
-                        popupFormData.status === "inactive"
-                          ? "border-red-500 bg-red-50"
-                          : "border-gray-200 bg-white"
-                      } ${!isEditingPopup ? "cursor-not-allowed opacity-60" : ""}`}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${popupFormData.status === "inactive"
+                        ? "border-gray-500 bg-gray-50"
+                        : "border-gray-200 bg-white"
+                        } ${!isEditingPopup ? "opacity-60" : ""}`}
                     >
                       <input
                         type="radio"
@@ -556,15 +551,24 @@ export default function CategoryForm({
                         checked={popupFormData.status === "inactive"}
                         onChange={handlePopupInputChange}
                         disabled={!isEditingPopup}
-                        className="w-4 h-4 accent-red-500"
+                        className="hidden"
                       />
+
+                      <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center
+                               border-gray-600">
+                        {popupFormData.status === "inactive" && (
+                          <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                        )}
+                      </div>
+
                       <span className="text-sm font-medium text-gray-700">Inactive</span>
                     </label>
+
                   </div>
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  <label className="block text-xs font-medium text-gray-800 mb-1.5">
                     Description
                   </label>
                   <textarea
@@ -573,11 +577,10 @@ export default function CategoryForm({
                     onChange={handlePopupInputChange}
                     disabled={!isEditingPopup}
                     rows="3"
-                    className={`w-full px-3 py-2 text-sm border rounded-lg transition-all resize-none ${
-                      isEditingPopup
-                        ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
-                        : "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-                    } outline-none`}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg transition-all resize-none ${isEditingPopup
+                      ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                      : "border-gray-200 bg-gray-50 text-gray-500 "
+                      } outline-none placeholder:text-gray-300`}
                   />
                 </div>
               </div>
@@ -672,17 +675,17 @@ export default function CategoryForm({
                   />
                 </div>
 
-                <div>
+                <div className="flex flex-col">
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
                     Status <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
+                    {/* ACTIVE */}
                     <label
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${
-                        popupFormData.status === "active"
-                          ? "border-green-500 bg-green-50"
-                          : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${popupFormData.status === "active"
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -690,17 +693,24 @@ export default function CategoryForm({
                         value="active"
                         checked={popupFormData.status === "active"}
                         onChange={handlePopupInputChange}
-                        className="w-4 h-4 accent-green-500"
+                        className="hidden"
                       />
+
+                      <div className="w-4 h-4 rounded-full border-2 border-green-600 flex items-center justify-center">
+                        {popupFormData.status === "active" && (
+                          <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                        )}
+                      </div>
+
                       <span className="text-sm font-medium text-gray-700">Active</span>
                     </label>
 
+                    {/* INACTIVE */}
                     <label
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${
-                        popupFormData.status === "inactive"
-                          ? "border-red-500 bg-red-50"
-                          : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer transition-all ${popupFormData.status === "inactive"
+                        ? "border-gray-500 bg-gray-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -708,8 +718,15 @@ export default function CategoryForm({
                         value="inactive"
                         checked={popupFormData.status === "inactive"}
                         onChange={handlePopupInputChange}
-                        className="w-4 h-4 accent-red-500"
+                        className="hidden"
                       />
+
+                      <div className="w-4 h-4 rounded-full border-2 border-gray-600 flex items-center justify-center">
+                        {popupFormData.status === "inactive" && (
+                          <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                        )}
+                      </div>
+
                       <span className="text-sm font-medium text-gray-700">Inactive</span>
                     </label>
                   </div>

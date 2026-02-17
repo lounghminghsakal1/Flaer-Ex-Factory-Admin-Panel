@@ -3,9 +3,10 @@ import DataTable from "../../../../../../components/shared/DataTable";
 import { useState, useEffect } from "react";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
 import useDebounce from "../../../../../../components/hooks/useDebounce";
-import { SearchIcon } from "lucide-react";
+import { FilterX, SearchIcon } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import TablePageSkeleton from "../../../../../../components/shared/TablePageSkeleton";
 
 export default function ProductsListing() {
 
@@ -40,7 +41,6 @@ export default function ProductsListing() {
   const [brandOptions, setBrandOptions] = useState([]);
   const [parentCategoryOptions, setParentCategoryOptions] = useState([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState([]);
-  //const [parentCategory, setParentCategory] = useState("");
 
   const isDirty =
     draftFilters.starts_with !== appliedFilters.starts_with ||
@@ -78,13 +78,6 @@ export default function ProductsListing() {
     fetchBrandsOptions();
     fetchCategoriesOptions();
   }, []);
-
-  // useEffect(() => {
-  //   if (!parentCategory) {
-  //     setSubCategoryOptions([]);
-  //   }
-  //   fetchSubCategoriesOptions(parentCategory);
-  // }, [parentCategory])
 
   useEffect(() => {
     if (!draftFilters.parent_category_id) {
@@ -157,9 +150,10 @@ export default function ProductsListing() {
     }
   }
 
-  const handleApply = () => {
+  const handleApply = (override) => {
+    const next = override ?? draftFilters;
     setCurrentPage(1);
-    setAppliedFilters(draftFilters);
+    setAppliedFilters(next);
   };
 
   const handleClear = () => {
@@ -221,36 +215,40 @@ export default function ProductsListing() {
     },
   ];
 
+  if (loading) {
+    return (
+      <TablePageSkeleton columns={7} rows={15} />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 px-2 py-4">
       <div className="max-w-full mx-auto">
-        <div className="flex flex-wrap items-end gap-4 mb-5 p-4 bg-white shadow-sm border border-gray-200
+        <div className="flex flex-wrap items-center gap-3 mb-5 p-2 bg-white shadow-sm border border-gray-200
  rounded-lg ">
+          {/* Search */}
           <div className="flex justify-center items-center">
-            {/* Search */}
             <input
               type="text"
               placeholder="Search product by name..."
-              className="border text-gray-600 text-sm border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition px-3 h-9 w-52 rounded-l"
+              className="border border-gray-300 text-sm px-2 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500"
               value={draftFilters.starts_with}
               onChange={(e) => {
                 const value = e.target.value;
-                setDraftFilters(prev => ({
-                  ...prev,
-                  starts_with: value
-                }));
-                if (value.trim() === "") handleApply();
+                const nextFilters = {...draftFilters, starts_with: value};
+                setDraftFilters(nextFilters);
+                if (value.trim() === "") handleApply(nextFilters);
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleApply();
+                if (e.key === "Enter") handleApply(draftFilters);
               }}
             />
-            <span className="h-9 px-2 py-1 rounded-r border bg-blue-500 border-gray-300 focus:border-blue-700 hover:bg-blue-700 cursor-pointer" onClick={handleApply}><SearchIcon color="white" /></span>
+            <span className="h-8 px-2 flex items-center border border-gray-300 border-l-0 bg-primary text-white rounded-r cursor-pointer hover:scale-105 transition" onClick={() => handleApply(draftFilters)}><SearchIcon color="white" /></span>
           </div>
 
           {/* Status */}
           <select
-            className="border border-gray-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition px-3 h-9 w-32 rounded"
+            className="border border-gray-300 text-sm px-2 h-8 rounded focus:outline-none focus:border-gray-500"
             value={draftFilters.status}
             onChange={(e) =>
               setDraftFilters(prev => ({ ...prev, status: e.target.value }))
@@ -263,7 +261,7 @@ export default function ProductsListing() {
           </select>
 
           {/* Brand */}
-          <div className="w-48">
+          <div className="w-36">
             <SearchableDropdown
               placeholder="Select Brand"
               options={brandOptions}
@@ -273,10 +271,11 @@ export default function ProductsListing() {
               }
             />
           </div>
+
           {/* Category */}
           <div className="flex gap-2 items-center ">
             {/* Parent Category */}
-            <div className="w-52">
+            <div className="w-41">
               <SearchableDropdown
                 placeholder="Select Category"
                 options={parentCategoryOptions}
@@ -292,7 +291,7 @@ export default function ProductsListing() {
             </div>
             {/* Sub Category */}
             {draftFilters.parent_category_id && (
-              <div className="w-52">
+              <div className="w-41">
                 <SearchableDropdown
                   placeholder="Select sub category"
                   options={subCategoryOptions}
@@ -305,19 +304,23 @@ export default function ProductsListing() {
               </div>
             )}
           </div>
+
           {isDirty && (
-            <button className="text-sm h-10 px-4 bg-blue-700 text-gray-100 border rounded-md hover:bg-gray-100 hover:text-blue-600 hover:scale-110 cursor-pointer transition-all duration-200 ease-in-out" onClick={handleApply}>
+            <button className="flex text-sm items-center gap-1 h-8 px-3 border border-primary text-primary rounded hover:scale-105 transition cursor-pointer" onClick={handleApply}>
               Apply
             </button>
           )}
 
           <div>
-            {hasActiveFilters && (<button className="text-sm h-10 px-4 bg-red-700 border text-gray-100 hover:bg-gray-100 hover:text-red-700 rounded cursor-pointer hover:scale-110 transition-all duration-200 ease-in-out" onClick={() => {
-              handleClear();
-            }}
-            >
-              Clear Filters
-            </button>)}
+            {hasActiveFilters && (
+              <button className="flex text-sm items-center gap-1 h-8 px-3 border border-gray-500 text-gray-500 rounded hover:scale-105 transition cursor-pointer" onClick={() => {
+                handleClear();
+              }}
+              >
+                <FilterX size={16} />
+                Clear Filters
+              </button>
+            )}
           </div>
 
         </div>

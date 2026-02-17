@@ -19,7 +19,7 @@ export default function ProductsHeader() {
   return (
     <div className="flex justify-between items-center px-2">
       <div>
-        <h1 className="text-center text-xl font-bold text-blue-800">All Products</h1>
+        <h1 className="text-center text-xl font-bold text-blue-800">Products</h1>
       </div>
       <div>
         <ButtonSplit text={"Create Product"} onClick={handleCreateProduct} icon={Plus} />

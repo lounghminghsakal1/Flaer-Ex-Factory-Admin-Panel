@@ -52,7 +52,7 @@ export default function CategoriesListing({
             ACTIVE
           </span>
         ) : (
-          <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
+          <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700">
             INACTIVE
           </span>
         ),

@@ -8,6 +8,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import CategoriesFilter from "./_components/CategoriesFilter";
 import CategoriesListing from "./_components/CategoriesListing";
 import ListingPageHeader from "../../../../../components/shared/ListingPageHeader";
+import TablePageSkeleton from "../../../../../components/shared/TablePageSkeleton";
 
 export default function CategoriesPage() {
 
@@ -79,9 +80,11 @@ export default function CategoriesPage() {
   };
 
   // APPLY filters
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (override) => {
+    const next = override ?? draftFilters;
+
     setCurrentPage(1);
-    setAppliedFilters(draftFilters);
+    setAppliedFilters(next);
   };
 
   //  CLEAR filters
@@ -95,9 +98,7 @@ export default function CategoriesPage() {
 
   if (loading && currentPage === 1) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
+      <TablePageSkeleton columns={7} rows={10} />
     );
   }
 

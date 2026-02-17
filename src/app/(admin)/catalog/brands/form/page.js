@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 
 import HeaderWithBackAction from "../../../../../../components/shared/HeaderWithBackAction";
 import BrandsForm from "../_components/BrandsForm";
+import BrandFormSkeleton from "../_components/BrandFormSkeleton";
 
 export default function BrandDetailsPage() {
 
@@ -124,6 +125,12 @@ export default function BrandDetailsPage() {
     handleSubmit();
   };
 
+  if (loading && createNew !== "createNew") {
+    return (
+      <BrandFormSkeleton />
+    );
+  }
+
   return (
     <div className="px-2 py-4">
 
@@ -132,6 +139,7 @@ export default function BrandDetailsPage() {
         isEditing={isEditing}
         loading={loading}
         onActionClick={handleHeaderAction}
+        defaultBackPath="/catalog/brands"
       />
 
       <div className="w-150 mt-4">

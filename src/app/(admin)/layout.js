@@ -35,7 +35,7 @@ const SidebarItem = ({
           className={`
             ${
               isActive
-                ? 'bg-[#1a2332] text-white font-semibold border-l-4 border-blue-500'
+                ? 'bg-[#1a2332] text-white font-semibold border-l-4 border-secondary'
                 : 'text-gray-400 border-l-4 border-transparent'
             }
             ${
@@ -80,13 +80,33 @@ const FloatingSubmenu = ({
 
   if (!hoveredItem || !submenuData) return null;
 
+  // Collect ALL items across all sections, then find the single best match.
+  // "Best match" = the item whose href is the longest prefix of the current pathname.
+  // This ensures "/catalog/brands/form" beats "/catalog/brands" when both are prefixes.
+  const allItems = submenuData.flatMap((section) => section.items);
+
+  const bestMatch = allItems.reduce((best, item) => {
+    // Strip query strings from both sides before comparing
+    const cleanPathname = pathname.split('?')[0];
+    const cleanItemHref = item.href.split('?')[0];
+    const isMatch =
+      cleanPathname === cleanItemHref ||
+      cleanPathname.startsWith(cleanItemHref + '/');
+
+    if (!isMatch) return best;
+
+    // Prefer the longer (more specific) href
+    if (!best || cleanItemHref.length > best.href.split('?')[0].length) return item;
+    return best;
+  }, null);
+
   return (
     <div
       style={{
         top: position.top,
-        left: isCollapsed ? '80px' : '220px',
+        left: isCollapsed ? '75px' : '240px',
       }}
-      className="transition-all duration-200 select-none p-1 min-w-[280px] max-w-fit z-[9999] bg-[#0f1419] rounded-r-md fixed shadow-2xl border border-gray-700"
+      className="transition-all duration-200 select-none p-2 min-w-[280px] max-w-fit z-[9999] bg-[#0f1419] rounded-r-md fixed shadow-2xl border border-gray-700"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -103,21 +123,9 @@ const FloatingSubmenu = ({
             
             <div className="space-y-0.5">
               {section.items.map((item, itemIdx) => {
-                // Check if this exact path or a child path matches
-                // But prioritize exact matches over parent paths
-                const isExactMatch = pathname === item.href;
-                const isChildRoute = pathname.startsWith(item.href + '/');
-                
-                // If it's a child route, only mark as active if no other item in the same section is an exact match
-                let isActive = false;
-                if (isExactMatch) {
-                  isActive = true;
-                } else if (isChildRoute) {
-                  // Check if any other item in this section is an exact match
-                  const hasExactMatch = section.items.some(otherItem => pathname === otherItem.href);
-                  isActive = !hasExactMatch;
-                }
-                
+                // An item is active only if it is the single best match
+                const isActive = bestMatch?.href === item.href;
+
                 return (
                   <Link
                     key={itemIdx}
@@ -159,7 +167,6 @@ const SidebarLayout = ({ children }) => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    // Only show submenu if this specific item has a submenu
     if (item.hasSubmenu) {
       setHoveredItem(item);
     } else {
@@ -186,7 +193,6 @@ const SidebarLayout = ({ children }) => {
   };
 
   const handleSubmenuLinkClick = () => {
-    // Close submenu immediately when a link is clicked
     setHoveredItem(null);
   };
 
@@ -210,21 +216,21 @@ const SidebarLayout = ({ children }) => {
           heading: 'Categories',
           items: [
             { label: 'Categories', href: '/catalog/categories' },
-            { label: 'Create category', href: '/catalog/categories/form' },
+            { label: 'Create category', href: '/catalog/categories/form?createNew=true' },
           ],
         },
         {
           heading: 'Brands',
           items: [
             { label: 'Brands', href: '/catalog/brands' },
-            { label: 'Create Brand', href: '/catalog/brands/form' },
+            { label: 'Create Brand', href: '/catalog/brands/form?createNew=true' },
           ],
         },
         {
           heading: 'Products',
           items: [
             { label: 'Products', href: '/catalog/products' },
-            { label: 'Create Product', href: '/catalog/products/form' },
+            { label: 'Create Product', href: '/catalog/products/form?createNew=true' },
           ],
         },
       ],
@@ -241,7 +247,7 @@ const SidebarLayout = ({ children }) => {
       label: 'Inventory',
       shortName: 'Inventory',
       icon: Warehouse,
-      href: '/dashboard/inventory',
+      href: '/inventory',
     },
   ];
 
@@ -253,14 +259,20 @@ const SidebarLayout = ({ children }) => {
     return { top: `${rect.top}px` };
   };
 
-  // Check if current path matches any submenu item
+  // Check if current path matches any submenu item using the same best-match logic
   const isSubmenuItemActive = (item) => {
     if (!item.hasSubmenu || !item.submenuData) return false;
-    
-    return item.submenuData.some(section =>
-      section.items.some(subItem => 
-        pathname === subItem.href || pathname.startsWith(subItem.href + '/')
-      )
+
+    const cleanPathname = pathname.split('?')[0];
+
+    return item.submenuData.some((section) =>
+      section.items.some((subItem) => {
+        const cleanSubHref = subItem.href.split('?')[0];
+        return (
+          cleanPathname === cleanSubHref ||
+          cleanPathname.startsWith(cleanSubHref + '/')
+        );
+      })
     );
   };
 
@@ -269,7 +281,7 @@ const SidebarLayout = ({ children }) => {
       {/* Sidebar */}
       <aside
         className={`
-          ${isCollapsed ? 'w-[75px]' : 'w-[220px]'}
+          ${isCollapsed ? 'w-[75px]' : 'w-[240px]'}
           min-h-screen bg-[#0f1419] text-gray-400
           fixed top-0 left-0 z-[9998]
           transition-all duration-300 shadow-xl
@@ -290,7 +302,7 @@ const SidebarLayout = ({ children }) => {
               <div className="flex-1">
                 <div className="text-2xl font-bold">
                   <span className="text-yellow-500">EX</span>
-                  <span className="text-blue-500">Factory</span>
+                  <span className="text-secondary">Factory</span>
                 </div>
                 <div className="text-[10px] text-gray-500 tracking-wider">
                   ALL MATERIALS AND PRODUCTS
@@ -309,11 +321,14 @@ const SidebarLayout = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 pl-2">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || 
-                           pathname.startsWith(item.href + '/') || 
-                           isSubmenuItemActive(item);
+            const cleanPathname = pathname.split('?')[0];
+            const cleanItemHref = item.href.split('?')[0];
+            const isActive =
+              cleanPathname === cleanItemHref ||
+              cleanPathname.startsWith(cleanItemHref + '/') ||
+              isSubmenuItemActive(item);
             
             return (
               <div
@@ -354,7 +369,7 @@ const SidebarLayout = ({ children }) => {
       <main
         className={`
           flex-1 min-h-screen
-          ${isCollapsed ? 'ml-[85px]' : 'ml-[240px]'}
+          ${isCollapsed ? 'ml-[85px]' : 'ml-[250px]'}
           transition-[margin-left] duration-300
           bg-gray-100
           m-1

@@ -37,7 +37,7 @@ const ProductCard = ({ product, isSelected, onToggle, isAlreadyAdded }) => {
         {/* Image Section */}
         <div
           className={`shrink-0 ${product?.media ? 'cursor-pointer' : ''}`}
-          onClick={handleImageClick}
+          onClick={() => {}} //handleImageClick
         >
           {product?.media ? (
             <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden group/image">
@@ -79,14 +79,14 @@ const ProductCard = ({ product, isSelected, onToggle, isAlreadyAdded }) => {
             <div className="flex items-center gap-1">
               <div className="flex items-center gap-1">
                 <span className="text-xs text-green-600 font-medium">Selling:</span>
-                <span className="text-sm font-bold text-green-700">
+                <span className="text-sm font-semibold text-green-600">
                   ₹{parseFloat(product.selling_price)}
                 </span>
               </div>
               <div className="w-px h-3 bg-gray-300"></div>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-blue-600 font-medium">MRP:</span>
-                <span className="text-sm font-bold text-blue-700">
+                <span className="text-xs text-gray-600 ">MRP:</span>
+                <span className="text-xs text-gray-600">
                   ₹{parseFloat(product.mrp)}
                 </span>
               </div>
@@ -606,7 +606,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                   </h3>
                   <button
                     onClick={handleSelectAll}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                    className="text-xs font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer"
                   >
                     {allSelectableSelected ? 'Deselect All' : 'Select All'}
                   </button>
@@ -686,7 +686,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                         key={page}
                         onClick={() => handlePageChange(page)}
                         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === page
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-primary text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                       >

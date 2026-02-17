@@ -360,8 +360,8 @@ export default function ProductCreationAttributes({
               mrp: "",
               selling_price: "",
               unit_price: "",
-              conversion_factor: undefined,
-              multiplication_factor: undefined,
+              conversion_factor: globalPricing.conversion_factor ?? 1,
+              multiplication_factor: globalPricing.multiplication_factor ?? 1,
               uom: "piece",
               threshold_quantity: 1,
               status: "active",
@@ -473,7 +473,7 @@ export default function ProductCreationAttributes({
         };
       });
 
-      // ⭐ AFTER PRODUCTS READY → Update Generated Products With Correct SKU COUNT
+      // AFTER PRODUCTS READY → Update Generated Products With Correct SKU COUNT
       setGeneratedProducts(
         newProducts.map(np => {
           const prod = rebuiltProducts.find(p =>
@@ -675,7 +675,7 @@ export default function ProductCreationAttributes({
       const mergedSkus = expectedSkus.map((sku, idx) => {
 
         if (existingSkuMap.has(sku.sku_name)) {
-          return existingSkuMap.get(sku.sku_name); // ⭐ PRESERVE USER DATA
+          return existingSkuMap.get(sku.sku_name); // PRESERVE USER DATA
         }
 
         return {
@@ -686,8 +686,8 @@ export default function ProductCreationAttributes({
           mrp: "",
           selling_price: "",
           unit_price: "",
-          conversion_factor: undefined,
-          multiplication_factor: undefined,
+          conversion_factor: globalPricing.conversion_factor ?? 1,
+          multiplication_factor: globalPricing.multiplication_factor ?? 1,
           uom: "piece",
           threshold_quantity: 1,
           status: "active",
@@ -767,8 +767,6 @@ export default function ProductCreationAttributes({
 
     return newGeneratedProducts; // RETURN FRESH DATA
   };
-
-
 
   const removeOptionValue = async (optIndex, valueIndex) => {
 
@@ -893,8 +891,8 @@ export default function ProductCreationAttributes({
               unit_price: "",
               dimension: "",
               weight: "",
-              conversion_factor: undefined,
-              multiplication_factor: undefined,
+              conversion_factor: globalPricing.conversion_factor ?? 1,
+              multiplication_factor: globalPricing.multiplication_factor ?? 1,
               uom: "piece",
               threshold_quantity: 1,
               status: "active",
@@ -949,7 +947,7 @@ export default function ProductCreationAttributes({
   }, [pendingCascadeDelete, formData.name]);
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm p-6 space-y-8">
+    <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm px-3 py-4 space-y-8">
 
       {/* ================= HEADERS ================= */}
       <div className="grid grid-cols-2 gap-8">
@@ -1231,23 +1229,23 @@ export default function ProductCreationAttributes({
                         <th className="px-2 py-2 w-[160px] font-medium">SKU Name</th>
                         <th className="px-2 py-2 w-[160px] font-medium">Display Name</th>
                         <th className="px-2 py-2 w-[120px] font-medium">SKU Code</th>
-                        <th className="px-1 py-2 w-[70px] font-medium">{pricingMode === "conversion" ? "conv" : "mult"} </th>
+                        <th className="px-1 py-2 w-[60px] font-medium">{pricingMode === "conversion" ? "conv" : "mult"} </th>
 
                         {/*  DYNAMIC COLUMN ORDER BASED ON PRICING MODE */}
                         {pricingMode === "conversion" ? (
                           <>
-                            <th className="px-2 py-2 w-[90px] font-medium">MRP</th>
-                            <th className="px-2 py-2 w-[90px] font-medium">Unit Price</th>
-                            <th className="px-2 py-2 w-[90px] font-medium">Selling</th>
+                            <th className="px-2 py-2 w-[100px] font-medium">MRP</th>
+                            <th className="px-2 py-2 w-[100px] font-medium">Unit Price</th>
+                            <th className="px-2 py-2 w-[100px] font-medium">Selling</th>
                           </>
                         ) : (
                           <>
-                            <th className="px-2 py-2 w-[90px] font-medium">Unit Price</th>
-                            <th className="px-2 py-2 w-[90px] font-medium">MRP</th>
-                            <th className="px-2 py-2 w-[90px] font-medium">Selling</th>
+                            <th className="px-2 py-2 w-[100px] font-medium">Unit Price</th>
+                            <th className="px-2 py-2 w-[100px] font-medium">MRP</th>
+                            <th className="px-2 py-2 w-[100px] font-medium">Selling</th>
                           </>
                         )}
-                        <th className="px-2 py-2 w-[120px] font-medium">Status</th>
+                        <th className="px-2 py-2 w-[90px] font-medium">Status</th>
                         <th className="px-2 py-2 w-[70px] text-center font-medium">Master</th>
                         <th className="px-2 py-2 w-[80px] font-medium">Media</th>
                         <th className="px-2 py-2 w-[50px] text-center font-medium">Actions</th>
@@ -1652,7 +1650,7 @@ export default function ProductCreationAttributes({
                           )}
 
                           {/* STATUS */}
-                          <td className="px-2 py-1">
+                          <td className="px-1 py-1">
                             <select
                               className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                               value={sku.status ?? "active"}

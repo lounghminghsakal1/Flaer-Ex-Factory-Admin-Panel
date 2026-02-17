@@ -130,7 +130,7 @@ const CollectionForm = ({
               onChange={handleInputChange}
               placeholder="Enter collection name"
               disabled={isFieldsDisabled}
-              className="w-100 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-100 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-100 "
               required
             />
           </div>
@@ -149,7 +149,7 @@ const CollectionForm = ({
                 onClick={handleToggleActive}
                 disabled={isFieldsDisabled}
                 className={`relative w-11 h-6 rounded-full transition-colors ${formData.active ? 'bg-green-500' : 'bg-gray-300'
-                  } disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer`}
+                  }  disabled:opacity-60 cursor-pointer`}
               >
                 <span
                   className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${formData.active ? 'translate-x-5' : 'translate-x-0'
@@ -174,7 +174,7 @@ const CollectionForm = ({
               placeholder="Enter collection description"
               rows="2"
               disabled={isFieldsDisabled}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none disabled:bg-gray-100 "
             />
           </div>
 
@@ -188,7 +188,7 @@ const CollectionForm = ({
               value={formData.collection_type}
               onChange={handleInputChange}
               disabled={isFieldsDisabled}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer disabled:bg-gray-100 "
             >
               <option value="manual">Manual</option>
             </select>

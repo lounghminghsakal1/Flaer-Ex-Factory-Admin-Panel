@@ -1,6 +1,6 @@
 // ProductCard 
 import { useState } from 'react';
-import { Package, Hash, Code, Link2, Eye, CheckCircle, XCircle, DollarSign, ImageIcon, X, Trash2, Undo } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, ImageIcon, X, Undo } from 'lucide-react';
 
 const ImagePreviewPopup = ({ imageUrl, productName, showPopup, setShowPopup }) => {
   if (!showPopup) return null;
@@ -78,99 +78,102 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
   return (
     <>
       <div
-        className={`group relative bg-white rounded-xl border p-3 transition-all duration-300 ${isMarkedForRemoval
-          ? 'border-gray-300 bg-gray-100 opacity-50'
+        className={`flex justify-between group relative bg-white rounded-xl border p-3 transition-all duration-300 ${isMarkedForRemoval
+          ? 'border-gray-300 bg-gray-100 '
           : 'border-gray-200 hover:shadow-md hover:border-blue-200'
           }`}
       >
-        {/* Horizontal Layout */}
-        <div className="flex gap-3">
-          {/* Image Section - Left Side */}
-          <div
-            className={`shrink-0 ${productImage ? 'cursor-pointer' : ''}`}
-            onClick={handleImageClick}
-          >
-            {productImage ? (
-              <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden group/image">
-                <img
-                  src={productImage}
-                  alt={productName}
-                  className={`w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-110 ${isMarkedForRemoval ? 'grayscale' : ''
-                    }`}
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center">
+        <div className={`flex gap-3 justify-between ${isMarkedForRemoval ? "opacity-50 pointer-events-none" : ""}`}>
+          {/* Horizontal Layout */}
+          <div className="flex gap-3">
+            {/* Image Section - Left Side */}
+            <div
+              className={`shrink-0 ${productImage ? 'cursor-pointer' : ''}`}
+              onClick={() => { }} //handleImageClick
+            >
+              {productImage ? (
+                <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden group/image">
+                  <img
+                    src={productImage}
+                    alt={productName}
+                    className={`w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-110 ${isMarkedForRemoval ? 'grayscale' : ''
+                      }`}
+                  />
+                  {/* <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center">
                   <Eye size={16} className="text-white opacity-0 group-hover/image:opacity-100 transition-opacity" />
+                </div> */}
                 </div>
-              </div>
-            ) : (
-              <div className="w-16 h-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
-                <ImageIcon size={20} className="text-gray-400 mb-0.5" />
-                <p className="text-xs font-medium text-gray-500">No Media</p>
-              </div>
-            )}
-          </div>
-
-          {/* Content Section - Middle */}
-          <div className="flex-1 min-w-0">
-            {/* Product Name */}
-            <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 truncate leading-tight">
-              {productName}
-            </h3>
-
-            {/* Product Code & Status - Same Row */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs text-gray-600 font-mono">
-                  {productCode}
-                </p>
-              </div>
-
-              {/* Status Badge */}
-              <span
-                className={`flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${productActive
-                  ? 'bg-green-100 text-green-700 border border-green-200'
-                  : 'bg-red-100 text-red-700 border border-red-200'
-                  }`}
-              >
-                {productActive ? (
-                  <>
-                    <CheckCircle size={9} />
-                    Active
-                  </>
-                ) : (
-                  <>
-                    <XCircle size={9} />
-                    Inactive
-                  </>
-                )}
-              </span>
-              {productSequence !== undefined && isReordering && (
-                <div className='flex items-center justify-center w-5 h-5 bg-blue-800 text-white text-[10px] font-semibold rounded-full'>
-                  {productSequence}
+              ) : (
+                <div className="w-16 h-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
+                  <ImageIcon size={20} className="text-gray-400 mb-0.5" />
+                  <p className="text-xs font-medium text-gray-500">No Media</p>
                 </div>
               )}
             </div>
 
-            {/* Pricing */}
-            {skuData && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-green-600 font-medium">Selling:</span>
-                  <span className="text-sm font-bold text-green-700">
-                    ₹{parseFloat(skuData.selling_price)}
-                  </span>
-                </div>
-                <div className="w-px h-3 bg-gray-300"></div>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-blue-600 font-medium">MRP:</span>
-                  <span className="text-sm font-bold text-blue-700">
-                    ₹{parseFloat(skuData.mrp)}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+            {/* Content Section - Middle */}
+            <div className="flex-1 min-w-0">
+              {/* Product Name */}
+              <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 truncate leading-tight">
+                {productName}
+              </h3>
 
+              {/* Product Code & Status - Same Row */}
+              <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs text-gray-600 font-mono">
+                    {productCode}
+                  </p>
+                </div>
+
+                {/* Status Badge */}
+                <span
+                  className={`flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${productActive
+                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    : 'bg-red-100 text-red-700 border border-red-200'
+                    }`}
+                >
+                  {productActive ? (
+                    <>
+                      <CheckCircle size={9} />
+                      Active
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={9} />
+                      Inactive
+                    </>
+                  )}
+                </span>
+                {productSequence !== undefined && isReordering && (
+                  <div className='flex items-center justify-center w-5 h-5 bg-blue-800 text-white text-[10px] font-semibold rounded-full'>
+                    {productSequence}
+                  </div>
+                )}
+              </div>
+
+              {/* Pricing */}
+              {skuData && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-green-600 font-medium">Selling:</span>
+                    <span className="text-sm font-bold text-green-700">
+                      ₹{parseFloat(skuData.selling_price)}
+                    </span>
+                  </div>
+                  <div className="w-px h-3 bg-gray-300"></div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-600">MRP:</span>
+                    <span className="text-xs text-gray-700">
+                      ₹{parseFloat(skuData.mrp)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
           {/* Right Section - Remove Icon (appears on hover when editing) */}
           {isEditing && (
             <div className="flex items-start shrink-0">
@@ -190,7 +193,6 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
               </button>
             </div>
           )}
-        </div>
       </div>
 
       {/* Image Preview Popup */}

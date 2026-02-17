@@ -114,7 +114,7 @@ export default function CreateCollectionPage() {
 
   return (
     <div className="px-2 py-4">
-      <HeaderWithBack title="Create Collection" isEditing={true} loading={loading} onActionClick={handleSave} />
+      <HeaderWithBack title="Create Collection" isEditing={true} loading={loading} onActionClick={handleSave} defaultBackPath="/collections" />
       <div className="w-[50%] my-4">
         <CollectionForm setCreateCollectionForm={setCreateCollectionForm} />
       </div>

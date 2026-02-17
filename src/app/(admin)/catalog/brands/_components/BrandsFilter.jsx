@@ -37,20 +37,21 @@ export default function BrandsFilter({
             value={filters.starts_with}
             onChange={(e) => {
               const value = e.target.value;
-              setFilters(prev => ({ ...prev, starts_with: value }));
+              const nextFilters = {...filters, starts_with: value};
+              setFilters(nextFilters);
               // auto fetch when cleared
               if (value.trim() === "") {
-                onApply();
+                onApply(nextFilters);
               }
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") onApply();
+              if (e.key === "Enter") onApply(filters);
             }}
           />
 
           <span
             className="h-8 px-2 flex items-center border border-gray-300 border-l-0 rounded-r cursor-pointer hover:scale-105 transition bg-primary text-white"
-            onClick={onApply}
+            onClick={() => onApply(filters)}
           >
             <SearchIcon size={16} />
           </span>

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import ProductsGrid from "../create/_components/ProductsGrid";
 import { toast } from "react-toastify";
 import HeaderWithBackAction from "../../../../../components/shared/HeaderWithBackAction";
+import CollectionDetailsSkeleton from "./_components/CollectionDetailsSkeleton";
 
 export default function CollectionDetailsPage() {
 
@@ -22,6 +23,7 @@ export default function CollectionDetailsPage() {
   const [productsList, setProductsList] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function CollectionDetailsPage() {
 
   const fetchCollectionData = async () => {
     try {
-      console.log("Fetching collection", collectionId);
+      setIsFetching(true);
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}`;
       const response = await fetch(url);
       const result = await response.json();
@@ -44,6 +46,8 @@ export default function CollectionDetailsPage() {
       setProductsList(result.data.collection.collection_items);
     } catch (err) {
       console.log(err);
+    }finally {
+      setIsFetching(false);
     }
   };
 
@@ -90,32 +94,34 @@ export default function CollectionDetailsPage() {
     }
   }
 
-  if (!collection) return <div className="text-center mx-auto h-screen py-60 text-blue-700 text-2xl font-bold ">Loading...</div>;
+  //if (!collection) return <div className="text-center mx-auto h-screen py-60 text-blue-700 text-2xl font-bold ">Loading...</div>;
 
-  const collectionName = JSON.parse(JSON.stringify(collection.name));
+  const collectionName = collection?.name || "Collection";
 
   return (
-    <div className="flex flex-col h-screen px-2 py-4">
-      <HeaderWithBackAction title={collectionName} loading={isLoading} isEditing={isEditing} onActionClick={handleActionButton}  />
-      <div className="w-[50%] my-4">
-        {(isEditing ? editedCollection : collection) && (
-          <CollectionForm
-            collection={isEditing ? editedCollection : collection}
-            collectionId={collection.id}
-            isEditing={isEditing}
-            setCollection={setEditedCollection}
-          />
-        )}
-      </div>
-      <div className="w-full">
-        <ProductsGrid products={collection.collection_items} setProducts={setProductsList} collectionId={collection.id} setCollectionData={setCollection} setIsRightModalOpen={setShowModal} />
-      </div>
-      {/* <div className="fixed top-1/2 right-2.5 flex justify-center items-center">
+    <>
+      {isFetching || !collection ? <CollectionDetailsSkeleton /> : (<div className="flex flex-col h-screen px-2 py-4">
+        <HeaderWithBackAction title={collectionName} loading={isLoading} isEditing={isEditing} onActionClick={handleActionButton} defaultBackPath="/collections" />
+        <div className="w-[50%] my-4">
+          {(isEditing ? editedCollection : collection) && (
+            <CollectionForm
+              collection={isEditing ? editedCollection : collection}
+              collectionId={collection.id}
+              isEditing={isEditing}
+              setCollection={setEditedCollection}
+            />
+          )}
+        </div>
+        <div className="w-full">
+          <ProductsGrid products={collection.collection_items} setProducts={setProductsList} collectionId={collection.id} setCollectionData={setCollection} setIsRightModalOpen={setShowModal} />
+        </div>
+        {/* <div className="fixed top-1/2 right-2.5 flex justify-center items-center">
         <span className="p-3 rounded-full border-2 border-blue-600 hover:bg-blue-600 hover:text-white cursor-pointer " onClick={() => setShowModal(true)} ><ArrowLeft /></span>
       </div> */}
-      {showModal && (
-        <RightModalPanelCreate onClose={() => setShowModal(false)} productsList={productsList} setProductsList={setProductsList} collectionId={collection.id} existingProducts={collection.collection_items} setCollectionData={setCollection} />
-      )}
-    </div>
+        {showModal && (
+          <RightModalPanelCreate onClose={() => setShowModal(false)} productsList={productsList} setProductsList={setProductsList} collectionId={collection.id} existingProducts={collection.collection_items} setCollectionData={setCollection} />
+        )}
+      </div>)}
+    </>
   );
 }

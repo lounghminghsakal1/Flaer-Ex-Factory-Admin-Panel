@@ -37,17 +37,18 @@ export default function CategoriesFilter({
             value={filters.starts_with}
             onChange={(e) => {
               const value = e.target.value;
-              setFilters(prev => ({...prev, starts_with: value}));
-              if (value.trim() === "") onApply();
+              const nextFilters = {...filters, starts_with: value};
+              setFilters(nextFilters);
+              if (value === "") onApply(nextFilters);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") onApply();
+              if (e.key === "Enter") onApply(filters);
             }}
           />
 
           <span
             className="h-8 px-2 flex items-center border border-gray-300 border-l-0 bg-primary text-white rounded-r cursor-pointer hover:scale-105 transition"
-            onClick={onApply}
+            onClick={() => onApply(filters)}
           >
             <SearchIcon size={16} />
           </span>

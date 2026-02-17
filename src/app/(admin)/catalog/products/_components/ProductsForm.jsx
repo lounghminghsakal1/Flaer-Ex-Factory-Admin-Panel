@@ -9,6 +9,8 @@ import HierarchicalCategorySelector from "./HierarchicalCategorySelector";
 import BrandSelector from "./BrandSelector";
 import TaxSelector from "./TaxSelector";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
+import ProductDetailsSkeleton from "./ProductDetailsSkeleton";
+import HeaderWithBackAction from "../../../../../../components/shared/HeaderWithBackAction";
 
 export default function ProductsForm() {
   const router = useRouter();
@@ -509,7 +511,7 @@ export default function ProductsForm() {
           return;
         }
 
-        toast.success("Product created successfully");
+        toast.success("Product(s) created successfully");
         setProducts([]);
         setGeneratedProducts([]);
         const returnTo = searchParams.get("returnTo");
@@ -590,10 +592,12 @@ export default function ProductsForm() {
     }
   }
 
-  return (
-    <section className="min-h-screen bg-gray-50 p-6">
+  if (initialLoading && !isCreateNew) return <ProductDetailsSkeleton />;
 
-      <div className="max-w-7xl">
+  return (
+    <section className="min-h-screen bg-gray-50 px-2 py-4">
+
+      {/* <div className="max-w-7xl">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -624,7 +628,7 @@ export default function ProductsForm() {
               : isEditing
                 ? 'bg-green-600 hover:bg-green-800 text-white'
                 : 'bg-blue-600 hover:bg-blue-800 text-white'
-              } ${loading ? 'opacity-60 cursor-not-allowed' : ''} cursor-pointer`}
+              } ${loading ? 'opacity-60 ' : ''} cursor-pointer`}
           >
             {loading ? (
               <>
@@ -649,9 +653,17 @@ export default function ProductsForm() {
             )}
           </button>
         </div>
-      </div>
+      </div> */}
 
-      <div className="w-full mx-auto">
+      <HeaderWithBackAction
+        title={isCreateNew ? "Create New Product" : "Product Details"}
+        onActionClick={isCreateNew ? handleSubmit : isEditing ? handleSubmit : () => setIsEditing(true)}
+        isEditing={isEditing}
+        defaultBackPath="/catalog/products"
+        loading={loading}
+      />
+
+      <div className="w-full mx-auto mt-2">
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-8">
             <MainProductInformation
@@ -982,7 +994,7 @@ function MainProductInformation({
             value={tagInput}
             onChange={e => setTagInput(e.target.value)}
             placeholder="Enter tag"
-            className={`input flex-1 ${fieldsDisabled ? 'opacity-60 bg-gray-50 border-gray-200 cursor-not-allowed' : ''}`}
+            className={`input flex-1 ${fieldsDisabled ? 'opacity-60 bg-gray-50 border-gray-200 ' : ''}`}
             onKeyDown={e => e.key === "Enter" && addTag()}
             disabled={fieldsDisabled}
           />
@@ -990,7 +1002,7 @@ function MainProductInformation({
             type="button"
             onClick={addTag}
             className={`h-11 w-11 border border-gray-300 rounded-md
-                       text-lg hover:bg-gray-100 ${fieldsDisabled ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-100"}`}
+                       text-lg hover:bg-gray-100 ${fieldsDisabled ? "opacity-60 " : "hover:bg-gray-100"}`}
             disabled={fieldsDisabled}
           >
             +
@@ -1009,7 +1021,7 @@ function MainProductInformation({
                 {tag}
                 <button
                   onClick={() => removeTag(i)}
-                  className="text-blue-500 hover:text-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="text-blue-500 hover:text-blue-700 disabled:opacity-60 disabled:"
                   disabled={fieldsDisabled}
                 >
                   ×
@@ -1092,7 +1104,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
         ${formData.status === "active"
                 ? "border-green-500 bg-green-50 text-green-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
           >
             <input
               type="radio"
@@ -1114,7 +1126,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
         ${formData.status === "inactive"
                 ? "border-gray-500 bg-gray-100 text-gray-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
           >
             <input
               type="radio"
@@ -1136,7 +1148,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
         ${formData.status === "deleted"
                 ? "border-red-600 bg-red-100 text-red-700"
                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
           >
             <input
               type="radio"
@@ -1232,7 +1244,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
               setFormData(p => ({ ...p, returnable: !p.returnable }))
             }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.returnable ? "bg-blue-600" : "bg-gray-300"
-              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
             disabled={fieldsDisabled}
           >
             <span
@@ -1251,7 +1263,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
               setFormData(p => ({ ...p, requires_inventory: !p.requires_inventory }))
             }
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.requires_inventory ? "bg-blue-600" : "bg-gray-300"
-              } ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+              } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
             disabled={fieldsDisabled}
           >
             <span
@@ -1282,7 +1294,7 @@ function Input({ label, required, disabled, ...props }) {
       )}
       <input
         {...props}
-        className={`input ${disabled ? 'opacity-60 text-gray-900 cursor-not-allowed' : ''}`}
+        className={`input ${disabled ? 'opacity-60 text-gray-900 ' : ''}`}
         disabled={disabled}
       />
     </div>
@@ -1300,7 +1312,7 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
         value={value ?? ""}
         min={min}
         step="any"
-        className={`input ${disabled ? 'opacity-60 cursor-not-allowed text-gray-900' : ''}`}
+        className={`input ${disabled ? 'opacity-60  text-gray-900' : ''}`}
         disabled={disabled}
         onWheel={(e) => e.target.blur()}
 
@@ -1313,14 +1325,14 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
             return;
           }
 
-          // ⭐ If min = 0 → allow 0+
+          // If min = 0 → allow 0+
           if (min === 0) {
             if (/^\d+$/.test(raw)) {
               onChange(raw);
             }
           }
 
-          // ⭐ If min = 1 → allow 1+
+          // If min = 1 → allow 1+
           else {
             if (/^[1-9]\d*$/.test(raw)) {
               onChange(raw);
@@ -1351,7 +1363,7 @@ function Textarea({ label, disabled, ...props }) {
       <textarea
         {...props}
         rows={4}
-        className={`input resize-none h-20 ${disabled ? 'opacity-60 cursor-not-allowed text-gray-900' : ''}`}
+        className={`input resize-none h-20 ${disabled ? 'opacity-60  text-gray-900' : ''}`}
         disabled={disabled}
       />
     </div>
@@ -1584,7 +1596,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
               type="number"
               value={formData.igst}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 "
             />
           </div>
 
@@ -1597,7 +1609,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
               type="number"
               value={formData.percentage}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 "
             />
           </div>
 
@@ -1613,7 +1625,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Creating...' : 'Create Tax'}

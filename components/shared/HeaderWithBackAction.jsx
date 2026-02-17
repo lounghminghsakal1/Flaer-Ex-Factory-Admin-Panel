@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Pencil, Save } from "lucide-react";
 
 export default function HeaderWithBackAction({
@@ -9,12 +9,20 @@ export default function HeaderWithBackAction({
   loading = false,
   onActionClick,
   onBack,
+  defaultBackPath = "/dashboard"
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const returnTo = searchParams.get("returnTo");
 
   const handleBack = () => {
     if (onBack) return onBack();
-    router.back();
+    if (returnTo) {
+      router.push(`${defaultBackPath}?${decodeURIComponent(returnTo)}`);
+      return;
+    }
+    router.push(defaultBackPath);
   };
 
   return (

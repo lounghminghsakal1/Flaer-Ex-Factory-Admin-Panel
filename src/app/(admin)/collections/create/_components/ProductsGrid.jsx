@@ -294,9 +294,9 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
           {/* BULK ACTIONS */}
           {displayProducts.length > 0 && (
             <div className="flex items-center gap-2">
-
               {/* UPDATE SEQUENCE */}
-              <button
+              {displayProducts.length > 1 && (
+                <button
                 onClick={collectionId ? handleUpdateSequenceToBackend : handleUpdateSequence}
                 disabled={isUpdatingSequence}
                 className={`px-4 py-2 rounded-md border text-sm font-medium transition-transform cursor-pointer
@@ -314,6 +314,8 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
                     : "Update Sequence"}
               </button>
 
+              )}
+              
               {/* CANCEL REORDER */}
               {isReordering && (
                 <button
@@ -326,7 +328,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
                   Cancel
                 </button>
               )}
-
+              
               {/* REMOVE */}
               {removingIds.length > 0 && (
                 <button
