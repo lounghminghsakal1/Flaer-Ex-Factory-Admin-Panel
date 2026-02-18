@@ -75,7 +75,7 @@ export default function BrandDetailsPage() {
   const handleSubmit = async () => {
 
     if (!formData.brand_name) {
-      toast.error("Name is required");
+      toast.error("Please fill all required fields");
       return;
     }
 
@@ -105,7 +105,9 @@ export default function BrandDetailsPage() {
 
       if (!res.ok) throw new Error();
 
-      toast.success(brandId ? "Brand updated" : "Brand created");
+      toast.success(brandId ? "Brand updated" : "Brand created", {
+        
+      });
       const returnTo = searchParams.get("returnTo");
 
       router.push(`/catalog/brands${returnTo ? `?${decodeURIComponent(returnTo)}` : ""}`);

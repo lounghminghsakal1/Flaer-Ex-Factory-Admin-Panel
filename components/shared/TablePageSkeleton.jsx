@@ -31,7 +31,7 @@ export default function TablePageSkeleton({
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="rounded-lg overflow-hidden">
 
         {/* Header */}
         <div className="grid grid-cols-7 gap-4 bg-gray-100 px-4 py-3">
@@ -44,7 +44,7 @@ export default function TablePageSkeleton({
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div
             key={rowIndex}
-            className="grid grid-cols-7 gap-4 px-4 py-4 border-t border-gray-400"
+            className="grid grid-cols-7 gap-4 px-4 py-4 border-gray-400"
           >
             {Array.from({ length: columns }).map((_, colIndex) => (
               <Skeleton key={colIndex} height={16} />

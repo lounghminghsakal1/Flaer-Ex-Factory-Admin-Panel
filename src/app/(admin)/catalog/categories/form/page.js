@@ -28,6 +28,8 @@ export default function CategoryFormPage() {
     parent_id: null
   });
 
+  const [isParentToggle, setIsParentToggle] = useState(true);
+
   useEffect(() => {
     if (!isCreateNew && categoryId) fetchCategoryDetails();
   }, [categoryId]);
@@ -60,8 +62,13 @@ export default function CategoryFormPage() {
 
   const handleSubmit = async () => {
 
-    if (!formData.name.trim()) {
-      toast.error("Name required");
+    if (!formData.name.trim() || !formData.title.trim()) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    if (!isParentToggle && formData.parent_id === null) {
+      toast.error("Please select a parent category");
       return;
     }
 
@@ -124,6 +131,8 @@ export default function CategoryFormPage() {
           setFormData={setFormData}
           isEditing={isEditing}
           isCreateNew={isCreateNew}
+          isParentToggle={isParentToggle}
+          setIsParentToggle={setIsParentToggle}
         />
       </div>
 

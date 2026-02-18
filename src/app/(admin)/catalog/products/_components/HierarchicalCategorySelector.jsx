@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Minus, X } from 'lucide-react';
 import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
-import { DM_Sans } from 'next/font/google';
 import { toast } from 'react-toastify';
 
 const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCategory, onCategorySelect, disabled, required=false }) => {
@@ -17,7 +16,6 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
   const [showCreatePopup, setShowCreatePopup] = useState(false);
   const [lockedParentForChild, setLockedParentForChild] = useState(null);
   const [isParentToggle, setIsParentToggle] = useState(true);
-  const [showToast, setShowToast] = useState(false);
   const dropdownRef = useRef(null);
   const subcategoryCache = useRef({});
   const categoryRefs = useRef({});
@@ -169,8 +167,6 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
 
   const handleParentClick = async (category, event) => {
     event.stopPropagation();
-
-    // Same behavior as toggle - just expand/collapse
     await toggleCategory(category, event);
   };
 
@@ -220,6 +216,10 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
         ...(!isParentToggle && !lockedParentForChild && formData.parent_id ? { parent_id: formData.parent_id } : {})
       };
 
+      if (isParentToggle && !formData.parent_id) {
+        toast.error("Please select a parent category");
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories`, {
         method: 'POST',
         headers: {
@@ -235,8 +235,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
         const parentId = lockedParentForChild?.id || formData.parent_id;
 
         setShowCreatePopup(false);
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
+        toast.success("Category created successfully");
 
         setCategories(prev => {
           // Parent category creation
@@ -270,7 +269,6 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
         if (isParentToggle) {
           setExpandedCategories(prev => new Set([...prev, newCategory.id]));
 
-          // Don't set as selected, just keep it expanded
           setSelectedCategory(null);
           setSelectedParent(null);
 
@@ -319,7 +317,6 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
     if (selectedParent) {
       return `${selectedParent.name} >> ${selectedCategory.name}`;
     }
-    // This shouldn't happen now since we only select subcategories
     return selectedCategory.name;
   };
 
@@ -380,7 +377,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                         name="category"
                         checked={childSelected}
                         onChange={() => handleSubcategorySelect(child, category)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-secondary"
                       />
                       <span className={`ml-3 text-sm ${childSelected ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
                         {child.name}
@@ -391,9 +388,9 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                 <div className="px-10 py-2 mt-0.5">
                   <button
                     onClick={() => openCreatePopup('child', category)}
-                    className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium cursor-pointer"
+                    className="flex items-center text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium cursor-pointer"
                   >
-                    + Create subcategory
+                    <Plus size={16} /> Create subcategory
                   </button>
                 </div>
               </div>
@@ -404,9 +401,9 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                 </p>
                 <button
                   onClick={() => openCreatePopup('child', category)}
-                  className="text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium cursor-pointer"
+                  className="flex items-center text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium cursor-pointer"
                 >
-                  + Create subcategory
+                  <Plus size={16} /> Create subcategory
                 </button>
               </div>
             )}
@@ -431,10 +428,10 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
             type="button"
             onClick={() => openCreatePopup('general')}
             disabled={disabled}
-            className={`text-sm text-blue-600 hover:text-blue-900 font-medium ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+            className={`flex items-center text-sm text-primary hover:text-primary/80 hover:underline font-medium ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
               }`}
           >
-            + Create Category
+            <Plus size={16} /> Create Category
           </button>
         </div>
         <p className="text-xs text-gray-500 mb-2">Choose a subcategory</p>
@@ -444,7 +441,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
             type="button"
             onClick={() => !disabled && setIsOpen(!isOpen)}
             disabled={disabled}
-            className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+            className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500 transition-colors text-sm ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
               }`}
           >
             <div className="flex items-center justify-between">
@@ -463,7 +460,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search categories..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
                 />
               </div>
 
@@ -483,7 +480,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                 <button
                   type="button"
                   onClick={() => openCreatePopup('general')}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-teal-600 hover:bg-teal-50 rounded transition-colors font-medium"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-teal-600 hover:bg-teal-50 rounded transition-colors font-medium cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add New Category</span>
@@ -498,7 +495,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
       {showCreatePopup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-blue-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-900">
                 Create Category
               </h3>
@@ -507,15 +504,15 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                   setShowCreatePopup(false);
                   setLockedParentForChild(null);
                 }}
-                className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 cursor-pointer"
+                className="p-1.5 rounded-lg transition-colors hover:bg-red-100 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X size={20} className="text-gray-700" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-2">
               {/* Is Parent Toggle */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-gray-700">Is Parent Category</span>
                 <button
                   onClick={() => {
@@ -524,10 +521,10 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                     }
                   }}
                   disabled={!!lockedParentForChild}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${lockedParentForChild
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-1 focus:ring-primary focus:ring-offset-2 ${lockedParentForChild
                     ? 'bg-gray-300 cursor-not-allowed'
                     : isParentToggle
-                      ? 'bg-blue-600 hover:bg-blue-800 cursor-pointer'
+                      ? 'bg-primary hover:bg-primary/90 cursor-pointer'
                       : 'bg-gray-300 hover:bg-gray-500 cursor-pointer'
                     }`}
                 >
@@ -542,7 +539,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
               {lockedParentForChild ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Parent Category
+                    Parent Category 
                   </label>
                   <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700">
                     {lockedParentForChild.name}
@@ -565,13 +562,13 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
               {/* Category Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isParentToggle ? 'Parent Category Name' : 'Subcategory Name'} *
+                  {isParentToggle ? 'Parent Category Name' : 'Subcategory Name'} <span className='text-red-500'>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
                   placeholder="e.g., Wood"
                 />
               </div>
@@ -579,13 +576,13 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title *
+                  Title <span className='text-red-500'>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
                   placeholder="e.g., Wood Products"
                 />
               </div>
@@ -593,10 +590,10 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
               {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status *
+                  Status
                 </label>
                 <div className="flex gap-3">
-                  <label className="flex items-center gap-2 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                  <label className="flex items-center gap-2 px-4 py-2.5 border rounded-lg cursor-pointer transition-all hover:border-gray-400 has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
                     <input
                       type="radio"
                       value="active"
@@ -609,7 +606,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 has-[:checked]:border-gray-500 has-[:checked]:bg-gray-50">
+                  <label className="flex items-center gap-2 px-4 py-2.5 border rounded-lg cursor-pointer transition-all hover:border-gray-400 has-[:checked]:border-gray-500 has-[:checked]:bg-gray-50">
                     <input
                       type="radio"
                       value="inactive"
@@ -633,42 +630,32 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows="3"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500 resize-none"
                   placeholder="e.g., All wood based products"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex justify-center gap-3">
                 <button
                   onClick={() => {
                     setShowCreatePopup(false);
                     setLockedParentForChild(null);
                   }}
-                  className="flex-1 px-4 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-800 hover:text-gray-100 transition-colors font-medium cursor-pointer"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateCategory}
                   disabled={!formData.name || !formData.title || (!isParentToggle && !lockedParentForChild && !formData.parent_id)}
-                  className="flex-1 px-4 py-2 text-sm bg-blue-400 text-white rounded-md hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {!isParentToggle ? 'Create Subcategory' : 'Create Category'}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Success Toast */}
-      {showToast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in">
-          <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
-            <div className="w-2 h-3 border-r-2 border-b-2 border-green-500 transform rotate-45"></div>
-          </div>
-          <span className="text-sm font-medium">Category created successfully!</span>
         </div>
       )}
 

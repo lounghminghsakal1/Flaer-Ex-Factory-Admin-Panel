@@ -5,7 +5,7 @@ export default function CollectionsListing({ collectionsListData, onUpdateCollec
   return (
     <div className="w-full mx-auto ">
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,0.4fr))] gap-5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,0.4fr))] gap-5">
         {collectionsListData.map((collection) => (
           <CollectionCard key={collection.id} collection={collection} onUpdateCollection={onUpdateCollection} />
         ))}
@@ -13,3 +13,4 @@ export default function CollectionsListing({ collectionsListData, onUpdateCollec
     </div>
   );
 }
+

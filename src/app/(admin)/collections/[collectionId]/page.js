@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, cloneElement } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Plus } from "lucide-react";
 import CollectionForm from "../create/_components/CollectionForm";
-import RightModalPanelCreate from "../create/_components/RightModalPanel";
+import RightModalPanel from "../create/_components/RightModalPanel";
 import { useRouter } from "next/navigation";
 import ProductsGrid from "../create/_components/ProductsGrid";
 import { toast } from "react-toastify";
@@ -119,7 +118,7 @@ export default function CollectionDetailsPage() {
         <span className="p-3 rounded-full border-2 border-blue-600 hover:bg-blue-600 hover:text-white cursor-pointer " onClick={() => setShowModal(true)} ><ArrowLeft /></span>
       </div> */}
         {showModal && (
-          <RightModalPanelCreate onClose={() => setShowModal(false)} productsList={productsList} setProductsList={setProductsList} collectionId={collection.id} existingProducts={collection.collection_items} setCollectionData={setCollection} />
+          <RightModalPanel onClose={() => setShowModal(false)} productsList={productsList} setProductsList={setProductsList} collectionId={collection.id} existingProducts={collection.collection_items} setCollectionData={setCollection} />
         )}
       </div>)}
     </>

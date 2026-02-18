@@ -1,12 +1,11 @@
 "use client";
 import DataTable from "../../../../../../components/shared/DataTable";
 import { useState, useEffect } from "react";
-import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
-import useDebounce from "../../../../../../components/hooks/useDebounce";
-import { FilterX, SearchIcon } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import TablePageSkeleton from "../../../../../../components/shared/TablePageSkeleton";
+import ListingPageHeader from "../../../../../../components/shared/ListingPageHeader";
+import ProductsFilter from "./ProductsFilter";
 
 export default function ProductsListing() {
 
@@ -14,7 +13,7 @@ export default function ProductsListing() {
   const searchParams = useSearchParams();
 
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [currentPage, setCurrentPage] = useState(
     Number(searchParams.get("page")) || 1
@@ -57,22 +56,23 @@ export default function ProductsListing() {
     appliedFilters.parent_category_id;
 
   useEffect(() => {
-    fetchProductDetails(currentPage);
-  }, [currentPage, appliedFilters]);
+    const pageFromUrl = Number(searchParams.get("page")) || 1;
 
-  useEffect(() => {
-    const query = new URLSearchParams({
-      page: currentPage,
-      ...(appliedFilters.starts_with && { starts_with: appliedFilters.starts_with }),
-      ...(appliedFilters.status && { status: appliedFilters.status }),
-      ...(appliedFilters.brand_id && { brand_id: appliedFilters.brand_id }),
-      ...(appliedFilters.sub_category_id && { sub_category_id: appliedFilters.sub_category_id }),
-      ...(appliedFilters.parent_category_id && { parent_category_id: appliedFilters.parent_category_id })
-    });
+    const filtersFromUrl = {
+      starts_with: searchParams.get("starts_with") || "",
+      parent_category_id: searchParams.get("parent_category_id") || "",
+      sub_category_id: searchParams.get("sub_category_id") || "",
+      brand_id: searchParams.get("brand_id") || "",
+      status: searchParams.get("status") || ""
+    };
 
-    router.replace(`?${query.toString()}`, { scroll: false });
+    setCurrentPage(pageFromUrl);
+    setAppliedFilters(filtersFromUrl);
+    setDraftFilters(filtersFromUrl);
 
-  }, [currentPage, appliedFilters]);
+    fetchProductDetails(pageFromUrl, filtersFromUrl);
+
+  }, [searchParams]);
 
   useEffect(() => {
     fetchBrandsOptions();
@@ -91,7 +91,7 @@ export default function ProductsListing() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/brands?only_names=true`);
       const result = await response.json();
-      setBrandOptions(result.data);
+      setBrandOptions(result.data.map(b => ({...b, id: String(b.id)})));
     } catch (err) {
       console.log(err);
     }
@@ -101,7 +101,7 @@ export default function ProductsListing() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`);
       const result = await response.json();
-      setParentCategoryOptions(result.data);
+      setParentCategoryOptions(result.data.map(c => ({...c, id: String(c.id)})));
     } catch (err) {
       console.log(err);
     }
@@ -111,24 +111,23 @@ export default function ProductsListing() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${parentId}&only_names=true`);
       const result = await response.json();
-      setSubCategoryOptions(result.data);
+      setSubCategoryOptions(result.data.map(subC => ({...subC, id: String(subC.id)})));
     } catch (err) {
       console.log(err);
     }
   }
 
-  async function fetchProductDetails(page = 1) {
+  async function fetchProductDetails(page = 1, filters = {}) {
     try {
       setLoading(true);
 
       const query = new URLSearchParams({
         page,
-        ...(appliedFilters.starts_with && { starts_with: appliedFilters.starts_with.trim() }),
-        ...(appliedFilters.status && { status: appliedFilters.status }),
-        ...(appliedFilters.brand_id && { brand_id: appliedFilters.brand_id }),
-        ...(appliedFilters.sub_category_id && { sub_category_id: appliedFilters.sub_category_id }),
-        ...(appliedFilters.parent_category_id && { parent_category_id: appliedFilters.parent_category_id })
-
+        ...(filters.starts_with && { starts_with: filters.starts_with.trim() }),
+        ...(filters.status && { status: filters.status }),
+        ...(filters.brand_id && { brand_id: filters.brand_id }),
+        ...(filters.sub_category_id && { sub_category_id: filters.sub_category_id }),
+        ...(filters.parent_category_id && { parent_category_id: filters.parent_category_id })
       }).toString();
 
       const response = await fetch(
@@ -152,22 +151,28 @@ export default function ProductsListing() {
 
   const handleApply = (override) => {
     const next = override ?? draftFilters;
-    setCurrentPage(1);
-    setAppliedFilters(next);
+
+    const query = new URLSearchParams({
+      page: 1,
+      ...(next.starts_with && { starts_with: next.starts_with }),
+      ...(next.status && { status: next.status }),
+      ...(next.brand_id && { brand_id: next.brand_id }),
+      ...(next.sub_category_id && { sub_category_id: next.sub_category_id }),
+      ...(next.parent_category_id && { parent_category_id: next.parent_category_id })
+    });
+
+    router.push(`?${query.toString()}`, { scroll: false });
   };
 
   const handleClear = () => {
-    const empty = {
-      starts_with: "",
-      parent_category_id: "",
-      sub_category_id: "",
-      brand_id: "",
-      status: ""
-    };
+    router.push(`?page=1`, { scroll: false });
+  };
 
-    setDraftFilters(empty);
-    setAppliedFilters(empty);
-    setCurrentPage(1);
+  const handlePageChange = (page) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page);
+
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   const columns = [
@@ -206,7 +211,7 @@ export default function ProductsListing() {
           className={`px-2 py-1 rounded-full text-[10px] font-semibold
             ${value === 'active'
               ? 'bg-green-100 text-green-700'
-              : value === 'inactive' ? 'bg-gray-300 text-gray-700' : 'bg-red-100 text-red-700'
+              : value === 'inactive' ? 'bg-gray-100 text-gray-700' : 'bg-red-100 text-red-700'
             }`}
         >
           {value === "active" ? "ACTIVE" : value === "inactive" ? "INACTIVE" : "DELETED"}
@@ -222,119 +227,18 @@ export default function ProductsListing() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-2 py-4">
-      <div className="max-w-full mx-auto">
-        <div className="flex flex-wrap items-center gap-3 mb-5 p-2 bg-white shadow-sm border border-gray-200
- rounded-lg ">
-          {/* Search */}
-          <div className="flex justify-center items-center">
-            <input
-              type="text"
-              placeholder="Search product by name..."
-              className="border border-gray-300 text-sm px-2 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500"
-              value={draftFilters.starts_with}
-              onChange={(e) => {
-                const value = e.target.value;
-                const nextFilters = {...draftFilters, starts_with: value};
-                setDraftFilters(nextFilters);
-                if (value.trim() === "") handleApply(nextFilters);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleApply(draftFilters);
-              }}
-            />
-            <span className="h-8 px-2 flex items-center border border-gray-300 border-l-0 bg-primary text-white rounded-r cursor-pointer hover:scale-105 transition" onClick={() => handleApply(draftFilters)}><SearchIcon color="white" /></span>
-          </div>
-
-          {/* Status */}
-          <select
-            className="border border-gray-300 text-sm px-2 h-8 rounded focus:outline-none focus:border-gray-500"
-            value={draftFilters.status}
-            onChange={(e) =>
-              setDraftFilters(prev => ({ ...prev, status: e.target.value }))
-            }
-          >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="deleted">Deleted</option>
-          </select>
-
-          {/* Brand */}
-          <div className="w-36">
-            <SearchableDropdown
-              placeholder="Select Brand"
-              options={brandOptions}
-              value={draftFilters.brand_id}
-              onChange={(value) =>
-                setDraftFilters(prev => ({ ...prev, brand_id: value }))
-              }
-            />
-          </div>
-
-          {/* Category */}
-          <div className="flex gap-2 items-center ">
-            {/* Parent Category */}
-            <div className="w-41">
-              <SearchableDropdown
-                placeholder="Select Category"
-                options={parentCategoryOptions}
-                value={draftFilters.parent_category_id}
-                onChange={(value) =>
-                  setDraftFilters(prev => ({
-                    ...prev,
-                    parent_category_id: value,
-                    sub_category_id: ""
-                  }))
-                }
-              />
-            </div>
-            {/* Sub Category */}
-            {draftFilters.parent_category_id && (
-              <div className="w-41">
-                <SearchableDropdown
-                  placeholder="Select sub category"
-                  options={subCategoryOptions}
-                  value={draftFilters.sub_category_id}
-                  onChange={(value) =>
-                    setDraftFilters(prev => ({ ...prev, sub_category_id: value }))
-                  }
-                  emptyMessage="No sub categories for the selected parent category "
-                />
-              </div>
-            )}
-          </div>
-
-          {isDirty && (
-            <button className="flex text-sm items-center gap-1 h-8 px-3 border border-primary text-primary rounded hover:scale-105 transition cursor-pointer" onClick={handleApply}>
-              Apply
-            </button>
-          )}
-
-          <div>
-            {hasActiveFilters && (
-              <button className="flex text-sm items-center gap-1 h-8 px-3 border border-gray-500 text-gray-500 rounded hover:scale-105 transition cursor-pointer" onClick={() => {
-                handleClear();
-              }}
-              >
-                <FilterX size={16} />
-                Clear Filters
-              </button>
-            )}
-          </div>
-
-        </div>
-      </div>
-
+    <div className="h-screen bg-gray-50 px-2 py-4">
+      <ListingPageHeader title="Products" />
       {/* Table */}
+      <ProductsFilter draftFilters={draftFilters} setDraftFilters={setDraftFilters} brandOptions={brandOptions} handleApply={handleApply} handleClear={handleClear} isDirty={isDirty} parentCategoryOptions={parentCategoryOptions} subCategoryOptions={subCategoryOptions} hasActiveFilters={hasActiveFilters} />
       <DataTable
         columns={columns}
         data={data}
         currentPage={currentPage}
         totalPages={totalPages}
-        onPageChange={setCurrentPage}
+        onPageChange={handlePageChange}
         getDetailsLink={(row) => {
-          const params = new URLSearchParams(window.location.search);
+          const params = new URLSearchParams(searchParams.toString());
           return `/catalog/products/form?id=${row.id}&returnTo=${encodeURIComponent(params.toString())}`;
         }}
       />

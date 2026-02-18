@@ -34,31 +34,30 @@ export default function CategoriesPage() {
   //  Draft filters (UI editing)
   const [draftFilters, setDraftFilters] = useState(appliedFilters);
 
-  //  Fetch when page or applied filters change
   useEffect(() => {
-    fetchCategories(currentPage);
-  }, [currentPage, appliedFilters]);
+    const pageFromUrl = Number(searchParams.get("page")) || 1;
 
-  //  Sync applied filters to URL
-  useEffect(() => {
-    const query = new URLSearchParams({
-      page: currentPage,
-      ...(appliedFilters.starts_with && { starts_with: appliedFilters.starts_with }),
-      ...(appliedFilters.status && { status: appliedFilters.status })
-    });
+    const filtersFromUrl = {
+      starts_with: searchParams.get("starts_with") || "",
+      status: searchParams.get("status") || ""
+    };
 
-    router.replace(`?${query.toString()}`, { scroll: false });
+    setCurrentPage(pageFromUrl);
+    setAppliedFilters(filtersFromUrl);
+    setDraftFilters(filtersFromUrl);
 
-  }, [currentPage, appliedFilters]);
+    fetchCategories(pageFromUrl, filtersFromUrl);
 
-  const fetchCategories = async (page = 1) => {
+  }, [searchParams]);
+
+  const fetchCategories = async (page = 1, filters = {}) => {
     try {
       setLoading(true);
 
       const query = new URLSearchParams({
         page,
-        ...(appliedFilters.starts_with && { starts_with: appliedFilters.starts_with.trim() }),
-        ...(appliedFilters.status && { status: appliedFilters.status })
+        ...(filters.starts_with && { starts_with: filters.starts_with.trim() }),
+        ...(filters.status && { status: filters.status })
       });
 
       const response = await fetch(
@@ -79,21 +78,20 @@ export default function CategoriesPage() {
     }
   };
 
-  // APPLY filters
   const handleApplyFilters = (override) => {
     const next = override ?? draftFilters;
 
-    setCurrentPage(1);
-    setAppliedFilters(next);
+    const query = new URLSearchParams({
+      page: 1,
+      ...(next.starts_with && { starts_with: next.starts_with }),
+      ...(next.status && { status: next.status })
+    });
+
+    router.push(`?${query.toString()}`, { scroll: false });
   };
 
-  //  CLEAR filters
   const handleClearFilters = () => {
-    const empty = { starts_with: "", status: "" };
-
-    setDraftFilters(empty);
-    setAppliedFilters(empty);
-    setCurrentPage(1);
+    router.push(`?page=1`, { scroll: false });
   };
 
   if (loading && currentPage === 1) {

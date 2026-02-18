@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import CollectionForm from "./_components/CollectionForm";
-import RightModalPanelCreate from "./_components/RightModalPanel";
+import RightModalPanel from "./_components/RightModalPanel";
 import ProductsGrid from "./_components/ProductsGrid";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -91,7 +91,7 @@ export default function CreateCollectionPage() {
 
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections`;
 
-      const response = await fetch(url, {
+      const json = await fetch(url, {
         method: "POST",
         body: JSON.stringify(payload),
         headers: {
@@ -99,14 +99,19 @@ export default function CreateCollectionPage() {
         }
       });
 
-      if (!response.ok) throw new Error("Failed");
+      let response = await json.json();
+      let err;
+      if (!response.ok) {
+        err = response.errors[0];
+        throw err;
+      }
 
       toast.success("Collection saved successfully");
       router.back();
 
     } catch (err) {
       console.log(err);
-      toast.error("Failed to save collection");
+      toast.error("Failed to save collection"+err);
     } finally {
       setLoading(false);
     }
@@ -119,7 +124,7 @@ export default function CreateCollectionPage() {
         <CollectionForm setCreateCollectionForm={setCreateCollectionForm} />
       </div>
       {isRightModalOpen && (
-        <RightModalPanelCreate onClose={() => setIsRightModalOpen(false)} productsList={productsList} setProductsList={setProductsList} />
+        <RightModalPanel onClose={() => setIsRightModalOpen(false)} productsList={productsList} setProductsList={setProductsList} />
       )}
       <ProductsGrid products={productsList} setProducts={setProductsList} setIsRightModalOpen={setIsRightModalOpen} />
     </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import DataTable from "../../../../../../components/shared/DataTable";
+import { useRouter, useSearchParams } from "next/navigation";
+
 
 export default function CategoriesListing({
   categories,
@@ -9,10 +11,18 @@ export default function CategoriesListing({
   setCurrentPage
 }) {
 
-  // Build returnTo from current URL
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handlePageChange = (page) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page);
+
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const getReturnTo = () => {
-    if (typeof window === "undefined") return "";
-    return encodeURIComponent(window.location.search.replace("?", ""));
+    return encodeURIComponent(searchParams.toString());
   };
 
   const columns = [
@@ -66,7 +76,7 @@ export default function CategoriesListing({
       rowKey="id"
       currentPage={currentPage}
       totalPages={totalPages}
-      onPageChange={setCurrentPage}
+      onPageChange={handlePageChange}
 
       // Pass returnTo so filters and page are preserved
       getDetailsLink={(row) =>

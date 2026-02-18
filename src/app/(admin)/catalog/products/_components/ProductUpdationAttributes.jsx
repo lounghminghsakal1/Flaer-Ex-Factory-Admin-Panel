@@ -4,10 +4,9 @@ import {
   Trash2,
   Plus,
   X,
-  CornerDownLeft,
   ChevronRight,
   ChevronDown,
-  RotateCcw,
+  ExternalLink,
   Image as ImageIcon,
   Upload,
 } from "lucide-react";
@@ -405,7 +404,7 @@ function PropertyRow({
                   <div className="p-2 border-b sticky top-0 bg-white">
                     <input
                       type="text"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-secondary"
                       placeholder="Search or type to create..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -480,7 +479,7 @@ function PropertyRow({
               value={property.value || ""}
               onChange={(e) => onValueChange(e.target.value)}
               placeholder="Enter value"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
             />
           ) : (
             <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700">
@@ -564,7 +563,7 @@ function SkuTableSection({
           onClick={() => {
             setShowCreateSkuPopup(true);
           }}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 hover:scale-102 transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"
         >
           <Plus size={18} />
           Create Product SKU
@@ -590,12 +589,24 @@ function SkuTableSection({
             <tbody>
               {allVariants.map((sku, index) => (
                 <tr key={sku.id} className="border-b last:border-b-0 hover:bg-gray-50">
-                  <td className="px-3 py-3 text-gray-900">{sku.sku_name}</td>
-                  <td className="px-3 py-3 text-gray-900">{sku.display_name}</td>
-                  <td className="px-3 py-3 text-gray-600">{sku.sku_code}</td>
-                  <td className="px-3 py-3 text-gray-900">₹{parseFloat(sku.mrp).toFixed(2)}</td>
-                  <td className="px-3 py-3 text-gray-900">₹{parseFloat(sku.selling_price).toFixed(2)}</td>
-                  <td className="px-3 py-3 text-gray-900">₹{parseFloat(sku.unit_price).toFixed(2)}</td>
+                  <td className="px-3 py-3 text-gray-900">
+                    <div className="w-[200px] truncate" title={sku.sku_name} >
+                      {sku.sku_name}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-gray-900">
+                    <div className="w-[200px] truncate" title={sku.display_name}>
+                      {sku.display_name}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-gray-600">
+                    <div className="w-[140px] truncate" title={sku.sku_code}>
+                      {sku.sku_code}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-gray-900">₹{parseFloat(sku.mrp)}</td>
+                  <td className="px-3 py-3 text-gray-900">₹{parseFloat(sku.selling_price)}</td>
+                  <td className="px-3 py-3 text-gray-900">₹{parseFloat(sku.unit_price)}</td>
                   <td className="px-3 py-3 text-gray-600 uppercase">{sku.uom}</td>
                   <td className="px-3 py-3 text-center">
                     {sku.master ? (
@@ -609,14 +620,13 @@ function SkuTableSection({
                   <td className="px-3 py-3 text-center">
                     <button
                       onClick={() => {
-                        // TODO: Navigate to SKU details page
                         setSkuForSkuDetailsPopup(sku);
                         setSkuDetailsPopup(true);
                       }}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center gap-1 px-4 py-2 bg-primary hover:bg-primary/80 text-white text-xs font-medium rounded cursor-pointer hover:scale-105 transition-colors"
                     >
                       Details
-                      <ChevronRight size={14} />
+                      <ExternalLink className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -780,7 +790,7 @@ function ContentRow({
               value={content.content_type || ""}
               onChange={(e) => onTypeChange(e.target.value)}
               placeholder="Enter content type"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500 bg-white"
             />
           ) : (
             // Read-only display for existing content or when not editing
@@ -799,7 +809,7 @@ function ContentRow({
               value={content.content_value || ""}
               onChange={(e) => onValueChange(e.target.value)}
               placeholder="Enter value"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500 bg-white"
             />
           ) : (
             <input

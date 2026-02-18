@@ -404,7 +404,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
   }
 
   const inputClass = isEditing
-    ? "w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+    ? "w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
     : "w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed";
 
   const labelClass = "block text-xs font-medium text-gray-700 mb-1";
@@ -414,7 +414,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl p-8">
           <div className="flex items-center gap-3">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             <span className="text-gray-600">Loading SKU details...</span>
           </div>
         </div>
@@ -426,7 +426,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="bg-blue-50 flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">SKU Details</h3>
             <p className="text-sm text-gray-500 mt-0.5">{form.sku_code}</p>
@@ -435,7 +435,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition text-sm font-medium cursor-pointer"
               >
                 <Edit2 size={16} />
                 Edit
@@ -452,9 +452,9 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
             )}
             <button
               onClick={onClose}
-              className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 transition-colors cursor-pointer"
+              className="border p-1.5 rounded-lg transition-colors hover:bg-red-100 cursor-pointer"
             >
-              <X size={20} />
+              <X size={20} className="text-gray-700" />
             </button>
           </div>
         </div>
@@ -888,10 +888,10 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+        <div className="flex justify-center border-t border-gray-200 px-6 py-4 bg-gray-50">
           <button
             onClick={onClose}
-            className="w-80 ml-76 px-4 py-2 bg-gray-400 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors font-medium cursor-pointer"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
           >
             Close
           </button>
@@ -949,7 +949,7 @@ function OptionRow({
               value={option.value || ""}
               onChange={(e) => onValueChange(e.target.value)}
               placeholder="Enter value"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
             />
           ) : (
             <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700">

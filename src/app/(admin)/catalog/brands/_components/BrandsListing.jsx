@@ -1,6 +1,8 @@
 "use client";
 
 import DataTable from "../../../../../../components/shared/DataTable";
+import { useRouter, useSearchParams } from "next/navigation";
+
 
 export default function BrandsListing({
   brands,
@@ -8,10 +10,17 @@ export default function BrandsListing({
   totalPages,
   setCurrentPage
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const getReturnTo = () => {
-    if (typeof window === "undefined") return "";
-    return encodeURIComponent(window.location.search.replace("?", ""));
+    return encodeURIComponent(searchParams.toString());
+  };
+
+  const handlePageChange = (page) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page);
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   const columns = [
@@ -52,7 +61,7 @@ export default function BrandsListing({
       rowKey="id"
       currentPage={currentPage}
       totalPages={totalPages}
-      onPageChange={setCurrentPage}
+      onPageChange={handlePageChange}
       getDetailsLink={(row) =>
         `/catalog/brands/form?id=${row.id}&returnTo=${getReturnTo()}`
       }

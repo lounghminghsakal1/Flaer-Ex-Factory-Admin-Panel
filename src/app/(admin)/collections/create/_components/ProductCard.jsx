@@ -99,9 +99,6 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
                     className={`w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-110 ${isMarkedForRemoval ? 'grayscale' : ''
                       }`}
                   />
-                  {/* <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center">
-                  <Eye size={16} className="text-white opacity-0 group-hover/image:opacity-100 transition-opacity" />
-                </div> */}
                 </div>
               ) : (
                 <div className="w-16 h-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
@@ -112,11 +109,21 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
             </div>
 
             {/* Content Section - Middle */}
-            <div className="flex-1 min-w-0">
-              {/* Product Name */}
-              <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 truncate leading-tight">
-                {productName}
-              </h3>
+            <div className="w-60">
+              {/* Product Name with tooltip on truncation */}
+              <div className="relative group/name mb-1">
+                <h3 className="text-sm font-bold text-gray-900 truncate leading-tight">
+                  {productName}
+                </h3>
+                {/* Tooltip —  */}
+                <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/name:block z-20 pointer-events-none">
+                  <div className="bg-gray-900 text-white text-xs font-medium rounded-lg px-2.5 py-1.5 shadow-lg max-w-xs break-words whitespace-normal">
+                    {productName}
+                    {/* Arrow */}
+                    <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900" />
+                  </div>
+                </div>
+              </div>
 
               {/* Product Code & Status - Same Row */}
               <div className="flex items-center gap-2 mb-1">
@@ -176,7 +183,7 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
         
           {/* Right Section - Remove Icon (appears on hover when editing) */}
           {isEditing && (
-            <div className="flex items-start shrink-0">
+            <div className="flex items-start pr-1.5 shrink-0">
               <button
                 onClick={handleRemove}
                 className={`p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${isMarkedForRemoval

@@ -35,7 +35,7 @@ export default function CollectionsFilter({
             <input
               type="text"
               placeholder="Search collection..."
-              className="border border-gray-300 text-gray-700 text-sm px-2 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500 transition"
+              className="border border-gray-300 text-gray-700 text-sm px-2 py-3 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500 transition"
               value={draftFilters.starts_with}
               onChange={(e) => {
                 const value = e.target.value;
@@ -51,8 +51,8 @@ export default function CollectionsFilter({
             />
 
             <span
-              className="h-8 px-2 bg-primary flex items-center border border-gray-300 border-l-0 rounded-r cursor-pointer hover:scale-105 transition"
-              onClick={onApply}
+              className="h-8 px-2 py-3 bg-primary flex items-center border border-gray-300 border-l-0 rounded-r cursor-pointer hover:scale-105 transition"
+              onClick={() => {if (draftFilters.starts_with.trim() === "") {return;}; onApply()}}
             >
               <SearchIcon size={16} color="white" />
             </span>

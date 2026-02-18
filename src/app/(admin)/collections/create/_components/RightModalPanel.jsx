@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Package, Search, IndentIcon } from 'lucide-react';
 import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
 import { toast } from 'react-toastify';
@@ -29,7 +29,7 @@ const ProductCard = ({ product, isSelected, onToggle, isAlreadyAdded }) => {
             checked={isSelected}
             onChange={onToggle}
             disabled={isAlreadyAdded}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-secondary cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -151,7 +151,7 @@ const ImagePreviewPopup = ({ imageUrl, productName, showPopup, setShowPopup }) =
   );
 };
 
-export default function RightModalPanelCreate({ onClose, productsList, setProductsList, collectionId = null, existingProducts = [], setCollectionData = null }) {
+export default function RightModalPanel({ onClose, productsList, setProductsList, collectionId = null, existingProducts = [], setCollectionData = null }) {
   const [filterType, setFilterType] = useState(null);
   const [filterTypeOptions] = useState([
     { id: 1, name: 'Brand' },
@@ -502,7 +502,7 @@ export default function RightModalPanelCreate({ onClose, productsList, setProduc
                 onChange={(e) => setSearchText(e.target.value)}
                 onKeyPress={handleSearchKeyPress}
                 placeholder="Enter product name..."
-                className="w-60 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-60 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent"
               />
               <button
                 onClick={handleSearch}

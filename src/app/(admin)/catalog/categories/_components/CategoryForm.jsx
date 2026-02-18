@@ -4,15 +4,18 @@ import { useState, useEffect } from "react";
 import { Package, Plus, Loader2, X, Save, Edit2Icon, SquarePen } from "lucide-react";
 import { toast } from "react-toastify";
 import SearchableDropdown from "../../../../../../components/shared/SearchableDropdown";
+import SubCategoriesTableSkeleton from "./SubCategoriesTableSkeleton";
 
 export default function CategoryForm({
   formData,
   setFormData,
   isEditing,
-  isCreateNew
+  isCreateNew,
+  isParentToggle,
+  setIsParentToggle
 }) {
   const [categories, setCategories] = useState([]);
-  const [isParentToggle, setIsParentToggle] = useState(true);
+
 
   const [subcategories, setSubcategories] = useState([]);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
@@ -124,8 +127,8 @@ export default function CategoryForm({
   const handlePopupSubmit = async (e) => {
     if (e) e.preventDefault();
 
-    if (!popupFormData.name || popupFormData.name.trim() === "") {
-      toast.error("Name cannot be empty");
+    if (!popupFormData.name || popupFormData.name.trim() === "" || popupFormData.title.trim() === "") {
+      toast.error("Please fill all required fields");
       return;
     }
 
@@ -202,7 +205,7 @@ export default function CategoryForm({
 
             <button
               onClick={() => setIsParentToggle(!isParentToggle)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isParentToggle
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-1 focus:ring-secondary focus:ring-offset-2 ${isParentToggle
                 ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
                 : "bg-gray-300 hover:bg-gray-400 cursor-pointer"
                 }`}
@@ -256,7 +259,7 @@ export default function CategoryForm({
               disabled={!isEditing && !isCreateNew}
               placeholder="Enter category name"
               className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditing || isCreateNew
-                ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                ? "border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white"
                 : "border-gray-200 bg-gray-50 text-gray-500 "
                 } outline-none placeholder:text-gray-300 `}
             />
@@ -275,7 +278,7 @@ export default function CategoryForm({
               disabled={!isEditing && !isCreateNew}
               placeholder="Enter display title"
               className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditing || isCreateNew
-                ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                ? "border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white"
                 : "border-gray-200 bg-gray-50 text-gray-500 "
                 } outline-none placeholder:text-gray-300 `}
             />
@@ -338,7 +341,7 @@ export default function CategoryForm({
               rows="3"
               placeholder="Enter category description"
               className={`w-full px-3 py-2 text-sm border rounded-lg transition-all resize-none ${isEditing || isCreateNew
-                ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                ? "border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white"
                 : "border-gray-200 bg-gray-50 text-gray-500 "
                 } outline-none placeholder:text-gray-300 `}
             />
@@ -365,9 +368,7 @@ export default function CategoryForm({
           </div>
 
           {subcategoriesLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 size={24} className="animate-spin text-blue-600" />
-            </div>
+            <SubCategoriesTableSkeleton />
           ) : subcategories.length === 0 ? (
             <div className="text-center py-8">
               <Package size={48} className="text-gray-300 mx-auto mb-2" />
@@ -485,7 +486,7 @@ export default function CategoryForm({
                     onChange={handlePopupInputChange}
                     disabled={!isEditingPopup}
                     className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditingPopup
-                      ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                      ? "border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white"
                       : "border-gray-200 bg-gray-50 text-gray-500 "
                       } outline-none`}
                   />
@@ -502,7 +503,7 @@ export default function CategoryForm({
                     onChange={handlePopupInputChange}
                     disabled={!isEditingPopup}
                     className={`w-full px-3 py-2 text-sm border rounded-lg transition-all ${isEditingPopup
-                      ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                      ? "border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white"
                       : "border-gray-200 bg-gray-50 text-gray-500 "
                       } outline-none`}
                   />
@@ -578,7 +579,7 @@ export default function CategoryForm({
                     disabled={!isEditingPopup}
                     rows="3"
                     className={`w-full px-3 py-2 text-sm border rounded-lg transition-all resize-none ${isEditingPopup
-                      ? "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                      ? "border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white"
                       : "border-gray-200 bg-gray-50 text-gray-500 "
                       } outline-none placeholder:text-gray-300`}
                   />
@@ -587,7 +588,14 @@ export default function CategoryForm({
 
               {/* Action Buttons */}
               {isEditingPopup && (
-                <div className="flex justify-center gap-2 pt-3 border-t">
+                <div className="flex justify-center gap-4">
+                  <button
+                    onClick={closePopups}
+                    disabled={loading}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                   <button
                     onClick={handlePopupSubmit}
                     disabled={loading}
@@ -604,13 +612,6 @@ export default function CategoryForm({
                         Save Changes
                       </>
                     )}
-                  </button>
-                  <button
-                    onClick={closePopups}
-                    disabled={loading}
-                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    Cancel
                   </button>
                 </div>
               )}
@@ -649,28 +650,28 @@ export default function CategoryForm({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Name <span className="text-red-500">*</span>
+                    Sub category Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="name"
                     value={popupFormData.name}
                     onChange={handlePopupInputChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white outline-none transition-all"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white outline-none transition-all"
                     placeholder="Enter subcategory name"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Title <span className="text-red-500">*</span>
+                    Sub category Title <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="title"
                     value={popupFormData.title}
                     onChange={handlePopupInputChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white outline-none transition-all"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white outline-none transition-all"
                     placeholder="Enter title"
                   />
                 </div>
@@ -741,14 +742,21 @@ export default function CategoryForm({
                     value={popupFormData.description}
                     onChange={handlePopupInputChange}
                     rows="3"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white outline-none transition-all resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white outline-none transition-all resize-none"
                     placeholder="Enter description"
                   />
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-center gap-2 pt-3 border-t">
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={closePopups}
+                  disabled={loading}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={handlePopupSubmit}
                   disabled={loading}
@@ -765,13 +773,6 @@ export default function CategoryForm({
                       Create Subcategory
                     </>
                   )}
-                </button>
-                <button
-                  onClick={closePopups}
-                  disabled={loading}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  Cancel
                 </button>
               </div>
             </div>

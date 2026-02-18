@@ -11,7 +11,7 @@ export default function CategoryDetailsSkeleton() {
       </div>
 
       {/* CATEGORY INFO CARD */}
-      <div className="w-[50%] bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+      <div className="w-[50%] bg-white rounded-xl p-5 space-y-4">
 
         {/* Section title */}
         <Skeleton width={180} height={20} />
@@ -53,7 +53,7 @@ export default function CategoryDetailsSkeleton() {
       </div>
 
       {/* SUBCATEGORIES CARD */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+      <div className="bg-white rounded-xl p-5 space-y-4">
 
         {/* Header row */}
         <div className="flex items-center justify-between">
@@ -62,7 +62,7 @@ export default function CategoryDetailsSkeleton() {
         </div>
 
         {/* Table */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className=" rounded-lg overflow-hidden">
 
           {/* Table header */}
           <div className="grid grid-cols-6 gap-4 bg-gray-100 px-4 py-3">
@@ -75,7 +75,7 @@ export default function CategoryDetailsSkeleton() {
           {Array.from({ length: 4 }).map((_, rowIndex) => (
             <div
               key={rowIndex}
-              className="grid grid-cols-6 gap-4 px-4 py-4 border-t"
+              className="grid grid-cols-6 gap-4 px-4 py-4"
             >
 
               {/* Name */}

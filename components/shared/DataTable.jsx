@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { ExternalLink, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
-import { useState } from 'react';
 
 export default function DataTable({
   columns = [],

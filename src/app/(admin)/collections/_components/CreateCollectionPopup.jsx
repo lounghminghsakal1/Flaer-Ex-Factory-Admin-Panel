@@ -110,7 +110,7 @@ const CreateCollectionPopup = ({ showCreateCollectionPopup, setShowCreateCollect
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Enter collection name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all"
               required
             />
           </div>
@@ -127,7 +127,7 @@ const CreateCollectionPopup = ({ showCreateCollectionPopup, setShowCreateCollect
               onChange={handleInputChange}
               placeholder="Enter collection description"
               rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all resize-none"
             />
           </div>
 
@@ -141,7 +141,7 @@ const CreateCollectionPopup = ({ showCreateCollectionPopup, setShowCreateCollect
               name="collection_type"
               value={formData.collection_type}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all bg-white cursor-pointer"
             >
               <option value="manual">Manual</option>
             </select>

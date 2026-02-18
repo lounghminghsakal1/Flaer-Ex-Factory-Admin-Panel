@@ -14,7 +14,7 @@ export default function ButtonSplit({
         transition-all duration-200
         hover:scale-[1.03]
         hover:bg-blue-700
-        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+        focus:outline-none focus:ring-1 focus:ring-secondary focus:ring-offset-2
         cursor-pointer
         ${className}
       `}

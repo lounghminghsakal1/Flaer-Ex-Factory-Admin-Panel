@@ -42,7 +42,7 @@ export default function BrandsForm({
               onChange={handleInputChange}
               disabled={!isEditing}
               placeholder="Enter brand name"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
 
@@ -52,7 +52,7 @@ export default function BrandsForm({
             </label>
             <div className="flex gap-3">
               <label
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all cursor-pointer ${formData.status === 'active'
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-colors cursor-pointer ${formData.status === 'active'
                   ? 'border-green-500 bg-green-50'
                   : 'border-gray-200 bg-white hover:border-gray-300'
                   } ${!isEditing ? 'opacity-60' : ''}`}
@@ -67,10 +67,11 @@ export default function BrandsForm({
                   className="
                     w-4 h-4 
                     accent-green-600 
+                    hover:accent-green-600
                     focus:ring-0 focus:outline-none 
                     disabled:accent-gray-400
                     cursor-pointer
-                  " 
+                  "
                 />
                 <span className="text-sm font-medium text-gray-800">
                   Active
@@ -117,7 +118,7 @@ export default function BrandsForm({
               disabled={!isEditing}
               rows="3"
               placeholder="Enter brand description"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 resize-none placeholder:text-gray-300"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 resize-none placeholder:text-gray-300"
             />
           </div>
 
@@ -145,7 +146,7 @@ export default function BrandsForm({
               onChange={handleInputChange}
               disabled={!isEditing}
               placeholder="e.g., Germany"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
 
@@ -160,7 +161,7 @@ export default function BrandsForm({
               onChange={handleInputChange}
               disabled={!isEditing}
               placeholder="e.g., 1923"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
 
@@ -175,7 +176,7 @@ export default function BrandsForm({
               onChange={handleInputChange}
               disabled={!isEditing}
               placeholder="e.g., Furniture "
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent disabled:bg-gray-50 disabled:text-gray-700 placeholder:text-gray-300"
             />
           </div>
         </div>

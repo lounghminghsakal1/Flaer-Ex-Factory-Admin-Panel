@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Search,Plus } from 'lucide-react';
 
 /**
  * Global Searchable Dropdown Component
@@ -30,7 +30,8 @@ const SearchableDropdown = ({
   valueKey = "id",
   labelKey = "name",
   creatable = false,
-  onCreateOption = (value) => { }
+  onCreateOption = (value) => { },
+  heightClass = "h-10"
 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -88,10 +89,10 @@ const SearchableDropdown = ({
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
-          className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer'
+          className={`w-full px-3 ${heightClass} flex items-center text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer'
             }`}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
               {displayLabel}
             </span>
@@ -147,7 +148,7 @@ const SearchableDropdown = ({
                    bg-blue-50 text-blue-700
                    hover:bg-blue-100 flex items-center gap-2"
                     >
-                      ➕ Add “{searchQuery}”
+                      <Plus size={20} className='text-primary' /> Add “{searchQuery}”
                     </button>
                   )}
                 </div>

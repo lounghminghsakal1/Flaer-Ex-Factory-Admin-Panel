@@ -760,7 +760,6 @@ function MainProductInformation({
     }));
   };
 
-
   const UOM_OPTIONS = [
     { id: 'sq_ft', name: 'Sq ft' },
     { id: 'ml', name: 'Ml' },
@@ -776,6 +775,18 @@ function MainProductInformation({
   // Determine if fields should be disabled
   const fieldsDisabled = !isCreateNew && !isEditing;
 
+  // Quantity validation
+  const minQty = Number(formData.min_order_quantity);
+  const maxQty = Number(formData.max_order_quantity);
+  const hasMinMaxError =
+    minQty > 0 && maxQty > 0 && minQty > maxQty;
+
+  const qtyFields = [
+    { label: "Min Order Qty", key: "min_order_quantity" },
+    { label: "Max Order Qty", key: "max_order_quantity" },
+    { label: "Multiplication Qty", key: "multiplication_order_quantity" },
+  ];
+
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm shadow-gray-200/60 p-4 space-y-2">
 
@@ -786,26 +797,6 @@ function MainProductInformation({
         </h2>
         <div className="mt-2 h-px bg-gray-200" />
       </div>
-
-      {/* Product Type */}
-      {/* <div className="space-y-2">
-        <label className="label">Product Type</label>
-        <div className="flex gap-6">
-          {["goods", "service"].map(type => (
-            <label key={type} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                checked={formData.product_type === type}
-                onChange={() =>
-                  setFormData(p => ({ ...p, product_type: type }))
-                }
-                disabled={fieldsDisabled}
-              />
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </label>
-          ))}
-        </div>
-      </div> */}
 
       {/* Name Row */}
       <div className="grid grid-cols-2 gap-6">
@@ -856,10 +847,10 @@ function MainProductInformation({
         maxLength={8}
         value={formData.hsn_code}
         onChange={e => {
-          const digitsOnly = e.target.value.replace(/\D/g, ""); // remove letters
+          const digitsOnly = e.target.value.replace(/\D/g, "");
           setFormData(p => ({
             ...p,
-            hsn_code: digitsOnly.slice(0, 8) // limit to 8 digits
+            hsn_code: digitsOnly.slice(0, 8)
           }));
         }}
         disabled={fieldsDisabled}
@@ -867,22 +858,43 @@ function MainProductInformation({
 
       {/* Quantities */}
       <div>
-        <label className="label">Order Quantities</label>
-        <div className="grid grid-cols-3 gap-6 ">
-          {[
-            ["Min Order Qty", "min_order_quantity"],
-            ["Max Order Qty", "max_order_quantity"],
-            ["Multiplication Qty", "multiplication_order_quantity"]
-          ].map(([label, key]) => (
-            <NumberInput
-              key={key}
-              label={label}
-              value={formData[key]}
-              onChange={value =>
-                setFormData(p => ({ ...p, [key]: value }))
-              }
-              disabled={fieldsDisabled}
-            />
+        <div className="flex items-center gap-2 mb-1">
+          <label className="label">Order Quantities</label>
+          {hasMinMaxError && (
+            <span className="flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2 py-0.5">
+              <svg
+                className="w-3.5 h-3.5 shrink-0"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Min quantity can't be greater than Max quantity
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-6">
+          {qtyFields.map(({ label, key }) => (
+            <div key={key}>
+              <NumberInput
+                label={label}
+                value={formData[key]}
+                onChange={value =>
+                  setFormData(p => ({ ...p, [key]: value }))
+                }
+                disabled={fieldsDisabled}
+                className={
+                  hasMinMaxError && (key === "min_order_quantity" || key === "max_order_quantity")
+                    ? "border-red-400 focus:ring-red-300"
+                    : ""
+                }
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -959,7 +971,6 @@ function MainProductInformation({
               placeholder="Select UOM"
               onChange={(value) => {
                 setGlobalUom(value);
-
                 setProducts(prev =>
                   prev.map(product => ({
                     ...product,
@@ -972,7 +983,6 @@ function MainProductInformation({
               }}
               disabled={fieldsDisabled}
             />
-
           </div>
 
           <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
@@ -1021,7 +1031,7 @@ function MainProductInformation({
                 {tag}
                 <button
                   onClick={() => removeTag(i)}
-                  className="text-blue-500 hover:text-blue-700 disabled:opacity-60 disabled:"
+                  className="text-blue-500 hover:text-blue-700 disabled:opacity-60"
                   disabled={fieldsDisabled}
                 >
                   ×
@@ -1031,7 +1041,6 @@ function MainProductInformation({
           </div>
         )}
       </div>
-
     </div>
   );
 }
@@ -1097,13 +1106,13 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
       <div className="space-y-2">
         <label className="label">Status</label>
 
-        <div className="flex gap-6">
+        <div className="flex gap-2">
           {/* Active */}
           <label
-            className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer
+            className={`flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 cursor-pointer
         ${formData.status === "active"
                 ? "border-green-500 bg-green-50 text-green-700"
-                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                : "border-gray-500 text-gray-600 hover:bg-gray-50"
               } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
           >
             <input
@@ -1243,7 +1252,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
             onClick={() =>
               setFormData(p => ({ ...p, returnable: !p.returnable }))
             }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.returnable ? "bg-blue-600" : "bg-gray-300"
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-1 focus:ring-secondary focus:ring-offset-2 ${formData.returnable ? "bg-blue-600" : "bg-gray-300"
               } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
             disabled={fieldsDisabled}
           >
@@ -1262,7 +1271,7 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
             onClick={() =>
               setFormData(p => ({ ...p, requires_inventory: !p.requires_inventory }))
             }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData.requires_inventory ? "bg-blue-600" : "bg-gray-300"
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-1 focus:ring-secondary focus:ring-offset-2 ${formData.requires_inventory ? "bg-blue-600" : "bg-gray-300"
               } ${fieldsDisabled ? 'opacity-60 ' : ''}`}
             disabled={fieldsDisabled}
           >
@@ -1288,13 +1297,13 @@ function Input({ label, required, disabled, ...props }) {
   return (
     <div className="space-y-1">
       {label && (
-        <label className="label">
+        <label className="label text-gray-800">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
       <input
         {...props}
-        className={`input ${disabled ? 'opacity-60 text-gray-900 ' : ''}`}
+        className={`input ${disabled ? 'opacity-60 text-gray-900 ' : ''} placeholder:text-gray-300 `}
         disabled={disabled}
       />
     </div>
@@ -1304,7 +1313,7 @@ function Input({ label, required, disabled, ...props }) {
 function NumberInput({ label, value, onChange, min = 1, disabled }) {
   return (
     <div className="space-y-1">
-      <label className="label">{label}</label>
+      <label className="label text-gray-800">{label}</label>
 
       <input
         type="number"
@@ -1312,7 +1321,7 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
         value={value ?? ""}
         min={min}
         step="any"
-        className={`input ${disabled ? 'opacity-60  text-gray-900' : ''}`}
+        className={`input ${disabled ? 'opacity-60  text-gray-900' : ''} placeholder:text-gray-300`}
         disabled={disabled}
         onWheel={(e) => e.target.blur()}
 
@@ -1359,11 +1368,11 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
 function Textarea({ label, disabled, ...props }) {
   return (
     <div className="space-y-1">
-      <label className="label">{label}</label>
+      <label className="label text-gray-800">{label}</label>
       <textarea
         {...props}
         rows={4}
-        className={`input resize-none h-20 ${disabled ? 'opacity-60  text-gray-900' : ''}`}
+        className={`input resize-none h-20 py-2 ${disabled ? 'opacity-60  text-gray-900' : ''}placeholder:text-gray-300`}
         disabled={disabled}
       />
     </div>
@@ -1532,7 +1541,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="Enter tax name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent"
             />
           </div>
 
@@ -1546,7 +1555,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
               value={formData.code}
               onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
               placeholder="Enter tax code"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent uppercase"
             />
           </div>
 
@@ -1565,7 +1574,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
                 onChange={(e) => setFormData(prev => ({ ...prev, cgst: e.target.value }))}
                 onWheel={(e) => e.target.blur()}
                 placeholder="Enter CGST"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent"
               />
             </div>
 
@@ -1582,7 +1591,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
                 onChange={(e) => setFormData(prev => ({ ...prev, sgst: e.target.value }))}
                 onWheel={(e) => e.target.blur()}
                 placeholder="Enter SGST"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent"
               />
             </div>
           </div>

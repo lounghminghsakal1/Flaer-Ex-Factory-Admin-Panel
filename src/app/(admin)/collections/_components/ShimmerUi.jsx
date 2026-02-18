@@ -1,5 +1,5 @@
 export default function ShimmerUi() {
-  const array = Array.from({ length: 8 });
+  const array = Array.from({ length: 16 });
 
   return (
     <div className="p-5">

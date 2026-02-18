@@ -103,7 +103,7 @@ export default function ProductCreationAttributes({
 
   const [pendingCascadeDelete, setPendingCascadeDelete] = useState(null);
 
-  //  THIS useEffect to disable property/option editing in edit mode
+  //  disable property/option editing in edit mode
   useEffect(() => {
     if (!isCreateNew && generatedProducts.length > 0) {
       // Extract unique properties from generatedProducts
@@ -146,15 +146,14 @@ export default function ProductCreationAttributes({
     }
   }, [isCreateNew, generatedProducts, products]);
 
-  // Tailwind classes
   const tableWrapper = "overflow-x-auto border border-gray-200 rounded-lg";
   const tableBase = "w-full border-collapse text-sm";
   const thBase = "bg-gray-50 border-b border-gray-200 px-2 py-2 text-left text-xs font-semibold text-gray-700";
   const tdBase = "border-b border-gray-200 px-2 py-2";
   const inputCell =
-    "w-full h-9 px-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500";
+    "w-full h-9 px-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500";
   const inputCellSmall =
-    "w-full h-9 px-2 text-sm border border-gray-300 rounded-md text-center focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500";
+    "w-full h-9 px-2 text-sm border border-gray-300 rounded-md text-center focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500";
 
   const [mediaPopup, setMediaPopup] = useState(null);
 
@@ -806,7 +805,7 @@ export default function ProductCreationAttributes({
 
     setOptions(updatedOptions);
 
-    //  USE ENSURED PRODUCTS (NOT STATE)
+    //  USE ENSURED PRODUCTS
     setProducts(prev =>
       syncProductSkus(prev, ensuredGeneratedProducts, updatedOptions)
     );
@@ -949,7 +948,7 @@ export default function ProductCreationAttributes({
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm px-3 py-4 space-y-8">
 
-      {/* ================= HEADERS ================= */}
+      {/* HEADERS */}
       <div className="grid grid-cols-2 gap-8">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -964,10 +963,10 @@ export default function ProductCreationAttributes({
         </div>
       </div>
 
-      {/* ================= CONTENT ================= */}
+      {/* CONTENT  */}
       <div className="grid grid-cols-2 gap-10">
 
-        {/* ================= PROPERTIES ================= */}
+        {/* PROPERTIES  */}
         <div className="space-y-6">
           {properties.map((prop, i) => (
             <div key={i} className="border border-gray-300 rounded-lg p-2 space-y-1">
@@ -1024,7 +1023,7 @@ export default function ProductCreationAttributes({
                     <button
                       onClick={() => addPropertyValue(i)}
                       disabled={!isCreateNew}
-                      className="h-11 px-2 border border-l-0 border-gray-300
+                      className="h-9 px-2 border border-l-0 border-gray-300
              rounded-r-md bg-gray-50
              hover:bg-blue-600 hover:text-white transition"
                     >
@@ -1070,7 +1069,7 @@ export default function ProductCreationAttributes({
           )}
         </div>
 
-        {/* ================= OPTIONS ================= */}
+        {/* OPTIONS  */}
         <div className="space-y-6">
           {options.map((opt, i) => (
             <div key={i} className="border border-gray-300 rounded-lg p-2 space-y-1">
@@ -1125,7 +1124,7 @@ export default function ProductCreationAttributes({
                     />
                     <button
                       onClick={() => addOptionValue(i)}
-                      className="h-11 px-3 border border-l-0 border-gray-300
+                      className="h-9 px-3 border border-l-0 border-gray-300
                                  rounded-r-md bg-gray-50
                                  hover:bg-green-600 hover:text-white transition"
                     >
@@ -1652,7 +1651,7 @@ export default function ProductCreationAttributes({
                           {/* STATUS */}
                           <td className="px-1 py-1">
                             <select
-                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-secondary"
                               value={sku.status ?? "active"}
                               onChange={(e) => {
                                 const value = e.target.value;
@@ -2238,7 +2237,7 @@ function ProductContentSection({ productContents, setProductContents }) {
               <div className="space-y-1">
                 <input
                   type="text"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
                   placeholder="e.g., description"
                   value={row.content_type}
                   onChange={(e) =>
@@ -2251,7 +2250,7 @@ function ProductContentSection({ productContents, setProductContents }) {
               <div className="space-y-1">
                 <input
                   type="text"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
                   placeholder="e.g., Premium quality plywood..."
                   value={row.content_value}
                   onChange={(e) =>

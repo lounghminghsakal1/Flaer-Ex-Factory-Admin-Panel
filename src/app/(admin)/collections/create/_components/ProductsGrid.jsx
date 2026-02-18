@@ -210,6 +210,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       }
 
       setRemovingIds([]);
+      await updateSequenceToBackendDirect(resequencedProducts);
       refreshProductsList();
       toast.success("Items removed successfully!");
     } catch (err) {
@@ -217,6 +218,35 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       toast.error("Failed to remove items");
     } finally {
       setIsRemovingItems(false);
+    }
+  };
+
+  const updateSequenceToBackendDirect = async (productsList) => {
+    try {
+      const payload = {
+        collection_items: {
+          items: productsList.map((product, index) => ({
+            product_id: product.product?.id || product.id,
+            sequence: index + 1,
+            active: product.active !== undefined ? product.active : true
+          }))
+        }
+      };
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}/update_sequence`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to update sequence");
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update sequence");
     }
   };
 
@@ -295,27 +325,27 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
           {displayProducts.length > 0 && (
             <div className="flex items-center gap-2">
               {/* UPDATE SEQUENCE */}
-              {displayProducts.length > 1 && (
+              {displayProducts.length > 1 && removingIds.length === 0 && (
                 <button
-                onClick={collectionId ? handleUpdateSequenceToBackend : handleUpdateSequence}
-                disabled={isUpdatingSequence}
-                className={`px-4 py-2 rounded-md border text-sm font-medium transition-transform cursor-pointer
+                  onClick={collectionId ? handleUpdateSequenceToBackend : handleUpdateSequence}
+                  disabled={isUpdatingSequence}
+                  className={`px-4 py-2 rounded-md border text-sm font-medium transition-transform cursor-pointer
                   ${isReordering
-                    ? "border-primary bg-primary/90 text-white hover:bg-primary/80"
-                    : "border-gray-400 bg-white text-gray-700 hover:border-gray-500"
-                  }
+                      ? "border-primary bg-primary/90 text-white hover:bg-primary/80"
+                      : "border-gray-400 bg-white text-gray-700 hover:border-gray-500"
+                    }
                   ${isUpdatingSequence ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}
                 `}
-              >
-                {isUpdatingSequence
-                  ? "Saving..."
-                  : isReordering
-                    ? "Save Sequence"
-                    : "Update Sequence"}
-              </button>
+                >
+                  {isUpdatingSequence
+                    ? "Saving..."
+                    : isReordering
+                      ? "Save Sequence"
+                      : "Update Sequence"}
+                </button>
 
               )}
-              
+
               {/* CANCEL REORDER */}
               {isReordering && (
                 <button
@@ -328,7 +358,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
                   Cancel
                 </button>
               )}
-              
+
               {/* REMOVE */}
               {removingIds.length > 0 && (
                 <button
@@ -355,7 +385,8 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
           {/* RIGHT PRIMARY CTA - CTA means call to action */}
           <button
             onClick={() => { if (isReordering) { toast.warn("Finish sequencing first"); return; }; setIsRightModalOpen(true); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md border border-primary bg-primary text-white text-sm font-medium hover:bg-primary/90 hover:scale-105 transition-transform cursor-pointer ${isUpdatingSequence ? "cursor-not-allowed" : ""}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md border border-primary bg-primary text-white text-sm font-medium hover:bg-primary/90 hover:scale-105 transition-transform cursor-pointer ${isUpdatingSequence ? "cursor-not-allowed" : ""} disabled:cursor-not-allowed`}
+            disabled={isReordering}
           >
             <Plus size={18} />
             Add Products

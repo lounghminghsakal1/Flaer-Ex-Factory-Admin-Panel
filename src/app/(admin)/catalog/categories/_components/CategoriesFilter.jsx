@@ -33,7 +33,7 @@ export default function CategoriesFilter({
           <input
             type="text"
             placeholder="Search category..."
-            className="border border-gray-300 text-sm px-2 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500"
+            className="border border-gray-300 text-sm px-2 py-3 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500"
             value={filters.starts_with}
             onChange={(e) => {
               const value = e.target.value;
@@ -47,7 +47,7 @@ export default function CategoriesFilter({
           />
 
           <span
-            className="h-8 px-2 flex items-center border border-gray-300 border-l-0 bg-primary text-white rounded-r cursor-pointer hover:scale-105 transition"
+            className="h-8 px-2 py-3 flex items-center border border-gray-300 border-l-0 bg-primary text-white rounded-r cursor-pointer hover:scale-105 transition"
             onClick={() => onApply(filters)}
           >
             <SearchIcon size={16} />
@@ -70,7 +70,7 @@ export default function CategoriesFilter({
         {/* APPLY */}
         {isDirty && (
           <button
-            onClick={onApply}
+            onClick={() => onApply(filters)}
             className="flex text-sm items-center gap-1 h-8 px-3 border border-primary text-primary rounded hover:scale-105 transition cursor-pointer"
           >
             <Check size={16} />

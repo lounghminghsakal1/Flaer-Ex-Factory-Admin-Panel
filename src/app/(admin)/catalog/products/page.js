@@ -4,7 +4,6 @@ import ProductsListing from "./_components/ProductsListing";
 export default function ProductsPage() {
   return(
     <section>
-      <ProductsHeader />
       <ProductsListing />
     </section>
   );

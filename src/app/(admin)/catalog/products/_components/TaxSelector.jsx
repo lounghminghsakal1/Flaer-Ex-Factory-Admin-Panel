@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Search, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -262,11 +262,11 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
             type="button"
             onClick={openCreatePopup}
             disabled={disabled}
-            className={`text-sm text-blue-600 hover:text-blue-900 font-medium ${
+            className={`flex items-center text-sm text-primary hover:text-primary/80 hover:underline font-medium ${
               disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
             }`}
           >
-            + Create Tax
+            <Plus size={16} /> Create Tax
           </button>
         </div>
 
@@ -275,7 +275,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
             type="button"
             onClick={() => !disabled && setIsOpen(!isOpen)}
             disabled={disabled}
-            className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${
+            className={`w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500 transition-colors text-sm ${
               disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
             }`}
           >
@@ -298,7 +298,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search tax types..."
-                    className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-secondary focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -362,21 +362,21 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
         >
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div className="bg-blue-50 sticky top-0 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">
                 Create Tax Type
               </h3>
               <button
                 onClick={handleClosePopup}
-                className="text-gray-400 border-2 p-2 rounded-md hover:text-gray-50 hover:bg-red-500 cursor-pointer transition-colors"
+                className="p-1.5 rounded-lg transition-colors hover:bg-red-100 cursor-pointer"
                 type="button"
               >
-                <X className="w-5 h-5" />
+                <X size={20} className="text-gray-700" />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleCreateTax} className="p-6 space-y-4">
+            <form onSubmit={handleCreateTax} className="p-4 space-y-2">
               {/* Tax Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -387,7 +387,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                   value={formDataPopup.name}
                   onChange={(e) => setFormDataPopup(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g., GST 18%"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent"
                 />
               </div>
 
@@ -401,7 +401,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                   value={formDataPopup.code}
                   onChange={(e) => setFormDataPopup(prev => ({ ...prev, code: e.target.value }))}
                   placeholder="e.g., GST18"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent uppercase"
                 />
               </div>
 
@@ -420,7 +420,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                     onChange={(e) => setFormDataPopup(prev => ({ ...prev, cgst: e.target.value }))}
                     onWheel={(e) => e.target.blur()}
                     placeholder="e.g., 9"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent"
                   />
                 </div>
 
@@ -437,7 +437,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                     onChange={(e) => setFormDataPopup(prev => ({ ...prev, sgst: e.target.value }))}
                     onWheel={(e) => e.target.blur()}
                     placeholder="e.g., 9"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-secondary focus:border-transparent"
                   />
                 </div>
               </div>
@@ -469,18 +469,18 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex justify-center gap-3 pt-2">
                 <button
                   type="button"
                   onClick={handleClosePopup}
-                  className="flex-1 px-4 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-800 hover:text-gray-100 transition-colors font-medium cursor-pointer"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 text-sm bg-blue-400 text-white rounded-md hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Creating...' : 'Create Tax'}

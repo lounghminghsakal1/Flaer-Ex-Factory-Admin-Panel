@@ -103,7 +103,7 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 text-white">
+        <div className="bg-gradient-to-r from-primary to-primary/80 p-4 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -116,7 +116,7 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
             </div>
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors cursor-pointer"
             >
               <X size={24} />
             </button>
@@ -128,8 +128,8 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
           {/* Name Field */}
           <div className="mb-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1">
-              <Tag size={16} className="text-blue-500" />
-              Collection Name *
+              <Tag size={16} className="text-gray-700" />
+              Collection Name<span className='text-red-500'>*</span>
             </label>
             <input
               type="text"
@@ -137,7 +137,7 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
               value={formData.name}
               onChange={handleInputChange}
               placeholder="e.g., Best Sellers – TMT Bars"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all"
               required
             />
           </div>
@@ -145,7 +145,7 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
           {/* Description Field */}
           <div className="mb-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1">
-              <FileText size={16} className="text-blue-500" />
+              <FileText size={16} className="text-gray-700" />
               Description
             </label>
             <textarea
@@ -154,21 +154,21 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
               onChange={handleInputChange}
               placeholder="e.g., Top selling TMT bars across sizes and grades"
               rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all resize-none"
             />
           </div>
 
           {/* Collection Type Dropdown */}
           <div className="mb-3">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1">
-              <Layers size={16} className="text-blue-500" />
-              Collection Type *
+              <Layers size={16} className="text-gray-700" />
+              Collection Type
             </label>
             <select
               name="collection_type"
               value={formData.collection_type}
               onChange={handleInputChange}
-              className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer capitalize"
+              className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all bg-white cursor-pointer capitalize"
             >
               <option value="manual">Manual</option>
             </select>
@@ -179,12 +179,12 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
             <label className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
               <div className="flex items-center gap-3">
                 {formData.active ? (
-                  <ToggleRight size={24} className="text-green-500" />
+                  <ToggleRight size={24} className="text-gray-700" />
                 ) : (
-                  <ToggleLeft size={24} className="text-gray-400" />
+                  <ToggleLeft size={24} className="text-gray-700" />
                 )}
                 <div>
-                  <span className="text-sm font-semibold text-gray-700 block">Active Status</span>
+                  <span className="text-sm font-semibold text-gray-700 block">Status</span>
                   <span className="text-xs text-gray-500">
                     {formData.active ? 'Collection is active' : 'Collection is inactive'}
                   </span>
@@ -206,17 +206,17 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
         </div>
 
         {/* Footer */}
-        <div className="p-3 bg-gray-50 border-t border-gray-200 flex gap-2">
+        <div className="flex justify-center p-3 bg-gray-50 border-t border-gray-200 gap-4">
           <button
             onClick={handleClose}
-            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleSaveChanges}
             disabled={loading || !formData.name}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 hover:scale-105 cursor-pointer active:scale-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-sm hover:shadow-md"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
               <>
@@ -267,7 +267,7 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
         {/* Edit Button - Top Right */}
         <button
           onClick={handleEditClick}
-          className="edit-button absolute top-3 right-3 p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-blue-100 hover:text-blue-600 transition-all opacity-0 group-hover:opacity-100 z-10 cursor-pointer"
+          className="edit-button absolute top-3 right-3 p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-blue-100 hover:text-secondary transition-all opacity-0 group-hover:opacity-100 z-10 cursor-pointer"
         >
           <Edit2 size={16} />
         </button>

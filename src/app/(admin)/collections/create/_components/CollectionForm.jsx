@@ -120,7 +120,7 @@ const CollectionForm = ({
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-              <Tag size={14} className="text-blue-500" />
+              <Tag size={14} className="text-gray-500" />
               Collection Name <span className='text-red-600'>*</span>
             </label>
             <input
@@ -130,7 +130,7 @@ const CollectionForm = ({
               onChange={handleInputChange}
               placeholder="Enter collection name"
               disabled={isFieldsDisabled}
-              className="w-100 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-100 "
+              className="w-100 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all disabled:bg-gray-100 "
               required
             />
           </div>
@@ -138,7 +138,7 @@ const CollectionForm = ({
           {/* Active Toggle */}
           <div className="w-full flex-shrink-0">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-              Active Status
+              Status <span className='text-red-600'>*</span>
             </label>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm text-gray-600">
@@ -164,7 +164,7 @@ const CollectionForm = ({
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-              <FileText size={14} className="text-blue-500" />
+              <FileText size={14} className="text-gray-500" />
               Description
             </label>
             <textarea
@@ -174,13 +174,13 @@ const CollectionForm = ({
               placeholder="Enter collection description"
               rows="2"
               disabled={isFieldsDisabled}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none disabled:bg-gray-100 "
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all resize-none disabled:bg-gray-100 "
             />
           </div>
 
           <div className="flex-shrink-0" style={{ minWidth: '180px' }}>
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-              <Layers size={14} className="text-blue-500" />
+              <Layers size={14} className="text-gray-500" />
               Collection Type
             </label>
             <select
@@ -188,7 +188,7 @@ const CollectionForm = ({
               value={formData.collection_type}
               onChange={handleInputChange}
               disabled={isFieldsDisabled}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer disabled:bg-gray-100 "
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-secondary focus:border-transparent outline-none transition-all bg-white cursor-pointer disabled:bg-gray-100 "
             >
               <option value="manual">Manual</option>
             </select>

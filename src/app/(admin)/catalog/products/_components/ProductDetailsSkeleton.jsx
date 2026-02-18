@@ -16,14 +16,14 @@ export default function ProductDetailsSkeleton() {
             <Skeleton width={140} height={14} />
           </div>
         </div>
-        <Skeleton width={100} height={40} borderRadius={8} />
+        <Skeleton width={100} height={40} Radius={8} />
       </div>
 
       {/* MAIN GRID */}
       <div className="grid grid-cols-3 gap-6">
 
         {/* LEFT MAIN INFO */}
-        <div className="col-span-2 bg-white rounded-xl border p-6 space-y-4">
+        <div className="col-span-2 bg-white rounded-xl  p-6 space-y-4">
 
           <Skeleton width={220} height={20} />
 
@@ -53,7 +53,7 @@ export default function ProductDetailsSkeleton() {
         </div>
 
         {/* RIGHT SETTINGS */}
-        <div className="bg-white rounded-xl border p-6 space-y-4">
+        <div className="bg-white rounded-xl p-6 space-y-4">
 
           <Skeleton width={160} height={20} />
 
@@ -84,7 +84,7 @@ export default function ProductDetailsSkeleton() {
       </div>
 
       {/* PRODUCT PROPERTIES */}
-      <div className="w-[60%] bg-white rounded-xl border p-6 space-y-4">
+      <div className="w-[60%] bg-white rounded-xl p-6 space-y-4">
         <Skeleton width={180} height={20} />
 
         {[1, 2, 3].map((i) => (
@@ -96,7 +96,7 @@ export default function ProductDetailsSkeleton() {
       </div>
 
       {/* PRODUCT CONTENT */}
-      <div className="w-[60%] bg-white rounded-xl border p-6 space-y-4">
+      <div className="w-[60%] bg-white rounded-xl  p-6 space-y-4">
         <Skeleton width={160} height={20} />
         <div className="grid grid-cols-2 gap-4">
           <Skeleton height={40} />
@@ -105,13 +105,13 @@ export default function ProductDetailsSkeleton() {
       </div>
 
       {/* PRODUCT MEDIA */}
-      <div className="w-[60%] bg-white rounded-xl border p-6 space-y-4">
+      <div className="w-[60%] bg-white rounded-xl  p-6 space-y-4">
         <Skeleton width={160} height={20} />
         <Skeleton height={180} />
       </div>
 
       {/* PRODUCT SKUs */}
-      <div className="bg-white rounded-xl border p-6 space-y-4">
+      <div className="bg-white rounded-xl  p-6 space-y-4">
         <div className="flex justify-between items-center">
           <Skeleton width={180} height={20} />
           <Skeleton width={160} height={40} />

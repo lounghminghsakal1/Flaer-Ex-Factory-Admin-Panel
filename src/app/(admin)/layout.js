@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   LayoutDashboard,
   Package,
@@ -40,7 +40,7 @@ const SidebarItem = ({
             }
             ${
               isCollapsed
-                ? 'flex flex-col items-center justify-center h-16 px-2'
+                ? 'flex flex-col items-center justify-center h-12 px-2'
                 : 'flex flex-row items-center h-12 px-4 gap-3'
             }
             w-full
@@ -50,11 +50,11 @@ const SidebarItem = ({
             group
           `}
         >
-          <Icon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} ${isCollapsed ? 'mb-1' : ''} flex-shrink-0`} />
+          <Icon className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} ${isCollapsed ? 'mb-1' : ''} flex-shrink-0`} />
           
           <span
             className={`
-              ${isCollapsed ? 'text-[9px] text-center leading-tight' : 'text-sm flex-1 text-left'}
+              ${isCollapsed ? 'text-[7px] text-center leading-tight' : 'text-xs flex-1 text-left'}
               group-hover:font-medium
             `}
           >
@@ -104,7 +104,7 @@ const FloatingSubmenu = ({
     <div
       style={{
         top: position.top,
-        left: isCollapsed ? '75px' : '240px',
+        left: isCollapsed ? '65px' : '170px',
       }}
       className="transition-all duration-200 select-none p-2 min-w-[280px] max-w-fit z-[9999] bg-[#0f1419] rounded-r-md fixed shadow-2xl border border-gray-700"
       onMouseEnter={onMouseEnter}
@@ -281,7 +281,7 @@ const SidebarLayout = ({ children }) => {
       {/* Sidebar */}
       <aside
         className={`
-          ${isCollapsed ? 'w-[75px]' : 'w-[240px]'}
+          ${isCollapsed ? 'w-[65px]' : 'w-[170px]'}
           min-h-screen bg-[#0f1419] text-gray-400
           fixed top-0 left-0 z-[9998]
           transition-all duration-300 shadow-xl
@@ -300,11 +300,11 @@ const SidebarLayout = ({ children }) => {
           ) : (
             <>
               <div className="flex-1">
-                <div className="text-2xl font-bold">
+                <div className="text-xl font-bold">
                   <span className="text-yellow-500">EX</span>
                   <span className="text-secondary">Factory</span>
                 </div>
-                <div className="text-[10px] text-gray-500 tracking-wider">
+                <div className="text-[9px] text-gray-500 tracking-wider">
                   ALL MATERIALS AND PRODUCTS
                 </div>
               </div>
@@ -369,7 +369,7 @@ const SidebarLayout = ({ children }) => {
       <main
         className={`
           flex-1 min-h-screen
-          ${isCollapsed ? 'ml-[85px]' : 'ml-[250px]'}
+          ${isCollapsed ? 'ml-[75px]' : 'ml-[180px]'}
           transition-[margin-left] duration-300
           bg-gray-100
           m-1

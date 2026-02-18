@@ -331,16 +331,16 @@ function CreateSkuPopup({
       <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b">
+        <div className="flex items-center justify-between px-5 py-4 border-b bg-blue-50">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Create Product SKU</h3>
             <p className="text-xs text-gray-500 mt-0.5">{productName}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-100 hover:bg-red-500 rounded-md p-2 cursor-pointer"
+            className="p-1.5 rounded-lg transition-colors hover:bg-red-100 cursor-pointer"
           >
-            <X size={20} />
+            <X size={20} className='text-gray-700' />
           </button>
         </div>
 
@@ -473,7 +473,7 @@ function CreateSkuPopup({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>SKU Name *</label>
+                <label className={labelClass}>SKU Name <span className='text-red-500'>*</span></label>
                 <input
                   className={inputClass}
                   value={form.sku_name}
@@ -483,7 +483,7 @@ function CreateSkuPopup({
               </div>
 
               <div>
-                <label className={labelClass}>Display Name *</label>
+                <label className={labelClass}>Display Name <span className='text-red-500'>*</span></label>
                 <input
                   className={inputClass}
                   value={form.display_name}
@@ -493,7 +493,7 @@ function CreateSkuPopup({
               </div>
 
               <div>
-                <label className={labelClass}>SKU Code *</label>
+                <label className={labelClass}>SKU Code <span className='text-red-500'>*</span></label>
                 <input
                   className={inputClass}
                   value={form.sku_code}
@@ -546,7 +546,7 @@ function CreateSkuPopup({
               {pricingMode === "conversion" ? (
                 <>
                   <div>
-                    <label className={labelClass}>MRP *</label>
+                    <label className={labelClass}>MRP <span className='text-red-500'>*</span></label>
                     <input
                       type="number"
                       min="1"
@@ -590,7 +590,7 @@ function CreateSkuPopup({
               ) : (
                 <>
                   <div>
-                    <label className={labelClass}>Unit Price *</label>
+                    <label className={labelClass}>Unit Price <span className='text-red-500'>*</span></label>
                     <input
                       type="number"
                       min="1"
@@ -675,17 +675,17 @@ function CreateSkuPopup({
 
 
         {/* Footer */}
-        <div className="border-t px-5 py-3 flex mx-auto gap-2 bg-gray-50">
+        <div className="border-t px-5 py-3 flex mx-auto gap-4 bg-gray-50">
           <button
             onClick={onClose}
-            className="w-48 px-4 py-2 text-xs font-medium border bg-gray-200 border-gray-300 rounded hover:bg-gray-600 hover:text-gray-100 transition-colors cursor-pointer"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleCreateSku}
             disabled={loading}
-            className="w-48 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
           >
             {loading ? 'Creating...' : 'Create SKU'}
           </button>
@@ -730,14 +730,14 @@ function OptionRow({
   );
 
   return (
-    <div className="border border-gray-300 rounded-lg p-1">
+    <div className="border border-gray-300 rounded-lg p-2 my-4">
       <div className="grid grid-cols-[1.2fr_2fr_auto] gap-3 items-start">
 
         {/* Option Type Dropdown with Create Option */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="w-full h-11 px-3 text-sm border border-gray-300 rounded flex items-center justify-between hover:border-gray-400 transition-colors text-left bg-white"
+            className="w-full h-8 px-3 text-sm border border-gray-300 rounded flex items-center justify-between hover:border-gray-400 transition-colors text-left bg-white"
           >
             <span className={option.type ? "text-gray-900" : "text-gray-400"}>
               {option.type || "Search or type to add"}
@@ -751,7 +751,7 @@ function OptionRow({
               <div className="p-1 border-b sticky top-0 bg-white">
                 <input
                   type="text"
-                  className="w-full h-9 px-3 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                  className="w-full h-9 px-3 text-sm border border-gray-300 rounded focus:outline-none focus:border-primary"
                   placeholder="Search or type to create..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -787,9 +787,9 @@ function OptionRow({
                       setIsOpen(false);
                       setSearchTerm("");
                     }}
-                    className="w-full px-3 py-1 text-sm text-left bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 font-medium border-t"
+                    className="w-full flex items-center px-3 py-1 text-sm text-left bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 font-medium border-t"
                   >
-                    + Create "{searchTerm}"
+                    <Plus size={20} /> Create "{searchTerm}"
                   </button>
                 )}
 
@@ -817,7 +817,7 @@ function OptionRow({
             value={option.value || ""}
             onChange={(e) => onValueChange(e.target.value)}
             placeholder="Enter value"
-            className="input w-full"
+            className="input w-full h-8"
           />
         </div>
 
