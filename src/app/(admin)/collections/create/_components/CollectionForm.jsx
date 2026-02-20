@@ -37,7 +37,6 @@ const CollectionForm = ({
       });
       return;
     } else if (collectionId && collection) {
-      console.log("Collection id is there so setting data ");
       setFormData(prev => {
         return {
           ...prev,

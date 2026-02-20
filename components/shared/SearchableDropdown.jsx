@@ -214,7 +214,7 @@ const options = [
 />
 */
 
-// Example 4: Tax Type Selection (from your code)
+// Example 4: Tax Type Selection 
 /*
 <SearchableDropdown
   label="Tax Type"
@@ -225,7 +225,7 @@ const options = [
 />
 */
 
-// Example 5: Tracking Type (replacing your Select component)
+// Example 5: Tracking Type 
 /*
 const trackingOptions = [
   { id: 'untracked', name: 'Untracked' },

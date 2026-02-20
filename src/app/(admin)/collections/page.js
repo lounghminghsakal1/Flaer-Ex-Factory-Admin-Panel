@@ -86,8 +86,8 @@ export default function CollectionsPage() {
         setData(result.data);
       }
 
-      setPage(result.meta.current_page);
-      setTotalPages(result.meta.total_pages);
+      setPage(result?.meta?.current_page);
+      setTotalPages(result?.meta?.total_pages);
 
     } finally {
       setLoading(false);
@@ -123,7 +123,7 @@ export default function CollectionsPage() {
   useEffect(() => {
     const y = sessionStorage.getItem("collections_scroll");
     if (y) window.scrollTo(0, Number(y));
-  }, [data.length]);
+  }, [data?.length]);
 
   return (
     <div className="px-2 py-4">

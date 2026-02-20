@@ -2178,19 +2178,27 @@ export default function ProductCreationAttributes({
         </div>
       )}
 
-      {/* GLOBAL PRODUCT CONTENT */}
-      <ProductContentSection
-        productContents={productContents}
-        setProductContents={setProductContents}
-      />
+      <div className="grid grid-cols-[650px_1fr] gap-4">
+        <div className="">
+          {/* GLOBAL PRODUCT CONTENT */}
+          <ProductContentSection
+            productContents={productContents}
+            setProductContents={setProductContents}
+          />
 
-      {/* GLOBAL PRODUCT MEDIA */}
-      <ProductMediaSection
-        productMedia={productMedia}
-        setProductMedia={setProductMedia}
-      // uploadMediaFiles={uploadMediaFiles}
-      // setMediaPopup={setMediaPopup}
-      />
+        </div>
+        <div className="">
+          {/* GLOBAL PRODUCT MEDIA */}
+          <ProductMediaSection
+            productMedia={productMedia}
+            setProductMedia={setProductMedia}
+          // uploadMediaFiles={uploadMediaFiles}
+          // setMediaPopup={setMediaPopup}
+          />
+        </div>
+
+      </div>
+
 
     </div>
   );
@@ -2224,7 +2232,7 @@ function ProductContentSection({ productContents, setProductContents }) {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6">
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Product Content</h3>
       </div>
@@ -2273,7 +2281,7 @@ function ProductContentSection({ productContents, setProductContents }) {
       </div>
 
       {/* Add Row Button */}
-      <div className="flex justify-center mt-6">
+      <div className="flex justify-center mt-3">
         <button
           onClick={handleAddRow}
           className="h-10 w-10 rounded-full border border-gray-400 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-colors"

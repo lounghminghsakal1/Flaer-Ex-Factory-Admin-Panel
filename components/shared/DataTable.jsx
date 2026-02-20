@@ -1,17 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { ExternalLink, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+import { ExternalLink, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, SquarePen } from 'lucide-react';
 
 export default function DataTable({
   columns = [],
   data = [],
   rowKey = 'id',
   getDetailsLink,
+  onActionClick,
   currentPage,
   totalPages,
   itemsPerPage = 20,
-  onPageChange
+  onPageChange,
 }) {
 
   const currentData = data;
@@ -124,22 +125,22 @@ export default function DataTable({
 
                   {/* ACTION COLUMN */}
                   <td className="px-5 py-3">
-                    <Link href={getDetailsLink(row)}>
-                      <button className="
-                        inline-flex items-center gap-2
-                        px-4 py-2
-                        bg-primary hover:bg-primary/80
-                        text-white text-[12px] font-semibold
-                        rounded-lg
-                        transition-all
-                        shadow-sm hover:shadow-md
-                        hover:scale-[1.05]
-                        cursor-pointer
-                      ">
-                        Details
-                        <ExternalLink className="w-4 h-4" />
+                    {getDetailsLink ? (
+                      <Link href={getDetailsLink(row)}>
+                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white text-[12px] font-semibold rounded-lg transition-all shadow-sm hover:shadow-md hover:scale-[1.05] cursor-pointer">
+                          Details
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      </Link>
+                    ) : onActionClick ? (
+                      <button
+                        onClick={() => onActionClick(row)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white text-[12px] font-semibold rounded-lg transition-all shadow-sm hover:shadow-md hover:scale-[1.05] cursor-pointer"
+                      >
+                        Edit
+                        <SquarePen className="w-3 h-3" />
                       </button>
-                    </Link>
+                    ) : null}
                   </td>
                 </tr>
               ))

@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
+  Store
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -243,6 +244,13 @@ const SidebarLayout = ({ children }) => {
       href: '/collections',
     },
     {
+      id: 'vendors',
+      label: 'Vendors',
+      shortName: 'Vendors',
+      icon: Store,
+      href: '/vendors',
+    },
+    {
       id: 'inventory',
       label: 'Inventory',
       shortName: 'Inventory',
@@ -277,7 +285,7 @@ const SidebarLayout = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
       <aside
         className={`
