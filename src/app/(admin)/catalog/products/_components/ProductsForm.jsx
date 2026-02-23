@@ -1443,7 +1443,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
             cgst: parseFloat(formData.cgst),
             sgst: parseFloat(formData.sgst),
             igst: formData.igst,
-            percentage: formData.percentage
+            tax_percentage: formData.percentage
           }),
         }
       );

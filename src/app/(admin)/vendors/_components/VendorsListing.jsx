@@ -1,6 +1,10 @@
 import DataTable from "../../../../../components/shared/DataTable";
+import { useSearchParams } from "next/navigation";
 
 export default function VendorsListing({ vendorsData, currentPage, totalPages, setCurrentPage }) {
+  const searchParams = useSearchParams();
+  const getReturnTo = () => encodeURIComponent(searchParams.toString());
+
   const vendorColumns = [
     {
       key: "firm_name",
@@ -21,7 +25,7 @@ export default function VendorsListing({ vendorsData, currentPage, totalPages, s
           className={`px-2 py-1 rounded-md text-[11px] font-semibold ${value === "active"
             ? "bg-green-100 text-green-700"
             : value === "inactive" ? "bg-gray-100 text-gray-700"
-            : "bg-red-100 text-red-700"
+              : "bg-red-100 text-red-700"
             } capitalize`}
         >
           {value}
@@ -50,7 +54,9 @@ export default function VendorsListing({ vendorsData, currentPage, totalPages, s
       currentPage={currentPage}
       totalPages={totalPages}
       onPageChange={setCurrentPage}
-      getDetailsLink={(row) => `/vendors/${row.id}`}
+      getDetailsLink={(row) =>
+        `/vendors/${row.id}?returnTo=${getReturnTo()}`
+      }
     />
   );
 }

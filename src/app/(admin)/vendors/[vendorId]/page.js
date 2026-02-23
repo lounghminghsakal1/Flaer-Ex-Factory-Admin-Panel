@@ -12,27 +12,11 @@ import HeaderWithBack from "../../../../../components/shared/HeaderWithBack";
 import { toast } from "react-toastify";
 import useOnlineCheck from "../../../../../components/hooks/useOnlineCheck";
 
-
 const TABS = [
   { key: "info", label: "Vendor Info" },
   { key: "sku", label: "Vendor SKU Mapping" },
 ];
 
-/**
- * VendorDetailPage
- *
- * Props:
- *   vendorsData — array of vendor objects from parent/list page
- *                 Each item needs: { id, firm_name, vendor_type, status }
- *
- * Usage in Next.js App Router:
- *   // app/vendors/[vendorId]/page.jsx
- *   import VendorDetailPage from "@/components/vendor-detail/VendorDetailPage";
- *   export default function Page() {
- *     // fetch vendorsData from your list API or pass via server component
- *     return <VendorDetailPage vendorsData={vendorsData} />;
- *   }
- */
 export default function VendorDetailPage() {
   const params = useParams();
   const vendorId = params?.vendorId ?? params?.id;
@@ -60,7 +44,6 @@ export default function VendorDetailPage() {
   const handleSaveChanges = async () => {
     setSaving(true);
     try {
-      // Delegate to VendorInfoTab's internal save handler
       await window.__vendorSave?.();
     } finally {
       setSaving(false);
@@ -78,7 +61,7 @@ export default function VendorDetailPage() {
     } catch (err) {
       console.log(err);
       console.log(isOnline ? "true" : "false");
-      if(!isOnline) toast.error('Seems like your internet is off, check your internet connection');
+      if (!isOnline) toast.error('Seems like your internet is off, check your internet connection');
       return [];
     }
   }
@@ -88,18 +71,18 @@ export default function VendorDetailPage() {
       <HeaderWithBack title="Vendor Details" defaultBackPath="/vendors" />
       <div className="flex min-h-screen bg-gray-50 ">
 
-        {/* ── Fixed Left Sidebar ─────────────────────────── */}
-        <VendorSidebar vendorsData={vendorsData} currentVendorId={vendorId} />
+        {/* Fixed Left Sidebar */}
+        <VendorSidebar currentVendorId={vendorId} />
 
-        {/* ── Main Content ───────────────────────────────── */}
+        {/*Main Content */}
         <main className="flex-1 overflow-y-auto">
 
-          {/* ── Fixed Top Bar: Tabs + Action Buttons ───── */}
-          <div className="sticky top-0 z-20 bg-gray-50 px-5 pt-3 pb-3 border-b border-gray-200">
+          {/* Fixed Top Bar: Tabs + Action Buttons */}
+          <div className="sticky top-0 z-20 bg-gray-50 px-5 border-b border-gray-300">
 
             <div className="flex items-center justify-between gap-4">
-              {/* Tabs — grid-wrap style like image */}
-              <div className="flex flex-wrap gap-1.5 bg-[#eef0f7] rounded-md p-1.5 flex-1">
+
+              <div className="flex items-end gap-1 flex-1 pt-3">
                 {TABS.map((tab) => (
                   <button
                     key={tab.key}
@@ -107,10 +90,11 @@ export default function VendorDetailPage() {
                     onClick={() => {
                       if (!isEditing || tab.key === "info") setActiveTab(tab.key);
                     }}
-                    className={`px-4 py-2 rounded-md text-[14px] font-medium transition-all whitespace-nowrap
+                    className={`relative px-5 py-2 text-[13.5px] font-medium transition-all whitespace-nowrap -mb-px
+                      rounded-t-lg
                       ${activeTab === tab.key
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-gray-500 hover:text-gray-700 bg-white hover:bg-white/60"
+                        ? "bg-primary text-white border border-b-0 border-primary shadow-sm"
+                        : "bg-gray-200/60 text-gray-500 border border-transparent hover:text-gray-700 hover:bg-gray-300/60"
                       }
                       ${isEditing && tab.key !== "info"
                         ? "opacity-40 cursor-not-allowed"
@@ -124,12 +108,12 @@ export default function VendorDetailPage() {
 
               {/* Action Buttons */}
               {activeTab !== "sku" && (
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0 ">
                   {!isEditing ? (
                     <button
                       type="button"
                       onClick={handleEdit}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium shadow-sm transition
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[13px] font-medium shadow-sm transition
                       hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 cursor-pointer bg-primary text-white hover:bg-primary/90"
                     >
                       <Pencil size={14} strokeWidth={2} />
@@ -140,7 +124,7 @@ export default function VendorDetailPage() {
                       <button
                         type="button"
                         onClick={handleCancel}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium shadow-sm transition
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[13px] font-medium shadow-sm transition
                         hover:scale-105 cursor-pointer bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
                       >
                         <X size={14} strokeWidth={2} />
@@ -150,7 +134,7 @@ export default function VendorDetailPage() {
                         type="button"
                         onClick={handleSaveChanges}
                         disabled={saving}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium shadow-sm transition
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[13px] font-medium shadow-sm transition
                         hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 cursor-pointer bg-green-600 text-white hover:bg-green-700"
                       >
                         <Save size={14} strokeWidth={2} />
@@ -164,7 +148,7 @@ export default function VendorDetailPage() {
             </div>
           </div>
 
-          {/* ── Tab Content ────────────────────────────── */}
+          {/* Tab Content  */}
           <div className="px-5 py-4">
             {activeTab === "info" && (
               <VendorInfoTab

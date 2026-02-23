@@ -18,7 +18,7 @@ const initialState = {
   pan: "",
   gstin: "",
   tax_exempted: false,
-  tax_applied_type: "",
+  tax_applied_type: 1,
   address1: "",
   address2: "",
   city: "",

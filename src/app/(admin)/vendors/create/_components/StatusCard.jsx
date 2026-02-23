@@ -86,7 +86,7 @@ export default function StatusCard({ form, onChange, isEditing = true, errors, f
       {/* Status */}
       <div className="mb-4">
         <p className="text-[13px] font-medium text-gray-700 mb-2">
-          Status <span className="text-red-500">*</span>
+          Status {isEditing && (<span className="text-red-500">*</span>)}
         </p>
         <div className="flex gap-2 flex-wrap">
           {STATUSES.map((s) => {

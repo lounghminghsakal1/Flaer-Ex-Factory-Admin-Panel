@@ -8,7 +8,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  Store
+  Store,
+  ShoppingBag,
+  ShoppingBagIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -249,6 +251,13 @@ const SidebarLayout = ({ children }) => {
       shortName: 'Vendors',
       icon: Store,
       href: '/vendors',
+    },
+    {
+      id: 'purchase_orders',
+      label: 'PO',
+      shortName: 'PO',
+      icon: ShoppingBagIcon,
+      href: '/purchase_orders',
     },
     {
       id: 'inventory',

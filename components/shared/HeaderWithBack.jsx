@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function HeaderWithBack({
   title = "",
@@ -15,18 +15,19 @@ export default function HeaderWithBack({
 
   const handleBack = () => {
     if (onBack) return onBack();
+
     if (returnTo) {
-      router.push(`${defaultBackPath}?${decodeURIComponent(returnTo)}`);
+      const query = decodeURIComponent(returnTo);
+      router.push(`${defaultBackPath}?${query}`);
       return;
     }
+
     router.push(defaultBackPath);
   };
 
   return (
     <div className="w-full border-b border-gray-200 ">
       <div className="flex items-center justify-between px-6 py-3">
-
-        {/* LEFT */}
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
@@ -40,7 +41,6 @@ export default function HeaderWithBack({
             {title}
           </h1>
         </div>
-
       </div>
     </div>
   );

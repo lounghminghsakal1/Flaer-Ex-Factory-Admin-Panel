@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 export default function CreateNewButton({buttonTitle, onClick}) {
   return (
     <button
-      className='bg-primary font-medium hover:scale-105 h-10 flex items-center text-white rounded-md transition-all duration-all cursor-pointer'
+      className='bg-primary mr-2 font-medium hover:scale-105 h-10 flex items-center text-white rounded-md transition-all duration-all cursor-pointer'
       onClick={onClick}
     >
       <p className='px-2 text-sm capitalize'>{buttonTitle}</p>

@@ -7,7 +7,7 @@ import RightModalPanel from "./_components/RightModalPanel";
 import ProductsGrid from "./_components/ProductsGrid";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import HeaderWithBack from "../../../../../components/shared/HeaderWithBackAction";
+import HeaderWithBackAction from "../../../../../components/shared/HeaderWithBackAction";
 
 export default function CreateCollectionPage() {
 
@@ -101,8 +101,8 @@ export default function CreateCollectionPage() {
 
       let response = await json.json();
       let err;
-      if (!response.ok) {
-        err = response.errors[0];
+      if (response.status === "failure") {
+        err = response?.errors[0];
         throw err;
       }
 
@@ -111,7 +111,7 @@ export default function CreateCollectionPage() {
 
     } catch (err) {
       console.log(err);
-      toast.error("Failed to save collection"+err);
+      toast.error("Failed to save collection "+err);
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,7 @@ export default function CreateCollectionPage() {
 
   return (
     <div className="px-2 py-4">
-      <HeaderWithBack title="Create Collection" isEditing={true} loading={loading} onActionClick={handleSave} defaultBackPath="/collections" />
+      <HeaderWithBackAction title="Create Collection" isEditing={true} loading={loading} onActionClick={handleSave} defaultBackPath="/collections" />
       <div className="w-[50%] my-4">
         <CollectionForm setCreateCollectionForm={setCreateCollectionForm} />
       </div>
