@@ -140,6 +140,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
         body: JSON.stringify(body)
       });
 
+      const data = await response.json();
       if (response.ok) {
         const result = await response.json();
         const newBrand = result.data;
@@ -175,9 +176,10 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
           }, 100);
         }, 100);
       }
+      if (data.status === "failure") throw new Error(data?.errors[0]);
     } catch (error) {
       console.error('Error creating brand:', error);
-      toast.error("Error creating brand");
+      toast.error("Error creating brand"+ err);
     }
   };
 

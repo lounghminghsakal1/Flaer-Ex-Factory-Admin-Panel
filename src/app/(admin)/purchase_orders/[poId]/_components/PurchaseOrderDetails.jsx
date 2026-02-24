@@ -65,7 +65,7 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
   const [vendorLoading, setVendorLoading] = useState(false);
   const searchTimeout = useRef(null);
 
-  // ── Initialise from API data ──────────────────────────────────────────────
+  // ── Initialise from API data 
   const initVendor = poData?.vendor
     ? { value: poData.vendor.id, label: poData.vendor.firm_name }
     : null;

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import POSidebar from "./_components/POSidebar";
 import PurchaseOrderDetails from "./_components/PurchaseOrderDetails";
 import HeaderWithBack from "../../../../../components/shared/HeaderWithBack";
+import PurchaseOrderAmendments from "./_components/PurchaseOrderAmendments";
 
 export default function PurchaseOrderDetailsPage() {
   const params = useParams();
@@ -36,7 +37,7 @@ export default function PurchaseOrderDetailsPage() {
 
   const TABS = [
     { key: "purchase_order", label: "Purchase Order" },
-    ...(showAmndTab ? [{key: "amdn", label: "Amendment"}] : []),
+    ...(showAmndTab ? [{key: "amdn", label: "Amendments"}] : []),
     ...(showGRNTab ? [{ key: "grn", label: "Goods Receive Note" }] : []),
 
   ];
@@ -66,14 +67,14 @@ export default function PurchaseOrderDetailsPage() {
               {TABS.map((tab) => {
                 const isActive = activeTab === tab.key;
                 return (
-                  <button
+                  <div
                     key={tab.key}
                     type="button"
                     onClick={() => setActiveTab(tab.key)}
                     className={`px-5 py-1.5 rounded-t-lg text-sm font-medium transition-colors ${isActive ? "bg-primary text-gray-100" : "bg-gray-200/60 text-gray-500 border border-transparent hover:text-gray-700 hover:bg-gray-300/60"} bg-gray-100 cursor-pointer `}
                   >
                     {tab.label}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -99,8 +100,8 @@ export default function PurchaseOrderDetailsPage() {
                 <p className="text-sm text-gray-500">Goods Receive Note</p>
               </div>
             ) : activeTab === "amdn" ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <p className="text-sm text-gray-500">Amendment</p>
+              <div className="bg-white rounded-xl border border-gray-200 p-2">
+                <PurchaseOrderAmendments poId={poId} refreshPo={fetchPO} />
               </div>
             ) : null}
           </div>

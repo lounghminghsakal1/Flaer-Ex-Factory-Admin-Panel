@@ -216,9 +216,10 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
         ...(!isParentToggle && !lockedParentForChild && formData.parent_id ? { parent_id: formData.parent_id } : {})
       };
 
-      if (isParentToggle && !formData.parent_id) {
-        toast.error("Please select a parent category");
-      }
+      // if (isParentToggle && !formData.parent_id) {
+      //   toast.error("Please select a parent category");
+      //   return;
+      // }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories`, {
         method: 'POST',
