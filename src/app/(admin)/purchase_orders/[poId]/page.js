@@ -5,6 +5,7 @@ import POSidebar from "./_components/POSidebar";
 import PurchaseOrderDetails from "./_components/PurchaseOrderDetails";
 import HeaderWithBack from "../../../../../components/shared/HeaderWithBack";
 import PurchaseOrderAmendments from "./_components/PurchaseOrderAmendments";
+import GoodsReceiveNote from "./_components/_grn_components/GoodsReceiveNote";
 
 export default function PurchaseOrderDetailsPage() {
   const params = useParams();
@@ -32,7 +33,7 @@ export default function PurchaseOrderDetailsPage() {
 
   useEffect(() => { fetchPO(); }, [fetchPO]);
 
-  const showGRNTab = poData?.status === "approved" || poData?.status === "completed";
+  const showGRNTab = poData?.status === "approved";
   const showAmndTab = poData?.status === "approved" || poData?.status === "completed";
 
   const TABS = [
@@ -96,8 +97,8 @@ export default function PurchaseOrderDetailsPage() {
                 onRefresh={fetchPO}
               />
             ) : activeTab === "grn" ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <p className="text-sm text-gray-500">Goods Receive Note</p>
+              <div className="bg-white rounded-xl border border-gray-200 p-2">
+                <GoodsReceiveNote poId={poId} vendorId={poData.vendor.id} />
               </div>
             ) : activeTab === "amdn" ? (
               <div className="bg-white rounded-xl border border-gray-200 p-2">

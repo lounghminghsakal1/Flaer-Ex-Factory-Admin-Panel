@@ -360,8 +360,8 @@ function AmendmentForm({
       } else {
         throw new Error(data?.errors[0]);
       }
-    } catch(err) {
-      toast.error("Something went wrong "+err);
+    } catch (err) {
+      toast.error("Something went wrong " + err);
     } finally {
       setSaving(false);
     }
@@ -483,8 +483,8 @@ function AmendmentAccordion({
       } else {
         throw new Error(data?.errors[0]);
       }
-    } catch(err) {
-      toast.error("Something went wrong "+err);
+    } catch (err) {
+      toast.error("Something went wrong " + err);
     } finally {
       setSendingApproval(false);
     }
@@ -505,7 +505,7 @@ function AmendmentAccordion({
         throw new Error(data?.errors[0]);
       }
     } catch {
-      toast.error("Something went wrong "+err);
+      toast.error("Something went wrong " + err);
     } finally {
       setApprovingAmendment(false);
     }
@@ -531,7 +531,7 @@ function AmendmentAccordion({
         throw new Error(data?.errors[0]);
       }
     } catch {
-      toast.error("Something went wrong "+err);
+      toast.error("Something went wrong " + err);
     } finally {
       setCancelling(false);
     }
@@ -768,8 +768,9 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
         setAmendments(list);
         if (list.length > 0) setOpenAccordion(list[list.length - 1].id);
       }
-    } catch {
-      // ignore
+      if (data.status === "failure") throw new Error(data?.errors[0]);
+    } catch (err) {
+      toast.error("Failed to fetch amendments " + err);
     }
   };
 
@@ -780,8 +781,9 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
       );
       const data = await res.json();
       if (data.status === "success") setPoData(data.data);
-    } catch {
-      // ignore
+      if (data.status === "failure") throw new Error(data?.errors[0]);
+    } catch(err) {
+      toast.error("Failed to fetch amendments " + err);
     }
   };
 
@@ -828,7 +830,7 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
     const ALLOWED = ["approved", "cancelled", "rejected"];
     const hasUnfinished = amendments.some((a) => !ALLOWED.includes(a.status));
     if (hasUnfinished) {
-      toast.error("Finish existing amendments first.");
+      toast.error("Please finish existing amendments first.");
       return;
     }
     setOpenAccordion(null);
