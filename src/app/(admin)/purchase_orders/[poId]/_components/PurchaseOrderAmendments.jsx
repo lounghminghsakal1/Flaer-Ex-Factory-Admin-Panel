@@ -782,7 +782,7 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
       const data = await res.json();
       if (data.status === "success") setPoData(data.data);
       if (data.status === "failure") throw new Error(data?.errors[0]);
-    } catch(err) {
+    } catch (err) {
       toast.error("Failed to fetch amendments " + err);
     }
   };
@@ -850,7 +850,7 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-2">
+    <div className="w-full mx-auto p-2">
       {/* Page Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -901,6 +901,18 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
           </div>
         )}
 
+        {showCreateForm && (
+          <AmendmentForm
+            poId={poId}
+            poStatus={poStatus}
+            lineItems={lineItems}
+            amendmentId={null}
+            initialRows={null}
+            onSaved={handleRefresh}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        )}
+
         {amendments.map((amendment, idx) => (
           <AmendmentAccordion
             key={amendment.id}
@@ -917,17 +929,7 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
           />
         ))}
 
-        {showCreateForm && (
-          <AmendmentForm
-            poId={poId}
-            poStatus={poStatus}
-            lineItems={lineItems}
-            amendmentId={null}
-            initialRows={null}
-            onSaved={handleRefresh}
-            onCancel={() => setShowCreateForm(false)}
-          />
-        )}
+
       </div>
     </div>
   );

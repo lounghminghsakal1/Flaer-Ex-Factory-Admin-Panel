@@ -175,16 +175,16 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
               {isEdit ? "Update GRN" : "GRN Info"}
             </h2>
             <div className="flex items-center gap-3">
-              <div
+              {/* <div
                 role="button"
                 onClick={!saving ? handleSubmit : undefined}
-                className={`flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl transition-opacity cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md transition-opacity cursor-pointer ${
                   saving ? "opacity-60" : "hover:opacity-90"
                 }`}
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isEdit ? "Update GRN" : "Create GRN"}
-              </div>
+                {isEdit ? "Update GRN" : "Save GRN"}
+              </div> */}
               <div
                 role="button"
                 onClick={onClose}
@@ -267,7 +267,7 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
                   (application/pdf, image/png, image/jpeg, image/webp, image/jpg)*
                 </span>
               </label>
-              <label className="flex items-center gap-2 w-fit px-4 py-2 border border-primary text-primary text-sm font-medium rounded-xl cursor-pointer hover:bg-primary/5 transition-colors">
+              <label className="flex items-center gap-2 w-fit px-4 py-2 border border-primary text-primary text-sm font-medium rounded-xl cursor-pointer hover:bg-primary hover:text-gray-100 transition-all">
                 <Upload className="w-4 h-4" />
                 {uploading ? "Uploading..." : "Choose File"}
                 <input
@@ -288,6 +288,21 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
                 </div>
               )}
             </div>
+          </div>
+          <div className="flex justify-end border-t mb-4">
+            <div className="w-20 items-center mt-2 mr-2 px-4 py-2 bg-gray-600 hover:scale-103 text-white text-sm font-semibold rounded-md transition-all cursor-pointer hover:opacity-70" onClick={onClose} >
+              Cancel
+            </div>
+            <div
+                role="button"
+                onClick={!saving ? handleSubmit : undefined}
+                className={`flex w-28 mr-10 mt-2 items-center gap-2 px-4 py-2 bg-green-600 hover:scale-103 text-white text-sm font-semibold rounded-md transition-all cursor-pointer ${
+                  saving ? "opacity-60" : "hover:opacity-90"
+                }`}
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isEdit ? "Update GRN" : "Save GRN"}
+              </div>
           </div>
         </div>
       </div>

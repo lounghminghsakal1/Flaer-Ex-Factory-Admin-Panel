@@ -6,6 +6,7 @@ import PurchaseOrderDetails from "./_components/PurchaseOrderDetails";
 import HeaderWithBack from "../../../../../components/shared/HeaderWithBack";
 import PurchaseOrderAmendments from "./_components/PurchaseOrderAmendments";
 import GoodsReceiveNote from "./_components/_grn_components/GoodsReceiveNote";
+import { useSearchParams } from "next/navigation";
 
 export default function PurchaseOrderDetailsPage() {
   const params = useParams();
@@ -15,7 +16,21 @@ export default function PurchaseOrderDetailsPage() {
   const [poData, setPoData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("purchase_order");
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "purchase_order");
+
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (key) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", key); // update tab but keep others
+    router.replace(`/purchase_orders/${poId}?${params.toString()}`);
+  };
 
   const fetchPO = useCallback(() => {
     if (!poId) return;
@@ -38,7 +53,7 @@ export default function PurchaseOrderDetailsPage() {
 
   const TABS = [
     { key: "purchase_order", label: "Purchase Order" },
-    ...(showAmndTab ? [{key: "amdn", label: "Amendments"}] : []),
+    ...(showAmndTab ? [{ key: "amdn", label: "Amendments" }] : []),
     ...(showGRNTab ? [{ key: "grn", label: "Goods Receive Note" }] : []),
 
   ];
@@ -71,7 +86,7 @@ export default function PurchaseOrderDetailsPage() {
                   <div
                     key={tab.key}
                     type="button"
-                    onClick={() => setActiveTab(tab.key)}
+                    onClick={() => { setActiveTab(tab.key); handleTabChange(tab.key); }} //
                     className={`px-5 py-1.5 rounded-t-lg text-sm font-medium transition-colors ${isActive ? "bg-primary text-gray-100" : "bg-gray-200/60 text-gray-500 border border-transparent hover:text-gray-700 hover:bg-gray-300/60"} bg-gray-100 cursor-pointer `}
                   >
                     {tab.label}

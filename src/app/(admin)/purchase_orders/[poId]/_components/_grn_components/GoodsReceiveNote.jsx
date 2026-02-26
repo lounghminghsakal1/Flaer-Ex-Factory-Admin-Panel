@@ -13,6 +13,8 @@ import {
   Hash,
   ExternalLink,
   Loader2,
+  X,
+  Send
 } from "lucide-react";
 import { toast } from "react-toastify";
 import GrnFormModal from "./GrnFormModal";
@@ -44,6 +46,15 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [lineItems, setLineItems] = useState(null); // null = not yet loaded
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [sendingToQC, setSendingToQC] = useState(false);
+  const [canSendToQC, setCanSendToQC] = useState(false);
+
+  const [submittedQC, setSubmittedQC] = useState(false);
+  const [canComplete, setCanComplete] = useState(false);
+  const [isLineItemsEditing, setIsLineItemsEditing] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const formatDate = (str) => {
     if (!str) return "--";
@@ -92,13 +103,64 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
           setLineItems(data.data?.line_items || []);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     onRefresh(); // refresh the list-level data (totals etc.)
   };
 
-  const handleCompleteGrn = () => {
-    // Placeholder
+  const handleCompleteGrn = async () => {
+    try {
+      setCompleting(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grn.id}/complete`;
+      const res = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" } });
+      const data = await res.json();
+      if (!res.ok || data.status === "failure") {
+        throw new Error(data?.errors[0]);
+      }
+      toast.success("GRN completed successfully");
+      onRefresh();
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to complete GRN " + err)
+    } finally {
+      setCompleting(false);
+    }
   };
+
+  const handleCancelGrn = async () => {
+    setCancelling(true);
+    try {
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grn.id}`;
+      const res = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" } });
+      const data = await res.json();
+      if (!res.ok || data.status === "failure") {
+        throw new Error(data?.errors[0]);
+      }
+      toast.success("GRN cancelled successfully");
+      onRefresh();
+    } catch (err) {
+      toast.error("Failed to cancel GRN " + err);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleSendToQC = async () => {
+    try {
+      setSendingToQC(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grn.id}/initiate_qc`;
+      const res = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" } });
+      const data = await res.json();
+      if (!res.ok || data.status === "failure") {
+        throw new Error(data?.errors[0]);
+      }
+      toast.success("GRN sent to QC successfully");
+      onRefresh();
+    } catch (err) {
+      toast.error("Failed to send GRN to QC " + err);
+    } finally {
+      setSendingToQC(false);
+    }
+  }
 
   return (
     <>
@@ -127,13 +189,12 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-bold text-gray-900">{grn.grn_number || `GRN #${grn.id}`}</p>
                 <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${
-                    grn.status === "completed"
-                      ? "bg-green-50 text-green-700 border border-green-200"
-                      : grn.status === "draft"
+                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${grn.status === "completed"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : grn.status === "draft"
                       ? "bg-gray-100 text-gray-600"
                       : "bg-amber-50 text-amber-700 border border-amber-200"
-                  }`}
+                    }`}
                 >
                   {grn.status || "draft"}
                 </span>
@@ -180,11 +241,11 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
 
           {/* Right */}
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            {isOpen && (
+            {isOpen && grn.status !== "completed" && (
               <div
                 role="button"
                 onClick={() => setEditModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-md hover:bg-primary hover:text-gray-100 cursor-pointer transition-colors"
               >
                 <Edit2 className="w-3 h-3" />
                 Update GRN
@@ -267,19 +328,76 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
                 grnStatus={grn.status}
                 initialLineItems={lineItems || []}
                 onSaved={handleLineItemsSaved}
+                setCanSendToQC={setCanSendToQC}
+                submittedQC={submittedQC}
+                setSubmittedQC={setSubmittedQC}
+                setCanComplete={setCanComplete}
+                setIsLineItemsEditing={setIsLineItemsEditing}
+                setHasSubmitted={setHasSubmitted}
               />
             )}
 
-            {/* Complete GRN */}
-            <div className="flex justify-end pt-1">
-              <div
-                role="button"
-                onClick={handleCompleteGrn}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gray-200 text-gray-500 text-sm font-semibold rounded-xl cursor-pointer transition-colors hover:bg-gray-300"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Complete GRN
-              </div>
+            <div className="flex justify-end items-center gap-3">
+              {grn.status === "created" && (
+                <div className="flex justify-end pt-1">
+                  <div
+                    role="button"
+                    onClick={handleCancelGrn}
+                    className="flex items-center gap-2 px-3 py-2 bg-red-600 text-gray-100 text-sm font-semibold rounded-md cursor-pointer hover:scale-103 transition-all hover:opacity-80"
+                  >
+                    <X className="w-4 h-4" />
+                    {cancelling ? "Cancelling..." : "Cancel GRN"}
+                  </div>
+                </div>
+              )}
+
+              {grn.status === "created" && (lineItems !== null && lineItems.length > 0) && (
+                <div className="flex justify-end pt-1">
+                  <div
+                    role="button"
+                    onClick={() => {
+                      if (isLineItemsEditing) {
+                        toast.error("First finish editing line items");
+                        return;
+                      }
+                      handleSendToQC();
+                    }}
+                    className="flex items-center gap-2 px-5 py-2 bg-green-600 text-gray-100 text-sm font-semibold rounded-md cursor-pointer hover:scale-103 transition-all hover:opacity-80"
+                  >
+                    <Send className="w-4 h-4" />
+                    {sendingToQC ? "Sending..." : "Send to QC"}
+                  </div>
+                </div>
+              )}
+
+              {/* Complete GRN */}
+              {grn.status === "qc_pending" && (
+                <div className="flex justify-end pt-1">
+                  <div
+                    role="button"
+                    onClick={() => {
+                      if (isLineItemsEditing) {
+                        toast.error("First finish editing line items");
+                        return;
+                      }
+                      if (!canComplete) {
+                        toast.error("Complete QC check for all GRN line items");
+                        return;
+                      }
+                      if (!hasSubmitted) {
+                        toast.error("Finish QC Check first");
+                        return;
+                      }
+                      handleCompleteGrn();
+                    }}
+                    className={`flex items-center gap-2 px-5 py-2 ${canComplete ? "bg-primary" : "bg-gray-600"}  text-gray-100 text-sm font-semibold rounded-md cursor-pointer hover:scale-103 transition-all hover:opacity-80`}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    {completing ? "completing..." : "Complete GRN"}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         )}
@@ -323,6 +441,13 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
     fetchGrns();
   };
 
+  const canCreate = () => {
+    const allowedStatuses = ["completed", "rejected"];
+    const hasInCompletedGRNs = grns.some(grn => !allowedStatuses.includes(grn.status));
+    if (hasInCompletedGRNs) return false;
+    return true;
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
@@ -343,7 +468,7 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
         grn={null}
       />
 
-      <div className="max-w-5xl mx-auto px-1 py-1">
+      <div className="w-full mx-auto px-1 py-1">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -356,7 +481,13 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
           </div>
           <div
             role="button"
-            onClick={() => setCreateModalOpen(true)}
+            onClick={() => {
+              if (!canCreate()) {
+                toast.error("Finish existing GRNs first");
+                return;
+              }
+              setCreateModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-md hover:scale-103 hover:opacity-90 transition-all shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -375,8 +506,14 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
               </p>
               <div
                 role="button"
-                onClick={() => setCreateModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
+                onClick={() => {
+                  if (!canCreate()) {
+                    toast.error("Finish existing GRNs first");
+                    return;
+                  }
+                  setCreateModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-md hover:scale-103 hover:opacity-90 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Create GRN

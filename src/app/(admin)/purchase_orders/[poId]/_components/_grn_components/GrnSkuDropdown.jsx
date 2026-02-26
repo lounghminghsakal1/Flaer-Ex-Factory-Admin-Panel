@@ -148,16 +148,16 @@ export default function GrnSkuDropdown({
                     role="option"
                     aria-selected={isSelected}
                     onClick={() => handleSelect(option)}
-                    className={`px-3 py-2.5 transition-colors ${
+                    className={`px-3 py-2.5 transition-colors border-y border-gray-200 ${
                       isAvailable
                         ? isSelected
                           ? "bg-primary/10 cursor-pointer"
-                          : "hover:bg-gray-50 cursor-pointer"
+                          : "hover:bg-gray-100 cursor-pointer"
                         : "cursor-not-allowed opacity-50"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className={`text-sm font-medium truncate ${isSelected ? "text-primary" : isAvailable ? "text-gray-800" : "text-gray-400"}`}>
+                      <p className={`text-sm font-medium ${isSelected ? "text-primary" : isAvailable ? "text-gray-800" : "text-gray-400"}`}>
                         {option.product_name}
                       </p>
                       {!isAvailable && (
@@ -168,10 +168,10 @@ export default function GrnSkuDropdown({
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className={`text-xs ${isAvailable ? "text-gray-400" : "text-gray-300"}`}>
-                        Remaining: <span className={`font-semibold ${isAvailable ? "text-gray-600" : "text-gray-300"}`}>{option.remaining_quantity}</span>
+                        Remaining: <span className={`font-semibold ${isAvailable ? "text-gray-600" : "text-gray-300"}`}>{Math.trunc(option.remaining_quantity)}</span>
                       </span>
                       <span className={`text-xs ${isAvailable ? "text-gray-400" : "text-gray-300"}`}>
-                        Ordered: <span className={`font-semibold ${isAvailable ? "text-gray-600" : "text-gray-300"}`}>{option.ordered_quantity}</span>
+                        Ordered: <span className={`font-semibold ${isAvailable ? "text-gray-600" : "text-gray-300"}`}>{Math.trunc(option.ordered_quantity)}</span>
                       </span>
                       {option.unit_price && (
                         <span className={`text-xs ${isAvailable ? "text-gray-400" : "text-gray-300"}`}>

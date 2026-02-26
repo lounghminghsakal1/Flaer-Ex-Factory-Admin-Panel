@@ -1,201 +1,337 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Loader2, Package, Edit2, X } from "lucide-react";
+import { Plus, Trash2, Loader2, Package, Edit2, X, CheckCircle2, AlertCircle, Save, ClipboardCheck } from "lucide-react";
 import { toast } from "react-toastify";
 import { BatchingModal, SerialModal } from "./TrackingModals";
+import { ViewBatchModal, ViewSerialModal, QCBatchModal, QCSerialModal, ReasonModal } from "./QCModals";
 import GrnSkuDropdown from "./GrnSkuDropdown";
 
-// ─── Read-only row ────────────────────────────────────────────────────────────
+// ─── Two-line header ───────────────────────────────────────────────────────────
+function TwoLineHeader({ line1, line2, cls = "" }) {
+  return (
+    <th className={`px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap ${cls}`}>
+      <span className="block leading-tight">{line1}</span>
+      {line2 && <span className="block leading-tight">{line2}</span>}
+    </th>
+  );
+}
+
+// ─── Tracking button (used in normal editable rows) ───────────────────────────
+function TrackingButton({ trackingType, qty, batches = [], serials = [], onOpenBatch, onOpenSerial }) {
+  const isBatch = trackingType === "batch";
+  const isSerial = trackingType === "serial";
+  const hasValidQty = qty && Number(qty) > 0;
+  if (!isBatch && !isSerial) return null;
+
+  const batchCount = batches.length;
+  const serialCount = serials.length;
+  const batchTotalQty = batches.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+  const batchMismatch = isBatch && hasValidQty && batchCount > 0 && batchTotalQty !== Number(qty);
+  const serialMismatch = isSerial && hasValidQty && serialCount > 0 && serialCount !== Number(qty);
+
+  const label = isBatch
+    ? batchCount > 0 ? `Batches (${batchCount})` : "+ Add Batches"
+    : serialCount > 0 ? `Serials (${serialCount})` : "+ Add Serials";
+
+  return (
+    <div className="mt-1 flex flex-col gap-0.5">
+      <button
+        type="button"
+        disabled={!hasValidQty}
+        onClick={isBatch ? onOpenBatch : onOpenSerial}
+        className={`text-[11px] font-medium transition-colors whitespace-nowrap text-left w-fit
+          ${!hasValidQty ? "text-gray-300 cursor-not-allowed"
+            : (batchCount > 0 || serialCount > 0) ? "text-emerald-600 hover:text-emerald-700 cursor-pointer"
+              : "text-primary hover:opacity-75 cursor-pointer"}`}
+      >
+        {label}
+      </button>
+      {batchMismatch && <span className="text-[10px] text-red-500 leading-tight">Batch qty ({batchTotalQty}) ≠ received ({qty})</span>}
+      {serialMismatch && <span className="text-[10px] text-red-500 leading-tight">Serial count ({serialCount}) ≠ received ({qty})</span>}
+    </div>
+  );
+}
+
+// ─── Read-only row (normal view) ──────────────────────────────────────────────
 function ReadOnlyRow({ row }) {
   const tracking = row.tracking_type;
-  // API returns received_batches / received_serials; fall back to normalised batches/serials
   const batches = row.received_batches || row.batches || [];
   const serials = row.received_serials || row.serials || [];
 
   const trackingDisplay =
-    tracking === "untracked"
-      ? <span className="text-xs text-gray-400 italic">Untracked</span>
-      : batches.length > 0
-        ? <span className="text-gray-600 text-xs">Batches ({batches.length})</span>
-        : serials.length > 0
-          ? <span className="text-gray-600 text-xs">Serials ({serials.length})</span>
-          : <span className="text-gray-400">—</span>;
+    tracking === "untracked" ? <span className="text-xs text-gray-400 italic">Untracked</span>
+      : batches.length > 0 ? <span className="text-gray-500 text-xs">Batches ({batches.length})</span>
+        : serials.length > 0 ? <span className="text-gray-500 text-xs">Serials ({serials.length})</span>
+          : null;
 
   const displayName = row.product_name || row.sku_name || "—";
 
   return (
     <tr className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-      <td className="px-2 py-2 w-[200px] max-w-[200px]">
-        <span title={displayName} className="block truncate text-sm text-gray-800">
-          {displayName}
-        </span>
+      <td className="px-2 py-2 w-[280px] max-w-[280px]">
+        <span title={displayName} className="block truncate text-sm text-gray-800">{displayName}</span>
       </td>
-      <td className="px-2 py-2 w-[85px]">
+      <td className="px-2 py-2 w-[75px]">
         <span className="text-sm text-gray-600">₹{row.unit_price != null ? Number(row.unit_price).toLocaleString() : "—"}</span>
       </td>
-      <td className="px-2 py-2 w-[80px] text-center text-sm text-gray-700">
-        {row.received_quantity != null ? Math.floor(Number(row.received_quantity)) : "—"}
+      <td className="px-2 py-2 w-[90px]">
+        <div className="text-sm text-gray-700 text-center">{row.received_quantity != null ? Math.floor(Number(row.received_quantity)) : "—"}</div>
+        {trackingDisplay && <div className="mt-0.5">{trackingDisplay}</div>}
       </td>
-      <td className="px-2 py-2 w-[100px]">{trackingDisplay}</td>
-      <td className="px-2 py-2 w-[80px]">
-        <span className="text-sm text-gray-600">₹{row.accepted_amount != null ? Number(row.accepted_amount).toLocaleString() : "—"}</span>
-      </td>
-      <td className="px-2 py-2 w-[80px]">
-        <span className="text-sm text-gray-600">₹{row.received_amount != null ? Number(row.received_amount).toLocaleString() : "—"}</span>
-      </td>
-      <td className="px-2 py-2 w-[80px]">
-        <span className="text-sm text-gray-600">₹{row.rejected_amount != null ? Number(row.rejected_amount).toLocaleString() : "—"}</span>
-      </td>
+      <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-600">₹{row.accepted_amount != null ? Number(row.accepted_amount).toLocaleString() : "—"}</span></td>
+      <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-600">₹{row.received_amount != null ? Number(row.received_amount).toLocaleString() : "—"}</span></td>
+      <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-600">₹{row.rejected_amount != null ? Number(row.rejected_amount).toLocaleString() : "—"}</span></td>
       <td className="px-2 py-2 w-8" />
     </tr>
   );
 }
 
-// ─── Editable existing row (edit mode for already-saved items) ─────────────────
+// ─── QC Row ───────────────────────────────────────────────────────────────────
+// 6 columns (must match QC table header exactly):
+//   SKU Name | Received Qty | Received Amt | QC Check | Accepted Qty | Rejected Qty
+function QCRow({ row, qcData, onQCDataChange }) {
+  const [viewBatchOpen, setViewBatchOpen] = useState(false);
+  const [viewSerialOpen, setViewSerialOpen] = useState(false);
+  const [batchQcOpen, setBatchQcOpen] = useState(false);
+  const [serialQcOpen, setSerialQcOpen] = useState(false);
+  const [reasonOpen, setReasonOpen] = useState(false);
+
+  const tracking = row.tracking_type;
+  const isBatch = tracking === "batch";
+  const isSerial = tracking === "serial";
+  const isUntracked = tracking === "untracked";
+
+  const batches = row.received_batches || row.batches || [];
+  const serials = row.received_serials || row.serials || [];
+  const displayName = row.product_name || row.sku_name || "—";
+  const receivedQty = row.received_quantity != null ? Math.floor(Number(row.received_quantity)) : 0;
+  const receivedAmt = row.received_amount != null ? Number(row.received_amount) : null;
+
+  const qc = qcData || null;
+  const hasQC = qc !== null && qc.acceptedCount !== null;
+
+  // Untracked: user enters accepted qty manually
+  const untrackedAccepted = qc?.untrackedAccepted ?? "";
+  const untrackedRejected = untrackedAccepted !== "" ? Math.max(0, receivedQty - Number(untrackedAccepted)) : null;
+
+  const acceptedCount = isUntracked
+    ? (untrackedAccepted !== "" ? Number(untrackedAccepted) : null)
+    : (hasQC ? qc.acceptedCount : null);
+
+  const rejectedCount = isUntracked ? untrackedRejected : (hasQC ? qc.rejectedCount : null);
+  const rejectionReason = qc?.rejectionReason || "";
+
+  const handleUntrackedChange = (val) => {
+    if (val === "") {
+      onQCDataChange({ ...(qc || {}), untrackedAccepted: "", acceptedCount: null, rejectedCount: null });
+      return;
+    }
+    const num = Math.min(Math.floor(Number(val)), receivedQty);
+    if (isNaN(num) || num < 0) return;
+    onQCDataChange({ ...(qc || {}), untrackedAccepted: String(num), acceptedCount: num, rejectedCount: receivedQty - num });
+  };
+
+  return (
+    <>
+      {isBatch && <ViewBatchModal isOpen={viewBatchOpen} onClose={() => setViewBatchOpen(false)} skuName={displayName} batches={batches} />}
+      {isSerial && <ViewSerialModal isOpen={viewSerialOpen} onClose={() => setViewSerialOpen(false)} skuName={displayName} serials={serials} />}
+      {isBatch && (
+        <QCBatchModal
+          isOpen={batchQcOpen}
+          onClose={() => setBatchQcOpen(false)}
+          onSave={(result) => onQCDataChange({ ...(qc || {}), ...result })}
+          skuName={displayName}
+          batches={batches}
+          savedQcData={qc}
+        />
+      )}
+      {isSerial && (
+        <QCSerialModal
+          isOpen={serialQcOpen}
+          onClose={() => setSerialQcOpen(false)}
+          onSave={(result) => onQCDataChange({ ...(qc || {}), ...result })}
+          skuName={displayName}
+          serials={serials}
+          savedQcData={qc}
+        />
+      )}
+      <ReasonModal
+        isOpen={reasonOpen}
+        onClose={() => setReasonOpen(false)}
+        onSave={(reason) => onQCDataChange({ ...(qc || {}), rejectionReason: reason })}
+        existingReason={rejectionReason}
+      />
+
+      <tr className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
+
+        {/* Col 1 — SKU Name */}
+        <td className="px-2 py-3 w-[280px] max-w-[280px]">
+          <span title={displayName} className="block truncate text-sm text-gray-800 font-medium">{displayName}</span>
+        </td>
+
+        {/* Col 2 — Received Qty + view link */}
+        <td className="px-2 py-3 w-[100px]">
+          <div className="text-sm text-gray-800 font-medium">{receivedQty}</div>
+          {isBatch && (
+            <button onClick={() => setViewBatchOpen(true)} className="mt-0.5 text-[11px] font-medium text-gray-400 hover:text-gray-600 cursor-pointer transition-colors block whitespace-nowrap">
+              View Batches
+            </button>
+          )}
+          {isSerial && (
+            <button onClick={() => setViewSerialOpen(true)} className="mt-0.5 text-[11px] font-medium text-gray-400 hover:text-gray-600 cursor-pointer transition-colors block whitespace-nowrap">
+              View Serials
+            </button>
+          )}
+          {isUntracked && <div className="text-[10px] text-gray-400 italic mt-0.5">Untracked</div>}
+        </td>
+
+        {/* Col 3 — Received Amount */}
+        <td className="px-2 py-3 w-[110px]">
+          <span className="text-sm text-gray-600">
+            {receivedAmt != null ? `₹${receivedAmt.toLocaleString()}` : "—"}
+          </span>
+        </td>
+
+        {/* Col 4 — QC Check (batch/serial link OR untracked input) */}
+        <td className="px-2 py-3 w-[110px]">
+          {isBatch && (
+            <button
+              onClick={() => setBatchQcOpen(true)}
+              className={`text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap
+                ${hasQC ? "text-emerald-600 hover:text-emerald-700" : "text-primary hover:opacity-75"}`}
+            >
+              {hasQC
+                ? <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 shrink-0" />Batches Done</span>
+                : "Check Batches"}
+            </button>
+          )}
+          {isSerial && (
+            <button
+              onClick={() => setSerialQcOpen(true)}
+              className={`text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap
+                ${hasQC ? "text-emerald-600 hover:text-emerald-700" : "text-primary hover:opacity-75"}`}
+            >
+              {hasQC
+                ? <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 shrink-0" />Serials Done</span>
+                : "Check Serials"}
+            </button>
+          )}
+          {isUntracked && (
+            <div>
+              <input
+                type="number"
+                min="0"
+                max={receivedQty}
+                step="1"
+                value={untrackedAccepted}
+                onChange={(e) => handleUntrackedChange(e.target.value)}
+                onKeyDown={(e) => { if ([".", "-", "e"].includes(e.key)) e.preventDefault(); }}
+                onWheel={(e) => e.target.blur()}
+                placeholder="Accepted qty"
+                className="w-full px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:border-primary"
+              />
+              {untrackedAccepted !== "" && Number(untrackedAccepted) > receivedQty && (
+                <p className="text-[10px] text-red-500 mt-0.5">Max {receivedQty}</p>
+              )}
+            </div>
+          )}
+        </td>
+
+        {/* Col 5 — Accepted Qty */}
+        <td className="px-2 py-3 w-[90px]">
+          {acceptedCount !== null ? (
+            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold min-w-[28px]">
+              {acceptedCount}
+            </span>
+          ) : (
+            <span className="text-gray-300 text-sm">—</span>
+          )}
+        </td>
+
+        {/* Col 6 — Rejected Qty + reason link */}
+        <td className="px-2 py-3 w-[100px]">
+          {rejectedCount !== null ? (
+            <div className="flex flex-col gap-0.5">
+              <span className={`inline-flex items-center justify-center w-fit px-2 py-0.5 rounded-md text-xs font-semibold
+                ${rejectedCount > 0 ? "bg-red-50 text-red-600" : "bg-gray-50 text-gray-400"}`}>
+                {rejectedCount}
+              </span>
+              {rejectedCount > 0 && (
+                <button
+                  onClick={() => setReasonOpen(true)}
+                  className={`text-[11px] font-medium cursor-pointer transition-colors w-fit whitespace-nowrap
+                    ${rejectionReason ? "text-gray-500 hover:text-gray-700" : "text-amber-500 hover:text-amber-600"}`}
+                >
+                  {rejectionReason ? "Edit Reason" : "⚠ Add Reason"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-300 text-sm">—</span>
+          )}
+        </td>
+      </tr>
+    </>
+  );
+}
+
+// ─── Editable existing row ────────────────────────────────────────────────────
 function EditableExistingRow({ row, skuOptions, onChange }) {
   const [batchingOpen, setBatchingOpen] = useState(false);
   const [serialOpen, setSerialOpen] = useState(false);
 
   const trackingType = row.tracking_type;
-  const isBatch = trackingType === "batch";
-  const isSerial = trackingType === "serial";
-  const isUntracked = trackingType === "untracked";
-
-  const qty = Number(row.received_quantity) || 0;
-  const hasValidQty = qty > 0;
-
-  // normalizeExisting maps received_batches → batches, received_serials → serials
+  const skuDisplayName = row.product_name || row.sku_name || "—";
   const batches = row.batches || [];
   const serials = row.serials || [];
-  const batchCount = batches.length;
-  const serialCount = serials.length;
-
-  // Inline mismatch indicators
-  const batchTotalQty = batches.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
-  const batchMismatch = isBatch && hasValidQty && batchCount > 0 && batchTotalQty !== qty;
-  const serialMismatch = isSerial && hasValidQty && serialCount > 0 && serialCount !== qty;
-
-  // API field is sku_name; product_name used by some other shapes
-  const skuDisplayName = row.product_name || row.sku_name || "—";
-
-  const trackingLabel = isBatch
-    ? batchCount > 0 ? `Batches (${batchCount})` : "Add Batches"
-    : isSerial
-      ? serialCount > 0 ? `Serials (${serialCount})` : "Add Serials"
-      : null;
-
   const selectedSku = skuOptions.find((sku) => sku.product_sku_id === row.product_sku_id) || {};
   const remainingQty = Math.trunc(selectedSku?.remaining_quantity ?? 0);
-  
+
   const handleQtyChange = (v) => {
     const intVal = v === "" ? "" : String(Math.floor(Number(v)));
-    if (intVal === "" || Number(intVal) > 0) {
-      // Preserve existing batches/serials — mismatch is caught at save time
-      onChange({ ...row, received_quantity: intVal });
-    }
-  };
-
-  const handleTrackingClick = () => {
-    if (!hasValidQty) return;
-    if (isBatch) setBatchingOpen(true);
-    else if (isSerial) setSerialOpen(true);
+    if (intVal === "" || Number(intVal) > 0) onChange({ ...row, received_quantity: intVal });
   };
 
   return (
     <>
-      {isBatch && (
-        <BatchingModal
-          key={`batch-existing-${row._id}`}
-          isOpen={batchingOpen}
-          onClose={() => setBatchingOpen(false)}
+      {trackingType === "batch" && (
+        <BatchingModal key={`batch-existing-${row._id}`} isOpen={batchingOpen} onClose={() => setBatchingOpen(false)}
           onSave={(newBatches) => onChange({ ...row, batches: newBatches })}
-          skuName={skuDisplayName}
-          totalQuantity={row.received_quantity || 0}
-          initialBatches={batches}
-        />
+          skuName={skuDisplayName} totalQuantity={row.received_quantity || 0} initialBatches={batches} />
       )}
-      {isSerial && (
-        <SerialModal
-          key={`serial-existing-${row._id}`}
-          isOpen={serialOpen}
-          onClose={() => setSerialOpen(false)}
+      {trackingType === "serial" && (
+        <SerialModal key={`serial-existing-${row._id}`} isOpen={serialOpen} onClose={() => setSerialOpen(false)}
           onSave={(newSerials) => onChange({ ...row, serials: newSerials })}
-          skuName={skuDisplayName}
-          totalQuantity={row.received_quantity || 0}
-          initialSerials={serials}
-        />
+          skuName={skuDisplayName} totalQuantity={row.received_quantity || 0} initialSerials={serials} />
       )}
 
       <tr className="border-b border-amber-100 bg-amber-50/30">
-        {/* SKU name — read-only for existing rows */}
-        <td className="px-2 py-2 w-[200px] max-w-[200px]">
-          <span title={skuDisplayName} className="block truncate text-sm text-gray-800 font-medium">
-            {skuDisplayName}
-          </span>
+        <td className="px-2 py-2 w-[280px] max-w-[280px]">
+          <span title={skuDisplayName} className="block truncate text-sm text-gray-800 font-medium">{skuDisplayName}</span>
         </td>
-
-        {/* Unit Price — read-only */}
-        <td className="px-2 py-2 w-[85px]">
+        <td className="px-2 py-2 w-[75px]">
           <div className="px-2 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-600 truncate">
             {row.unit_price ? `₹${Number(row.unit_price).toLocaleString()}` : "—"}
           </div>
         </td>
-
-        {/* Received Qty — editable */}
-        <td className="px-2 py-2 w-[80px]">
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={row.received_quantity}
+        <td className="px-2 py-2 w-[90px]">
+          <input type="number" min="1" step="1" value={row.received_quantity}
             onChange={(e) => handleQtyChange(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "." || e.key === "-" || e.key === "e") e.preventDefault(); }}
+            onKeyDown={(e) => { if ([".", "-", "e"].includes(e.key)) e.preventDefault(); }}
             placeholder="Qty"
             className="w-full px-1.5 py-1.5 rounded-lg border border-gray-300 bg-white text-sm focus:outline-none focus:border-primary text-center"
-          />
-          {selectedSku && row.received_quantity > remainingQty && (<p className="text-[12px] text-red-700">Only {remainingQty} qty(s) remaining</p>)}
-        </td>
-
-        {/* Tracking — editable for batch/serial */}
-        <td className="px-2 py-2 w-[100px]">
-          {isUntracked ? (
-            <span className="text-xs text-gray-400 italic">Untracked</span>
-          ) : isBatch || isSerial ? (
-            <div className="flex flex-col gap-0.5">
-              <button
-                type="button"
-                disabled={!hasValidQty}
-                onClick={handleTrackingClick}
-                className={`text-xs font-medium transition-colors whitespace-nowrap text-left ${!hasValidQty ? "text-gray-300 cursor-not-allowed" : "text-primary hover:opacity-75 cursor-pointer"
-                  }`}
-              >
-                {trackingLabel}
-              </button>
-              {batchMismatch && (
-                <span className="text-[10px] text-red-500 leading-tight">
-                  Batch qty ({batchTotalQty}) ≠ received ({qty})
-                </span>
-              )}
-              {serialMismatch && (
-                <span className="text-[10px] text-red-500 leading-tight">
-                  Serial count ({serialCount}) ≠ received ({qty})
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-sm text-gray-300">—</span>
+            onWheel={(e) => e.target.blur()} />
+          {selectedSku && row.received_quantity > remainingQty && (
+            <p className="text-[11px] text-red-600 mt-0.5">Only {remainingQty} remaining</p>
           )}
+          <TrackingButton trackingType={trackingType} qty={row.received_quantity}
+            batches={batches} serials={serials}
+            onOpenBatch={() => setBatchingOpen(true)} onOpenSerial={() => setSerialOpen(true)} />
         </td>
-
-        {/* Amounts — pending save */}
-        <td className="px-2 py-2 w-[80px]">
-          <span className="text-[10px] text-gray-400 italic">Pending save</span>
-        </td>
-        <td className="px-2 py-2 w-[80px]"><span className="text-sm text-gray-300">—</span></td>
-        <td className="px-2 py-2 w-[80px]"><span className="text-sm text-gray-300">—</span></td>
-
-        {/* No remove — existing rows cannot be deleted here */}
-        <td className="px-2 py-2 w-8" />
+        <td className="px-2 py-2 w-[75px]"><span className="text-[10px] text-gray-400 italic">Pending</span></td>
+        <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-300">—</span></td>
+        <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-300">—</span></td>
+        <td className="px-2 py-2 w-4" />
       </tr>
     </>
   );
@@ -208,36 +344,12 @@ function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove }) {
 
   const selectedSku = skuOptions.find((o) => o.product_sku_id === row.product_sku_id) || null;
   const trackingType = selectedSku?.tracking_type || row.tracking_type;
-  const isBatch = trackingType === "batch";
-  const isSerial = trackingType === "serial";
-  const isUntracked = trackingType === "untracked";
-
   const remainingQty = selectedSku ? Number(selectedSku.remaining_quantity) : Infinity;
-  const hasValidQty = row.received_quantity && Number(row.received_quantity) > 0;
-
-  const qty = Number(row.received_quantity) || 0;
-  const batchCount = row.batches?.length || 0;
-  const serialCount = row.serials?.length || 0;
-  const batchTotalQty = (row.batches || []).reduce((s, b) => s + (Number(b.quantity) || 0), 0);
-  const batchMismatch = isBatch && hasValidQty && batchCount > 0 && batchTotalQty !== qty;
-  const serialMismatch = isSerial && hasValidQty && serialCount > 0 && serialCount !== qty;
-
-  const trackingLabel = isBatch
-    ? batchCount > 0 ? `Batches (${batchCount})` : "Add Batches"
-    : isSerial
-      ? serialCount > 0 ? `Serials (${serialCount})` : "Add Serials"
-      : null;
+  const batches = row.batches || [];
+  const serials = row.serials || [];
 
   const handleSkuChange = (option) => {
-    onChange({
-      ...row,
-      product_sku_id: option.product_sku_id,
-      unit_price: option.unit_price ? String(option.unit_price) : "",
-      tracking_type: option.tracking_type || "",
-      received_quantity: "",
-      batches: [],
-      serials: [],
-    });
+    onChange({ ...row, product_sku_id: option.product_sku_id, unit_price: option.unit_price ? String(option.unit_price) : "", tracking_type: option.tracking_type || "", received_quantity: "", batches: [], serials: [] });
   };
 
   const handleQtyChange = (v) => {
@@ -250,114 +362,55 @@ function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove }) {
     }
   };
 
-  const handleTrackingClick = () => {
-    if (!hasValidQty) return;
-    if (Number(row.received_quantity) > remainingQty) {
-      toast.error(`Received qty (${row.received_quantity}) exceeds remaining (${remainingQty}). Fix qty first.`);
-      return;
-    }
-    if (isBatch) setBatchingOpen(true);
-    else if (isSerial) setSerialOpen(true);
+  const handleTrackingOpen = (type) => {
+    if (!row.received_quantity || Number(row.received_quantity) <= 0) return;
+    if (Number(row.received_quantity) > remainingQty) { toast.error(`Received qty exceeds remaining (${remainingQty}). Fix qty first.`); return; }
+    if (type === "batch") setBatchingOpen(true); else setSerialOpen(true);
   };
 
-  const availableOptions = skuOptions.filter(
-    (o) => !usedSkuIds.includes(o.product_sku_id) || o.product_sku_id === row.product_sku_id
-  );
+  const availableOptions = skuOptions.filter((o) => !usedSkuIds.includes(o.product_sku_id) || o.product_sku_id === row.product_sku_id);
 
   return (
     <>
-      {isBatch && (
-        <BatchingModal
-          key={`batch-new-${row._id}-${row.received_quantity}`}
-          isOpen={batchingOpen}
-          onClose={() => setBatchingOpen(false)}
-          onSave={(batches) => onChange({ ...row, batches })}
-          skuName={selectedSku?.product_name || ""}
-          totalQuantity={row.received_quantity || 0}
-          initialBatches={row.batches || []}
-        />
+      {trackingType === "batch" && (
+        <BatchingModal key={`batch-new-${row._id}-${row.received_quantity}`} isOpen={batchingOpen} onClose={() => setBatchingOpen(false)}
+          onSave={(b) => onChange({ ...row, batches: b })} skuName={selectedSku?.product_name || ""}
+          totalQuantity={row.received_quantity || 0} initialBatches={batches} />
       )}
-      {isSerial && (
-        <SerialModal
-          key={`serial-new-${row._id}-${row.received_quantity}`}
-          isOpen={serialOpen}
-          onClose={() => setSerialOpen(false)}
-          onSave={(serials) => onChange({ ...row, serials })}
-          skuName={selectedSku?.product_name || ""}
-          totalQuantity={row.received_quantity || 0}
-          initialSerials={row.serials || []}
-        />
+      {trackingType === "serial" && (
+        <SerialModal key={`serial-new-${row._id}-${row.received_quantity}`} isOpen={serialOpen} onClose={() => setSerialOpen(false)}
+          onSave={(s) => onChange({ ...row, serials: s })} skuName={selectedSku?.product_name || ""}
+          totalQuantity={row.received_quantity || 0} initialSerials={serials} />
       )}
 
       <tr className="border-b border-blue-100 bg-blue-50/30">
-        <td className="px-2 py-2 w-[200px] max-w-[200px]" style={{ overflow: "visible" }}>
-          <GrnSkuDropdown
-            options={availableOptions}
-            value={row.product_sku_id}
-            onChange={handleSkuChange}
-            disabled={false}
-            placeholder="Select SKU..."
-          />
+        <td className="px-2 py-2 w-[280px] max-w-[280px]" style={{ overflow: "visible" }}>
+          <GrnSkuDropdown options={availableOptions} value={row.product_sku_id} onChange={handleSkuChange} disabled={false} placeholder="Select SKU..." />
         </td>
-
-        <td className="px-2 py-2 w-[85px]">
+        <td className="px-2 py-2 w-[75px]">
           <div className="px-2 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-600 truncate">
             {row.unit_price ? `₹${Number(row.unit_price).toLocaleString()}` : "—"}
           </div>
         </td>
-
-        <td className="px-2 py-2 w-[80px]">
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={row.received_quantity}
+        <td className="px-2 py-2 w-[90px]">
+          <input type="number" min="1" step="1" value={row.received_quantity}
             onChange={(e) => handleQtyChange(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "." || e.key === "-" || e.key === "e") e.preventDefault(); }}
+            onKeyDown={(e) => { if ([".", "-", "e"].includes(e.key)) e.preventDefault(); }}
             placeholder="Qty"
             className="w-full px-1.5 py-1.5 rounded-lg border border-gray-300 bg-white text-sm focus:outline-none focus:border-primary text-center"
-          />
-          {selectedSku && row.received_quantity > remainingQty && (<p className="text-[12px] text-red-700">Only {remainingQty} qty(s) remaining</p>)}
-        </td>
-
-        <td className="px-2 py-2 w-[100px]">
-          {isUntracked ? (
-            <span className="text-xs text-gray-400 italic">Untracked</span>
-          ) : isBatch || isSerial ? (
-            <div className="flex flex-col gap-0.5">
-              <button
-                type="button"
-                disabled={!hasValidQty}
-                onClick={handleTrackingClick}
-                className={`text-xs font-medium transition-colors whitespace-nowrap text-left ${!hasValidQty ? "text-gray-300 cursor-not-allowed" : "text-primary hover:opacity-75 cursor-pointer"
-                  }`}
-              >
-                {trackingLabel}
-              </button>
-              {batchMismatch && (
-                <span className="text-[10px] text-red-500 leading-tight">
-                  Batch qty ({batchTotalQty}) ≠ received ({qty})
-                </span>
-              )}
-              {serialMismatch && (
-                <span className="text-[10px] text-red-500 leading-tight">
-                  Serial count ({serialCount}) ≠ received ({qty})
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-sm text-gray-300">—</span>
+            onWheel={(e) => e.target.blur()} />
+          {selectedSku && row.received_quantity > remainingQty && (
+            <p className="text-[11px] text-red-600 mt-0.5">Only {remainingQty} remaining</p>
           )}
+          <TrackingButton trackingType={trackingType} qty={row.received_quantity}
+            batches={batches} serials={serials}
+            onOpenBatch={() => handleTrackingOpen("batch")} onOpenSerial={() => handleTrackingOpen("serial")} />
         </td>
-
-        <td className="px-2 py-2 w-[80px]"><span className="text-sm text-gray-300">—</span></td>
-        <td className="px-2 py-2 w-[80px]"><span className="text-sm text-gray-300">—</span></td>
-        <td className="px-2 py-2 w-[80px]"><span className="text-sm text-gray-300">—</span></td>
-
-        <td className="px-2 py-2 w-8">
-          <button onClick={onRemove} className="text-gray-400 hover:text-red-500 transition-colors">
-            <Trash2 className="w-4 h-4" />
-          </button>
+        <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-300">—</span></td>
+        <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-300">—</span></td>
+        <td className="px-2 py-2 w-[75px]"><span className="text-sm text-gray-300">—</span></td>
+        <td className="px-2 py-2 w-[10px]">
+          <button onClick={onRemove} className="mx-auto text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
         </td>
       </tr>
     </>
@@ -365,56 +418,50 @@ function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-/**
- * Props:
- *  - grnId: string
- *  - poId: string
- *  - grnStatus: string  ← NEW: "created" | other
- *  - initialLineItems: array
- *  - onSaved: () => void
- */
-export default function GrnLineItems({ grnId, poId, grnStatus, initialLineItems, onSaved }) {
+export default function GrnLineItems({ grnId, poId, grnStatus, initialLineItems, onSaved, setCanSendToQC = null, submittedQC = null, setSubmittedQC = null, setCanComplete = null, setIsLineItemsEditing = null, setHasSubmitted = null }) {
+  const isQCPending = grnStatus === "qc_pending";
+
+  // ── showQCTable: true  = QC table is visible
+  //                false = normal table is visible
+  // Start in QC table mode only if status is qc_pending AND QC hasn't been submitted yet.
+  const [showQCTable, setShowQCTable] = useState(isQCPending && !submittedQC);
+
+  useEffect(() => {
+    if (setCanComplete) {
+      setCanComplete(!showQCTable);
+    }
+  }, [showQCTable]);
+
+  // Keep in sync if parent changes submittedQC or grnStatus
+  useEffect(() => {
+    setShowQCTable(isQCPending && !submittedQC);
+  }, [isQCPending, submittedQC]);
+
   const makeNewRow = () => ({
     _id: Math.random().toString(36).slice(2),
-    product_sku_id: null,
-    unit_price: "",
-    tracking_type: "",
-    received_quantity: "",
-    batches: [],
-    serials: [],
-    isNew: true,
+    product_sku_id: null, unit_price: "", tracking_type: "",
+    received_quantity: "", batches: [], serials: [], isNew: true,
   });
 
-  // Normalize existing items into editable shape.
-  // API may return batches as received_batches and serials as received_serials.
   const normalizeExisting = (items) =>
     (items || []).map((item) => {
-      // Normalize batch shape: API uses manufacture_date, local modal uses manufacturing_date
       const rawBatches = item.received_batches || item.batches || [];
       const batches = rawBatches.map((b) => ({
         _id: Math.random().toString(36).slice(2),
         batch_code: b.batch_code || "",
         quantity: b.quantity != null ? String(b.quantity) : "",
-        manufacturing_date: b.manufacturing_date
-          ? new Date(b.manufacturing_date)
-          : b.manufacture_date
-            ? new Date(b.manufacture_date)
-            : null,
-
+        manufacture_date: b.manufacture_date ? new Date(b.manufacture_date) : null,
         expiry_date: b.expiry_date ? new Date(b.expiry_date) : null,
       }));
-
-      // Normalize serials: API returns array of strings or objects
       const rawSerials = item.received_serials || item.serials || [];
-      const serials = rawSerials.map((s) =>
-        typeof s === "string" ? s : s.serial_number || s.value || ""
-      );
-
+      const serials = rawSerials.map((s) => typeof s === "string" ? s : s.serial_number || s.value || "");
       return {
         ...item,
+        received_amount: item.received_amount,
+        accepted_amount: item.accepted_amount,
+        rejected_amount: item.rejected_amount,
         _id: String(item.id ?? item.product_sku_id ?? Math.random()),
-        received_quantity:
-          item.received_quantity != null ? String(Math.floor(Number(item.received_quantity))) : "",
+        received_quantity: item.received_quantity != null ? String(Math.floor(Number(item.received_quantity))) : "",
         batches,
         serials,
         isNew: false,
@@ -422,30 +469,24 @@ export default function GrnLineItems({ grnId, poId, grnStatus, initialLineItems,
     });
 
   const [existingRows, setExistingRows] = useState(() => initialLineItems || []);
-  const [editingRows, setEditingRows] = useState([]); // copies of existing rows being edited
-  const [newRows, setNewRows] = useState([]);          // brand-new rows added in edit mode
+  const [editingRows, setEditingRows] = useState([]);
+  const [newRows, setNewRows] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [skuOptions, setSkuOptions] = useState([]);
   const [loadingSku, setLoadingSku] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [qcDataMap, setQcDataMap] = useState({});
   const skuFetchedRef = useRef(false);
 
-  // Keep existingRows in sync when parent refreshes initialLineItems
-  useEffect(() => {
-    setExistingRows(initialLineItems || []);
-  }, [initialLineItems]);
+  useEffect(() => { setExistingRows(initialLineItems || []); }, [initialLineItems]);
 
-  // Only show Edit Items button when GRN status is "created"
   const canEdit = grnStatus === "created";
 
-  // Fetch SKU options once when entering edit mode
   useEffect(() => {
     if (!isEditing || skuFetchedRef.current || !grnId || !poId) return;
     skuFetchedRef.current = true;
     setLoadingSku(true);
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/po_receiving_summary?po_id=${poId}&grn_id=${grnId}`
-    )
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/po_receiving_summary?po_id=${poId}&grn_id=${grnId}`)
       .then((r) => r.json())
       .then((d) => setSkuOptions(d?.data || []))
       .catch(() => toast.error("Failed to load SKU options."))
@@ -454,71 +495,43 @@ export default function GrnLineItems({ grnId, poId, grnStatus, initialLineItems,
 
   const handleEnterEditMode = () => {
     setEditingRows(normalizeExisting(existingRows));
-    setNewRows([]); // start with NO new rows — user adds via button
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingRows([]);
     setNewRows([]);
-    setIsEditing(false);
+    setIsEditing(true);
+    setIsLineItemsEditing?.(true);
   };
 
-  // Combined used SKU IDs to prevent duplicates in new rows
+  const handleCancelEdit = () => { 
+    setEditingRows([]); 
+    setNewRows([]); 
+    setIsEditing(false); 
+    setIsLineItemsEditing?.(false);
+  };
+
   const usedSkuIds = [
     ...editingRows.map((r) => r.product_sku_id).filter(Boolean),
     ...newRows.map((r) => r.product_sku_id).filter(Boolean),
   ];
 
-  // ── Validation ────────────────────────────────────────────────────────────
   const validateRows = (rows, isExisting = false) => {
     for (const row of rows) {
       const sku = skuOptions.find((o) => o.product_sku_id === row.product_sku_id);
       const skuName = row.product_name || row.sku_name || sku?.product_name || "Unknown SKU";
-
-      if (!row.product_sku_id) {
-        toast.error("Please select a SKU for all rows.");
-        return false;
-      }
-
+      if (!row.product_sku_id) { toast.error("Please select a SKU for all rows."); return false; }
       const qty = Number(row.received_quantity);
-      if (!row.received_quantity || qty <= 0) {
-        toast.error(`Received qty must be > 0 for "${skuName}".`);
-        return false;
-      }
-
-      // Remaining qty check only for new rows
+      if (!row.received_quantity || qty <= 0) { toast.error(`Received qty must be > 0 for "${skuName}".`); return false; }
       if (!isExisting) {
         const remainingQty = sku ? Number(sku.remaining_quantity) : Infinity;
-        if (qty > remainingQty) {
-          toast.error(`Qty for "${skuName}" (${qty}) exceeds remaining (${remainingQty}).`);
-          return false;
-        }
+        if (qty > remainingQty) { toast.error(`Qty for "${skuName}" (${qty}) exceeds remaining (${remainingQty}).`); return false; }
       }
-
       const tt = sku?.tracking_type || row.tracking_type;
-
       if (tt === "batch") {
-        if (!row.batches || row.batches.length === 0) {
-          toast.error(`Add batch details for "${skuName}".`);
-          return false;
-        }
+        if (!row.batches?.length) { toast.error(`Add batch details for "${skuName}".`); return false; }
         const batchTotal = row.batches.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
-        if (batchTotal !== qty) {
-          toast.error(`Batch total qty (${batchTotal}) must match received qty (${qty}) for "${skuName}".`);
-          return false;
-        }
+        if (batchTotal !== qty) { toast.error(`Batch total (${batchTotal}) must match received qty (${qty}) for "${skuName}".`); return false; }
       }
-
       if (tt === "serial") {
-        if (!row.serials || row.serials.length === 0) {
-          toast.error(`Add serial numbers for "${skuName}".`);
-          return false;
-        }
-        if (row.serials.length !== qty) {
-          toast.error(`Serial count (${row.serials.length}) must match received qty (${qty}) for "${skuName}".`);
-          return false;
-        }
+        if (!row.serials?.length) { toast.error(`Add serial numbers for "${skuName}".`); return false; }
+        if (row.serials.length !== qty) { toast.error(`Serial count (${row.serials.length}) must match received qty (${qty}) for "${skuName}".`); return false; }
       }
     }
     return true;
@@ -527,171 +540,255 @@ export default function GrnLineItems({ grnId, poId, grnStatus, initialLineItems,
   const buildPayloadItem = (r) => {
     const sku = skuOptions.find((o) => o.product_sku_id === r.product_sku_id);
     const tt = sku?.tracking_type || r.tracking_type;
-    const item = {
-      product_sku_id: r.product_sku_id,
-      received_quantity: Number(r.received_quantity),
-      unit_price: Number(r.unit_price),
-    };
+    const item = { product_sku_id: r.product_sku_id, received_quantity: Number(r.received_quantity), unit_price: Number(r.unit_price) };
     if (tt === "batch" && r.batches?.length > 0) {
-      item.received_batches = r.batches.map((b) => ({
-        batch_code: b.batch_code,
-        quantity: Number(b.quantity),
-        manufacture_date: b.manufacturing_date || null,
-        expiry_date: b.expiry_date || null,
-      }));
+      item.received_batches = r.batches.map((b) => ({ batch_code: b.batch_code, quantity: Number(b.quantity), manufacture_date: b.manufacture_date || null, expiry_date: b.expiry_date || null }));
     }
-    if (tt === "serial" && r.serials?.length > 0) {
-      item.received_serials = r.serials;
-    }
+    if (tt === "serial" && r.serials?.length > 0) item.received_serials = r.serials;
     return item;
   };
 
   const handleSave = async () => {
-    if (editingRows.length === 0 && newRows.length === 0) {
-      toast.error("No line items to save.");
-      return;
-    }
-
-    // Validate existing edited rows first, then new rows
+    if (editingRows.length === 0 && newRows.length === 0) { toast.error("No line items to save."); return; }
     if (!validateRows(editingRows, true)) return;
     if (!validateRows(newRows, false)) return;
-
-    const grn_line_items = [
-      ...editingRows.map(buildPayloadItem),
-      ...newRows.map(buildPayloadItem),
-    ];
-
+    const grn_line_items = [...editingRows.map(buildPayloadItem), ...newRows.map(buildPayloadItem)];
     setSaving(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grnId}/grn_line_items`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ grn_line_items }),
-        }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grnId}/grn_line_items`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grn_line_items }),
+      });
       const data = await res.json();
       if (data.status === "success") {
         toast.success("Line items saved.");
-        setEditingRows([]);
-        setNewRows([]);
+        setEditingRows([]); 
+        setNewRows([]); 
         setIsEditing(false);
+        setIsLineItemsEditing?.(false); 
         onSaved?.();
-      } else {
-        throw new Error(data?.errors[0]);
-      }
-    } catch(err) {
-      toast.error("Failed to save GRN line items "+err);
-    } finally {
-      setSaving(false);
-    }
+      } else throw new Error(data?.errors?.[0]);
+    } catch (err) { toast.error("Failed to save GRN line items " + err); }
+    finally { setSaving(false); }
   };
 
-  const HEADERS = [
-    { label: "SKU Name", cls: "w-[200px] max-w-[200px]" },
-    { label: "Unit Price", cls: "w-[85px]" },
-    { label: "Received Qty", cls: "w-[80px] text-center" },
-    { label: "Tracking Type", cls: "w-[100px]" },
-    { label: "Accepted Amt.", cls: "w-[80px]" },
-    { label: "Received Amt.", cls: "w-[80px]" },
-    { label: "Rejected Amt.", cls: "w-[80px]" },
-    { label: "Actions", cls: "w-8" },
-  ];
+  // ── QC Save ──────────────────────────────────────────────────────────────────
+  const handleQCSave = async () => {
+    const rows = normalizeExisting(existingRows);
 
+    for (const row of rows) {
+      const tracking = row.tracking_type;
+      const rowKey = String(row._id || row.id);
+      const qc = qcDataMap[rowKey];
+      const displayName = row.product_name || row.sku_name || "Unknown";
+
+      if (tracking !== "untracked") {
+        if (!qc || qc.acceptedCount === null) {
+          toast.error(`Please complete QC check for "${displayName}".`);
+          return;
+        }
+        if ((qc.rejectedCount ?? 0) > 0 && !qc.rejectionReason) {
+          toast.error(`Please provide a rejection reason for "${displayName}".`);
+          return;
+        }
+      }
+    }
+
+    const grn_line_items = rows.map((row) => {
+      const rowKey = String(row._id || row.id);
+      const qc = qcDataMap[rowKey];
+      const tracking = row.tracking_type;
+      const receivedQty = Math.floor(Number(row.received_quantity));
+      const item = {
+        id: row.id,
+        product_sku_id: row.product_sku_id,
+        accepted_quantity: qc?.acceptedCount ?? receivedQty,
+        rejected_quantity: qc?.rejectedCount ?? 0,
+      };
+      if (tracking === "batch") { item.accepted_batches = qc?.accepted_batches || []; item.rejected_batches = qc?.rejected_batches || []; }
+      if (tracking === "serial") { item.accepted_serials = qc?.accepted_serials || []; item.rejected_serials = qc?.rejected_serials || []; }
+      if ((qc?.rejectedCount ?? 0) > 0 && qc?.rejectionReason) item.rejection_reason = qc.rejectionReason;
+      return item;
+    });
+
+    setSaving(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grnId}/qc_line_items`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grn_line_items }),
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        toast.success("QC results saved successfully.");
+        setShowQCTable(false);   // ← switch to normal table
+        setSubmittedQC?.(true);
+        setHasSubmitted(true);
+        onSaved?.();
+      } else throw new Error(data?.errors?.[0]);
+    } catch (err) { toast.error("Failed to save QC results: " + err); }
+    finally { setSaving(false); }
+  };
+
+  // ── QC table allQCDone check ──────────────────────────────────────────────────
+  const normalizedRowsForQC = normalizeExisting(existingRows);
+  const allQCDone = normalizedRowsForQC.every((row) => {
+    if (row.tracking_type === "untracked") return true;
+    const rowKey = String(row._id || row.id);
+    const qc = qcDataMap[rowKey];
+    if (!qc || qc.acceptedCount === null) return false;
+    if ((qc.rejectedCount ?? 0) > 0 && !qc.rejectionReason) return false;
+    return true;
+  });
+
+  // ── QC Table render ───────────────────────────────────────────────────────────
+  if (showQCTable) {
+    return (
+      <div className="mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-primary">GRN Line Items</h3>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">QC Pending</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowQCTable(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              Close QC View
+            </button>
+            <button
+              onClick={handleQCSave}
+              disabled={saving || !allQCDone}
+              className={`flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg transition-all
+                ${allQCDone && !saving ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              {saving ? "Saving..." : "Submit QC"}
+            </button>
+          </div>
+        </div>
+
+        {/* QC table — 6 data columns */}
+        <div className="border border-gray-200 rounded-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-[280px] max-w-[280px]">SKU Name</th>
+                  <TwoLineHeader line1="Received" line2="Qty" cls="w-[100px]" />
+                  <TwoLineHeader line1="Received" line2="Amt." cls="w-[110px]" />
+                  <TwoLineHeader line1="QC" line2="Check" cls="w-[110px]" />
+                  <TwoLineHeader line1="Accepted" line2="Qty" cls="w-[90px]" />
+                  <TwoLineHeader line1="Rejected" line2="Qty" cls="w-[100px]" />
+                </tr>
+              </thead>
+              <tbody>
+                {normalizedRowsForQC.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center">
+                      <div className="flex flex-col items-center gap-2 text-gray-400">
+                        <Package className="w-8 h-8" />
+                        <span className="text-sm">No line items found.</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : normalizedRowsForQC.map((row) => {
+                  const rowKey = String(row._id || row.id);
+                  return (
+                    <QCRow
+                      key={rowKey}
+                      row={row}
+                      qcData={qcDataMap[rowKey]}
+                      onQCDataChange={(data) => setQcDataMap((prev) => ({ ...prev, [rowKey]: data }))}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {!allQCDone && normalizedRowsForQC.length > 0 && (
+          <p className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            Complete QC check for all items and provide rejection reasons where needed before submitting.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ── Normal View ───────────────────────────────────────────────────────────────
   return (
     <div className="mt-4">
-      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-base font-bold text-primary">GRN Line Items</h3>
         <div className="flex items-center gap-2">
+
+          {/* QC Check button — shown whenever status is qc_pending (before or after submit) */}
+          {isQCPending && (
+            <button
+              onClick={() => setShowQCTable(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              QC Check
+            </button>
+          )}
+
           {isEditing ? (
             <>
-              <button
-                onClick={handleCancelEdit}
-                disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
-              >
+              <button onClick={handleCancelEdit} disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50 cursor-pointer">
                 <X className="w-3.5 h-3.5" />Cancel
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-60 transition-opacity cursor-pointer"
-              >
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-2 px-4 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-60 transition-all cursor-pointer">
                 {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {saving ? "Saving..." : "Save"}
               </button>
             </>
           ) : canEdit ? (
-            // Only show when status === "created"
-            <button
-              onClick={handleEnterEditMode}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
-            >
+            <button onClick={handleEnterEditMode}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-md hover:bg-primary hover:text-gray-100 transition-colors cursor-pointer">
               <Edit2 className="w-3.5 h-3.5" />Edit Items
             </button>
           ) : null}
         </div>
       </div>
 
-      {/* Table — no overflow-hidden so dropdowns escape */}
       <div className="border border-gray-200 rounded-xl">
         <div className="overflow-x-auto">
           <table className="border-collapse" style={{ width: "max-content", minWidth: "100%" }}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {HEADERS.map((h, i) => (
-                  <th
-                    key={i}
-                    className={`px-2 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap ${h.cls}`}
-                  >
-                    {h.label}
-                  </th>
-                ))}
+                <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-[280px] max-w-[280px]">SKU Name</th>
+                <TwoLineHeader line1="Unit" line2="Price" cls="w-[75px]" />
+                <TwoLineHeader line1="Received" line2="Qty" cls="w-[90px]" />
+                <TwoLineHeader line1="Accepted" line2="Amt." cls="w-[75px]" />
+                <TwoLineHeader line1="Received" line2="Amt." cls="w-[75px]" />
+                <TwoLineHeader line1="Rejected" line2="Amt." cls="w-[75px]" />
+                <th className="px-2 py-2.5 w-4" />
               </tr>
             </thead>
             <tbody>
               {isEditing ? (
                 <>
-                  {/* Existing rows in edit mode — amber tint to distinguish */}
                   {editingRows.map((row, idx) => (
-                    <EditableExistingRow
-                      key={row._id}
-                      row={row}
-                      skuOptions={skuOptions}
-                      onChange={(updated) =>
-                        setEditingRows((prev) => prev.map((r, i) => (i === idx ? updated : r)))
-                      }
-                    />
+                    <EditableExistingRow key={row._id} row={row} skuOptions={skuOptions}
+                      onChange={(updated) => setEditingRows((prev) => prev.map((r, i) => i === idx ? updated : r))} />
                   ))}
-
-                  {/* New rows — blue tint */}
                   {newRows.map((row, idx) => (
-                    <EditableRow
-                      key={row._id}
-                      row={row}
-                      skuOptions={skuOptions}
-                      usedSkuIds={usedSkuIds}
-                      onChange={(updated) =>
-                        setNewRows((prev) => prev.map((r, i) => (i === idx ? updated : r)))
-                      }
-                      onRemove={() => setNewRows((prev) => prev.filter((_, i) => i !== idx))}
-                    />
+                    <EditableRow key={row._id} row={row} skuOptions={skuOptions} usedSkuIds={usedSkuIds}
+                      onChange={(updated) => setNewRows((prev) => prev.map((r, i) => i === idx ? updated : r))}
+                      onRemove={() => setNewRows((prev) => prev.filter((_, i) => i !== idx))} />
                   ))}
-
-                  {/* Add another row */}
                   <tr>
-                    <td colSpan={8} className="px-3 py-3 border-t border-gray-50">
+                    <td colSpan={7} className="px-3 py-3 border-t border-gray-50">
                       {loadingSku ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <Loader2 className="w-4 h-4 animate-spin" />Loading SKUs...
-                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin" />Loading SKUs...</div>
                       ) : (
-                        <button
-                          onClick={() => setNewRows((prev) => [...prev, makeNewRow()])}
-                          className="flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-75 transition-opacity cursor-pointer"
-                        >
+                        <button onClick={() => setNewRows((prev) => [...prev, makeNewRow()])}
+                          className="flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-75 transition-opacity cursor-pointer">
                           <Plus className="w-4 h-4" />Add another row
                         </button>
                       )}
@@ -700,22 +797,15 @@ export default function GrnLineItems({ grnId, poId, grnStatus, initialLineItems,
                 </>
               ) : (
                 <>
-                  {/* Read-only view */}
-                  {existingRows.map((row) => (
-                    <ReadOnlyRow key={row.id ?? row.product_sku_id} row={row} />
-                  ))}
-
+                  {existingRows.map((row) => <ReadOnlyRow key={row.id ?? row.product_sku_id} row={row} />)}
                   {existingRows.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center">
+                      <td colSpan={7} className="px-4 py-10 text-center">
                         <div className="flex flex-col items-center gap-2 text-gray-400">
                           <Package className="w-8 h-8" />
                           <span className="text-sm">No line items yet.</span>
                           {canEdit && (
-                            <button
-                              onClick={handleEnterEditMode}
-                              className="mt-1 text-xs text-primary font-medium hover:underline cursor-pointer"
-                            >
+                            <button onClick={handleEnterEditMode} className="mt-1 text-xs text-primary font-medium hover:underline cursor-pointer">
                               + Add line items
                             </button>
                           )}
