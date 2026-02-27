@@ -205,29 +205,15 @@ export function ReasonModal({ isOpen, onClose, onSave, existingReason = "" }) {
 }
 
 // ─── QC Batch Modal ───────────────────────────────────────────────────────────
-//
-// savedQcData shape (from GrnLineItems qcDataMap, populated via API):
-//   {
-//     acceptedCount, rejectedCount,
-//     accepted_batches: [{ batch_code, quantity, manufacture_date, expiry_date }],
-//     rejected_batches: [{ batch_code, quantity, manufacture_date, expiry_date }],
-//     rejectionReason,
-//   }
-//
-// Seeding priority per batch row:
-//   1. accepted_batches has an entry for this batch_code  → use that quantity
-//   2. rejected_batches has an entry  → accepted = received - rejected qty
-//   3. Neither (truly first open, no prior data)         → accepted = received (full qty)
-//
-export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], savedQcData = null, setIsBatchConfirmed = null }) {
+// onSave is called when user clicks "Confirm QC" — parent marks the row as confirmed.
+export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], savedQcData = null }) {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    // Build lookup maps from savedQcData
-    const acceptedMap = {};   // batch_code → accepted qty (from accepted_batches)
-    const rejectedMap = {};   // batch_code → rejected qty (from rejected_batches)
+    const acceptedMap = {};
+    const rejectedMap = {};
 
     if (savedQcData?.accepted_batches?.length) {
       savedQcData.accepted_batches.forEach((ab) => {
@@ -249,16 +235,12 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
         let acceptedQty;
 
         if (!hasAnyPriorData) {
-          // No prior QC data at all — first open, default everything to fully accepted
           acceptedQty = receivedQty;
         } else if (b.batch_code in acceptedMap) {
-          // Explicit accepted_batches entry from API
           acceptedQty = acceptedMap[b.batch_code];
         } else if (b.batch_code in rejectedMap) {
-          // No accepted entry, but rejected entry exists → compute accepted = received - rejected
           acceptedQty = Math.max(0, receivedQty - rejectedMap[b.batch_code]);
         } else {
-          // This batch appears in neither list (shouldn't happen, but safe fallback)
           acceptedQty = receivedQty;
         }
 
@@ -269,7 +251,7 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
         };
       })
     );
-  }, [isOpen]); // re-seed every time the modal opens
+  }, [isOpen]);
 
   const totalReceived = rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
   const totalAccepted = rows.reduce((s, r) => s + (Number(r.accepted_quantity) || 0), 0);
@@ -317,13 +299,13 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
         expiry_date: toDate(r.expiry_date),
       }));
 
+    // onSave triggers parent to mark row as confirmed (yellow → green)
     onSave({
       accepted_batches,
       rejected_batches,
       acceptedCount: totalAccepted,
       rejectedCount: totalRejected,
     });
-    setIsBatchConfirmed(true);
     onClose();
   };
 
@@ -476,20 +458,8 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
 }
 
 // ─── QC Serial Modal ──────────────────────────────────────────────────────────
-//
-// savedQcData shape:
-//   {
-//     accepted_serials: [...],   // serials that were accepted (may be null/empty from API)
-//     rejected_serials: [...],   // serials that were rejected
-//   }
-//
-// Seeding priority:
-//   1. accepted_serials has entries → restore those checkboxes as checked
-//   2. rejected_serials has entries but accepted_serials is empty →
-//      compute accepted = all received serials MINUS the rejected set
-//   3. No prior data → default all checked (fully accepted)
-//
-export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], savedQcData = null, setIsSerialConfirmed = null }) {
+// onSave is called when user clicks "Confirm QC" — parent marks the row as confirmed.
+export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], savedQcData = null }) {
   const [checked, setChecked] = useState(new Set());
 
   useEffect(() => {
@@ -499,14 +469,11 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
     const rejectedSerials = savedQcData?.rejected_serials || [];
 
     if (acceptedSerials.length > 0) {
-      // Explicit accepted list from API/saved data → restore exactly
       setChecked(new Set(acceptedSerials));
     } else if (rejectedSerials.length > 0) {
-      // No accepted list, but rejected list exists → compute accepted = all - rejected
       const rejectedSet = new Set(rejectedSerials);
       setChecked(new Set(serials.filter((s) => !rejectedSet.has(s))));
     } else {
-      // No prior QC data — first open, default all accepted
       setChecked(new Set(serials));
     }
   }, [isOpen]);
@@ -531,13 +498,13 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
   const rejectedCount = serials.length - acceptedCount;
 
   const handleSave = () => {
+    // onSave triggers parent to mark row as confirmed (yellow → green)
     onSave({
       accepted_serials: serials.filter((s) => checked.has(s)),
       rejected_serials: serials.filter((s) => !checked.has(s)),
       acceptedCount,
       rejectedCount,
     });
-    setIsSerialConfirmed(true);
     onClose();
   };
 
@@ -637,6 +604,251 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
             >
               <CheckCircle2 className="w-4 h-4" />
               Confirm QC
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+}
+
+// ─── Read-only QC Batch View Modal ────────────────────────────────────────────
+// Shows per-batch accepted / rejected breakdown. No editing — purely informational.
+// accepted_batches and rejected_batches come directly from the row (API data).
+export function QCBatchViewModal({ isOpen, onClose, skuName, receivedBatches = [], acceptedBatches = [], rejectedBatches = [] }) {
+  if (!isOpen) return null;
+
+  // Build a lookup so we can show accepted + rejected qty per batch code
+  const acceptedMap = {};
+  acceptedBatches.forEach((b) => { acceptedMap[b.batch_code] = Number(b.quantity) || 0; });
+  const rejectedMap = {};
+  rejectedBatches.forEach((b) => { rejectedMap[b.batch_code] = Number(b.quantity) || 0; });
+
+  const totalReceived = receivedBatches.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+  const totalAccepted = acceptedBatches.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+  const totalRejected = rejectedBatches.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+
+  return (
+    <ModalPortal>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl pointer-events-auto">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-gray-400" />
+              <h2 className="text-base font-bold text-gray-900">QC Batch Breakdown</h2>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Summary bar */}
+          <div className="mx-6 mt-4 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SKU</span>
+              <span className="text-sm font-semibold text-gray-800">{skuName}</span>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-semibold">
+              <span className="text-gray-500">Received: <span className="text-gray-800">{totalReceived}</span></span>
+              <span className="text-emerald-600">Accepted: {totalAccepted}</span>
+              {totalRejected > 0 && <span className="text-red-500">Rejected: {totalRejected}</span>}
+              {totalRejected === 0 && totalReceived > 0 && (
+                <span className="flex items-center gap-1 text-emerald-600">
+                  <CheckCircle2 className="w-3 h-3" /> Fully accepted
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="px-6 py-4 max-h-[420px] overflow-y-auto">
+            <div className="border border-gray-100 rounded-xl overflow-hidden">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-10">#</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Batch Code</th>
+                    <th className="px-4 py-2.5 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-28">
+                      <span className="block">Received</span><span className="block">Qty</span>
+                    </th>
+                    <th className="px-4 py-2.5 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-28">
+                      <span className="block">Accepted</span><span className="block">Qty</span>
+                    </th>
+                    <th className="px-4 py-2.5 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-28">
+                      <span className="block">Rejected</span><span className="block">Qty</span>
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-36">Mfg. Date</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-36">Expiry Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {receivedBatches.map((b, idx) => {
+                    const received = Number(b.quantity) || 0;
+                    const accepted = acceptedMap[b.batch_code] ?? received;
+                    const rejected = rejectedMap[b.batch_code] ?? 0;
+                    return (
+                      <tr key={idx} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-3 text-sm text-gray-400">{idx + 1}</td>
+                        <td className="px-4 py-3 text-sm font-mono text-gray-800">{b.batch_code || "—"}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 text-center">{received}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                            {accepted}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {rejected > 0 ? (
+                            <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md bg-red-50 text-red-600 text-xs font-semibold">
+                              {rejected}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-300">0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{formatDate(b.manufacturing_date || b.manufacture_date)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{formatDate(b.expiry_date)}</td>
+                      </tr>
+                    );
+                  })}
+                  {receivedBatches.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-400">No batch data available.</td></tr>
+                  )}
+                </tbody>
+
+                {/* Totals footer */}
+                {receivedBatches.length > 0 && (
+                  <tfoot>
+                    <tr className="border-t-2 border-gray-200 bg-gray-50">
+                      <td className="px-4 py-2.5" />
+                      <td className="px-4 py-2.5 text-[10px] font-bold text-gray-500 uppercase tracking-wide">Total</td>
+                      <td className="px-4 py-2.5 text-sm font-bold text-gray-800 text-center">{totalReceived}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-bold">
+                          {totalAccepted}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {totalRejected > 0 ? (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-red-50 text-red-600 text-xs font-bold">
+                            {totalRejected}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-300">0</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5" />
+                      <td className="px-4 py-2.5" />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end px-6 pb-5 pt-2 border-t border-gray-100">
+            <button onClick={onClose} className="px-6 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+}
+
+// ─── Read-only QC Serial View Modal ──────────────────────────────────────────
+// Shows each serial with its accepted / rejected status. No editing.
+export function QCSerialViewModal({ isOpen, onClose, skuName, receivedSerials = [], acceptedSerials = [], rejectedSerials = [] }) {
+  if (!isOpen) return null;
+
+  const acceptedSet = new Set(acceptedSerials);
+  const rejectedSet = new Set(rejectedSerials);
+
+  const acceptedCount = acceptedSerials.length;
+  const rejectedCount = rejectedSerials.length;
+
+  const half = Math.ceil(receivedSerials.length / 2);
+  const col1 = receivedSerials.slice(0, half);
+  const col2 = receivedSerials.slice(half);
+
+  return (
+    <ModalPortal>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl pointer-events-auto">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-gray-400" />
+              <h2 className="text-base font-bold text-gray-900">QC Serial Breakdown</h2>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Summary bar */}
+          <div className="mx-6 mt-4 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SKU</span>
+              <span className="text-sm font-semibold text-gray-800">{skuName}</span>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-semibold">
+              <span className="text-gray-500">Total: <span className="text-gray-800">{receivedSerials.length}</span></span>
+              <span className="text-emerald-600">Accepted: {acceptedCount}</span>
+              {rejectedCount > 0 && <span className="text-red-500">Rejected: {rejectedCount}</span>}
+              {rejectedCount === 0 && receivedSerials.length > 0 && (
+                <span className="flex items-center gap-1 text-emerald-600">
+                  <CheckCircle2 className="w-3 h-3" /> All accepted
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Serial grid */}
+          <div className="px-6 py-4">
+            <div className="border border-gray-100 rounded-xl overflow-hidden">
+              <div className="max-h-[360px] overflow-y-auto">
+                <div className="grid grid-cols-2 divide-x divide-gray-100">
+                  {[col1, col2].map((col, colIdx) => (
+                    <div key={colIdx} className="divide-y divide-gray-50">
+                      {col.map((serial, rowIdx) => {
+                        const globalIdx = colIdx === 0 ? rowIdx : half + rowIdx;
+                        const isAccepted = acceptedSet.size > 0 ? acceptedSet.has(serial) : !rejectedSet.has(serial);
+                        return (
+                          <div
+                            key={serial}
+                            className={`flex items-center gap-3 px-4 py-2.5 ${isAccepted ? "bg-white" : "bg-red-50/40"}`}
+                          >
+                            <span className="text-[10px] font-bold text-gray-400 font-mono w-6 shrink-0">#{globalIdx + 1}</span>
+                            <span className={`text-xs font-mono truncate flex-1 ${isAccepted ? "text-gray-800" : "text-gray-400 line-through"}`}>
+                              {serial}
+                            </span>
+                            {isAccepted ? (
+                              <span className="shrink-0 text-[9px] font-bold text-emerald-500 uppercase">Accepted</span>
+                            ) : (
+                              <span className="shrink-0 text-[9px] font-bold text-red-400 uppercase">Rejected</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {col.length === 0 && <div className="px-4 py-6 text-center text-sm text-gray-400">—</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end px-6 pb-5 pt-2 border-t border-gray-100">
+            <button onClick={onClose} className="px-6 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+              Close
             </button>
           </div>
         </div>

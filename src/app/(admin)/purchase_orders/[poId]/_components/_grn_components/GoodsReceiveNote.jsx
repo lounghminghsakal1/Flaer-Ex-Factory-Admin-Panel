@@ -271,7 +271,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
         {isOpen && (
           <div className="px-4 pb-5 border-t border-gray-100 pt-4 space-y-4">
             {/* GRN Details */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-4 gap-3 ">
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-gray-400">Node</span>
                 <span className="text-sm font-medium text-gray-800">{grn.node_name || "--"}</span>
@@ -306,7 +306,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
             </div>
 
             {/* 6 key stats */}
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            <div className="grid grid-cols-6 gap-2 ">
               <QtyCard label="Total Received Qty" value={Math.trunc(grn.total_received_quantity)} />
               <QtyCard label="Total Accepted Qty" value={Math.trunc(grn.total_accepted_quantity)} color="green" />
               <QtyCard label="Total Rejected Qty" value={Math.trunc(grn.total_rejected_quantity)} color="red" />
