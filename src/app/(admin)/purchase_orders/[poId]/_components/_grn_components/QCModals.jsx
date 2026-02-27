@@ -205,39 +205,74 @@ export function ReasonModal({ isOpen, onClose, onSave, existingReason = "" }) {
 }
 
 // ─── QC Batch Modal ───────────────────────────────────────────────────────────
-// batches        — received batches array (source of truth for batch list + received qty)
-// savedQcData    — previously saved qcData object from parent; used to restore accepted_quantity
-//                  on re-open. Shape: { accepted_batches: [{batch_code, quantity, ...}], ... }
-export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], savedQcData = null }) {
+//
+// savedQcData shape (from GrnLineItems qcDataMap, populated via API):
+//   {
+//     acceptedCount, rejectedCount,
+//     accepted_batches: [{ batch_code, quantity, manufacture_date, expiry_date }],
+//     rejected_batches: [{ batch_code, quantity, manufacture_date, expiry_date }],
+//     rejectionReason,
+//   }
+//
+// Seeding priority per batch row:
+//   1. accepted_batches has an entry for this batch_code  → use that quantity
+//   2. rejected_batches has an entry  → accepted = received - rejected qty
+//   3. Neither (truly first open, no prior data)         → accepted = received (full qty)
+//
+export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], savedQcData = null, setIsBatchConfirmed = null }) {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    // Build a lookup of previously entered accepted quantities keyed by batch_code
-    const prevAccepted = {};
+    // Build lookup maps from savedQcData
+    const acceptedMap = {};   // batch_code → accepted qty (from accepted_batches)
+    const rejectedMap = {};   // batch_code → rejected qty (from rejected_batches)
+
     if (savedQcData?.accepted_batches?.length) {
       savedQcData.accepted_batches.forEach((ab) => {
-        prevAccepted[ab.batch_code] = ab.quantity;
+        acceptedMap[ab.batch_code] = Number(ab.quantity);
+      });
+    }
+    if (savedQcData?.rejected_batches?.length) {
+      savedQcData.rejected_batches.forEach((rb) => {
+        rejectedMap[rb.batch_code] = Number(rb.quantity);
       });
     }
 
+    const hasAnyPriorData =
+      Object.keys(acceptedMap).length > 0 || Object.keys(rejectedMap).length > 0;
+
     setRows(
       batches.map((b) => {
-        const hasPrev = b.batch_code in prevAccepted;
-        const accepted = hasPrev ? String(prevAccepted[b.batch_code]) : String(b.quantity ?? "");
+        const receivedQty = Number(b.quantity) || 0;
+        let acceptedQty;
+
+        if (!hasAnyPriorData) {
+          // No prior QC data at all — first open, default everything to fully accepted
+          acceptedQty = receivedQty;
+        } else if (b.batch_code in acceptedMap) {
+          // Explicit accepted_batches entry from API
+          acceptedQty = acceptedMap[b.batch_code];
+        } else if (b.batch_code in rejectedMap) {
+          // No accepted entry, but rejected entry exists → compute accepted = received - rejected
+          acceptedQty = Math.max(0, receivedQty - rejectedMap[b.batch_code]);
+        } else {
+          // This batch appears in neither list (shouldn't happen, but safe fallback)
+          acceptedQty = receivedQty;
+        }
+
         return {
           ...b,
           _id: Math.random().toString(36).slice(2),
-          accepted_quantity: accepted,
+          accepted_quantity: String(acceptedQty),
         };
       })
     );
-  }, [isOpen]);
+  }, [isOpen]); // re-seed every time the modal opens
 
   const totalReceived = rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
   const totalAccepted = rows.reduce((s, r) => s + (Number(r.accepted_quantity) || 0), 0);
-  // ✅ Rejected = total received - total accepted (not per-batch sum)
   const totalRejected = totalReceived - totalAccepted;
 
   const updateRow = (id, val) => {
@@ -282,13 +317,13 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
         expiry_date: toDate(r.expiry_date),
       }));
 
-    // ✅ Use acceptedCount / rejectedCount so QCRow reads them correctly
     onSave({
       accepted_batches,
       rejected_batches,
       acceptedCount: totalAccepted,
       rejectedCount: totalRejected,
     });
+    setIsBatchConfirmed(true);
     onClose();
   };
 
@@ -315,13 +350,9 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
               <span className="text-sm font-semibold text-gray-800">{skuName}</span>
             </div>
             <div className="flex items-center gap-4 text-xs font-semibold">
-              <span className="text-gray-500">
-                Received: <span className="text-gray-800">{totalReceived}</span>
-              </span>
+              <span className="text-gray-500">Received: <span className="text-gray-800">{totalReceived}</span></span>
               <span className="text-emerald-600">Accepted: {totalAccepted}</span>
-              {totalRejected > 0 && (
-                <span className="text-red-500">Rejected: {totalRejected}</span>
-              )}
+              {totalRejected > 0 && <span className="text-red-500">Rejected: {totalRejected}</span>}
               {totalRejected === 0 && totalReceived > 0 && (
                 <span className="flex items-center gap-1 text-emerald-600">
                   <CheckCircle2 className="w-3 h-3" /> Fully accepted
@@ -393,7 +424,7 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
                   })}
                 </tbody>
 
-                {/* ✅ Totals footer row */}
+                {/* Totals footer */}
                 {rows.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-gray-200 bg-gray-50">
@@ -424,14 +455,14 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-3 px-6 pb-5 pt-2 border-t border-gray-100">
-            <button onClick={onClose} className="flex-1 max-w-[160px] px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+          <div className="flex justify-center items-center gap-3 px-6 pb-5 pt-2 border-t border-gray-100">
+            <button onClick={onClose} className="w-40 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
               Go Back
             </button>
             <button
               onClick={handleSave}
               disabled={!allValid}
-              className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2
+              className={`w-40 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2
                 ${allValid ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
             >
               <CheckCircle2 className="w-4 h-4" />
@@ -445,18 +476,37 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
 }
 
 // ─── QC Serial Modal ──────────────────────────────────────────────────────────
-// serials        — full received serials array
-// savedQcData    — previously saved qcData; used to restore checked state on re-open
-//                  Shape: { accepted_serials: [...], ... }
-export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], savedQcData = null }) {
+//
+// savedQcData shape:
+//   {
+//     accepted_serials: [...],   // serials that were accepted (may be null/empty from API)
+//     rejected_serials: [...],   // serials that were rejected
+//   }
+//
+// Seeding priority:
+//   1. accepted_serials has entries → restore those checkboxes as checked
+//   2. rejected_serials has entries but accepted_serials is empty →
+//      compute accepted = all received serials MINUS the rejected set
+//   3. No prior data → default all checked (fully accepted)
+//
+export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], savedQcData = null, setIsSerialConfirmed = null }) {
   const [checked, setChecked] = useState(new Set());
 
   useEffect(() => {
     if (!isOpen) return;
 
-    if (savedQcData?.accepted_serials?.length) {
-      setChecked(new Set(savedQcData.accepted_serials));
+    const acceptedSerials = savedQcData?.accepted_serials || [];
+    const rejectedSerials = savedQcData?.rejected_serials || [];
+
+    if (acceptedSerials.length > 0) {
+      // Explicit accepted list from API/saved data → restore exactly
+      setChecked(new Set(acceptedSerials));
+    } else if (rejectedSerials.length > 0) {
+      // No accepted list, but rejected list exists → compute accepted = all - rejected
+      const rejectedSet = new Set(rejectedSerials);
+      setChecked(new Set(serials.filter((s) => !rejectedSet.has(s))));
     } else {
+      // No prior QC data — first open, default all accepted
       setChecked(new Set(serials));
     }
   }, [isOpen]);
@@ -487,6 +537,7 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
       acceptedCount,
       rejectedCount,
     });
+    setIsSerialConfirmed(true);
     onClose();
   };
 
@@ -576,13 +627,13 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-3 px-6 pb-5 pt-2 border-t border-gray-100">
-            <button onClick={onClose} className="flex-1 max-w-[160px] px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+          <div className="flex justify-center items-center gap-3 px-6 pb-5 pt-2 border-t border-gray-100">
+            <button onClick={onClose} className="w-40 max-w-[160px] px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
               Go Back
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-40 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
               Confirm QC

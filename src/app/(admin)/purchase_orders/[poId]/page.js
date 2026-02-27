@@ -48,14 +48,13 @@ export default function PurchaseOrderDetailsPage() {
 
   useEffect(() => { fetchPO(); }, [fetchPO]);
 
-  const showGRNTab = poData?.status === "approved";
+  const showGRNTab = poData?.status === "approved" || poData?.status === "completed" ;
   const showAmndTab = poData?.status === "approved" || poData?.status === "completed";
 
   const TABS = [
     { key: "purchase_order", label: "Purchase Order" },
     ...(showAmndTab ? [{ key: "amdn", label: "Amendments" }] : []),
     ...(showGRNTab ? [{ key: "grn", label: "Goods Receive Note" }] : []),
-
   ];
 
   useEffect(() => {

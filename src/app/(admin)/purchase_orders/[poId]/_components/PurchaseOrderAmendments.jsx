@@ -928,9 +928,8 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
             onRefresh={handleRefresh}
           />
         ))}
-
-
       </div>
     </div>
   );
 }
+

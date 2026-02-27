@@ -338,11 +338,13 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
             )}
 
             <div className="flex justify-end items-center gap-3">
-              {grn.status === "created" && (
+              {(grn.status === "created" || grn.status === "qc_pending") && (
                 <div className="flex justify-end pt-1">
                   <div
                     role="button"
-                    onClick={handleCancelGrn}
+                    onClick={() => {
+                      handleCancelGrn();
+                    }}
                     className="flex items-center gap-2 px-3 py-2 bg-red-600 text-gray-100 text-sm font-semibold rounded-md cursor-pointer hover:scale-103 transition-all hover:opacity-80"
                   >
                     <X className="w-4 h-4" />
