@@ -66,6 +66,7 @@ export default function PurchaseOrders() {
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders?${params.toString()}`;
       const response = await fetch(url);
       const json = await response.json();
+      if (!response.ok || json.status === "failure") throw new Error(json.errors[0] ?? "Something went wrong ");
       setPurchaseOrdersData(json.data);
       if (!response.ok || json.status === "failure") {
         if (json?.errors.length > 0) {
@@ -78,7 +79,7 @@ export default function PurchaseOrders() {
 
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch purchase orders data " + err);
+      toast.error("Failed to fetch purchase orders data " + err.message);
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ export default function PurchaseOrders() {
   const handleApplyFilters = () => {
     setAppliedFilters(draftFilters);
     setCurrentPage(1);
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
     if (draftFilters.by_purchase_order) params.append("by_purchase_order", draftFilters.by_purchase_order);
     if (draftFilters.by_status) params.append("by_status", draftFilters.by_status);
     if (draftFilters.by_vendor) params.append("by_vendor", draftFilters.by_vendor);
@@ -104,7 +105,7 @@ export default function PurchaseOrders() {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
     if (appliedFilters.by_purchase_order) params.append("by_purchase_order", appliedFilters.by_purchase_order);
     if (appliedFilters.by_status) params.append("by_status", appliedFilters.by_status);
     if (appliedFilters.by_vendor) params.append("by_vendor", appliedFilters.by_vendor);

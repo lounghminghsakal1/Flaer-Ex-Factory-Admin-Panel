@@ -236,6 +236,13 @@ const SidebarLayout = ({ children }) => {
             { label: 'Create Product', href: '/catalog/products/form?createNew=true' },
           ],
         },
+        {
+          heading: 'Product SKUs',
+          items: [
+            { label: 'Products SKUs', href: '/catalog/product_skus' },
+            { label: 'Create SKU', href: '/catalog/product_skus/form?createNew=true' },
+          ],
+        },
       ],
     },
     {

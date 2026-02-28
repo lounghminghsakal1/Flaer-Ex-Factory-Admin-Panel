@@ -67,13 +67,13 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
   async function fetchBrandOptions() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/brands`);
-      if (!response.ok) throw new Error("Failed to fetch brands list");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       const namesArray = result.data.map(item => ({ id: item.id, name: item.name }));
       setBrandOptions(namesArray);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch brands list");
+      toast.error("Failed to fetch brands list "+err.message);
     }
   }
 
@@ -141,6 +141,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
       });
 
       const data = await response.json();
+      if (!response.ok || data.status === "failure") throw new Error(data?.errors[0] ?? "Something went wrong");
       if (response.ok) {
         const result = await response.json();
         const newBrand = result.data;
@@ -178,8 +179,8 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
       }
       if (data.status === "failure") throw new Error(data?.errors[0]);
     } catch (error) {
-      console.error('Error creating brand:', error);
-      toast.error("Error creating brand"+ err);
+      console.error(error);
+      toast.error("Error creating brand"+ error.message);
     }
   };
 

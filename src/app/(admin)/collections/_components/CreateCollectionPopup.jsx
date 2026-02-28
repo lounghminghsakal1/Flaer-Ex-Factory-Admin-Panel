@@ -55,6 +55,7 @@ const CreateCollectionPopup = ({ showCreateCollectionPopup, setShowCreateCollect
 
       if (response.ok) {
         const data = await response.json();
+        if (data.status === "failure") throw new Error(data?.errors[0] ?? "Something went wrong");
         console.log('Collection created:', data);
         handleClose();
         toast.success("Collection created successfully");
@@ -63,8 +64,8 @@ const CreateCollectionPopup = ({ showCreateCollectionPopup, setShowCreateCollect
         console.error('Failed to create collection');
       }
     } catch (error) {
-      console.error('Error creating collection:', error);
-      toast.error("Failed to create collection");
+      console.error(error);
+      toast.error("Failed to create collection "+error.message);
     } finally {
       setLoading(false);
     }

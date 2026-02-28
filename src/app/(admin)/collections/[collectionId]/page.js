@@ -41,10 +41,12 @@ export default function CollectionDetailsPage() {
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}`;
       const response = await fetch(url);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setCollection(result.data);
       setProductsList(result.data.collection.collection_items);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch collections list "+err.message);
     }finally {
       setIsFetching(false);
     }
@@ -73,8 +75,9 @@ export default function CollectionDetailsPage() {
           },
           body: JSON.stringify(payload)
         });
+        const result = await response.json();
 
-        if (!response.ok) throw new Error("PUT failed");
+        if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
         toast.success("Collection updated successfully");
 
@@ -83,7 +86,7 @@ export default function CollectionDetailsPage() {
 
       } catch (err) {
         console.log(err);
-        toast.error("Failed to save collection");
+        toast.error("Failed to save collection "+err.message);
       } finally {
         setIsLoading(false);
       }

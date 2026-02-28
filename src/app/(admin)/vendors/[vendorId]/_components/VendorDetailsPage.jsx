@@ -8,6 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 import VendorSidebar from "./VendorSidebar";
 import VendorInfoTab from "./VendorInfoTab";
 import VendorSkuMappingTab from "./VendorSkuMappingTab";
+import { toast } from "react-toastify";
 
 const TABS = [
   { key: "info", label: "Vendor Info" },
@@ -69,9 +70,11 @@ export default function VendorDetailPage() {
       );
       if (!res.ok) return [];
       const json = await res.json();
+      if (!res.ok || json.status === "failure") throw new Error(json?.errors[0] ?? "Something went wrong");
       setVendorsData(json.data ?? []);
     } catch(err) {
       console.log(err);
+      toast.error("Failed to load vendors data "+err.message);
       return [];
     }
   }

@@ -71,12 +71,12 @@ export default function ProductUpdationAttributes({
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/${productId}`
       );
-      if (!response.ok) throw new Error("Failed to fetch product details");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setProductData(result.data);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load product details");
+      toast.error("Failed to load product details "+err.message);
     } finally {
       setLoading(false);
     }
@@ -229,12 +229,12 @@ function PropertyTypesSection({
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/get_property_names`
       );
-      if (!response.ok) throw new Error("Failed to fetch property names");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setPropertyNames(result.data || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load property names");
+      toast.error("Failed to load property names "+err.message);
     }
   }
 
@@ -867,9 +867,8 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
           }
         );
 
-        if (!response.ok) throw new Error("Upload failed");
-
         const result = await response.json();
+        if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
         uploadedUrls.push(result.data.media_url);
       }
 
@@ -896,8 +895,8 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
 
       setProductMedia((prev) => [...prev, ...newMedia]);
     } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("Failed to upload images");
+      console.error(error);
+      toast.error("Failed to upload images "+error.message);
     } finally {
       setUploading(false);
     }

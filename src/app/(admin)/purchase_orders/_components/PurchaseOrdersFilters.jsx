@@ -26,13 +26,13 @@ export default function PurchaseOrdersFilters({ draftFilters = {}, setDraftFilte
       const response = await fetch(url);
       const json = await response.json();
       if (json.status === "failure") {
-        throw new Error(json?.errors[0]);
+        throw new Error(json?.errors[0] ?? "Something went wrong");
       }
       console.log(json.data);
       setVendorOptions(json.data);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch vendor options " + err);
+      toast.error("Failed to fetch vendor options " + err.message);
     }
   }
   const [vendorSearch, setVendorSearch] = useState("");

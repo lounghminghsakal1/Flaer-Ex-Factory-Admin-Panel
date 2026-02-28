@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import SearchableDropdown from "./SearchableDropdown";
+import { toast } from "react-toastify";
 
 const PRIMARY = "#4f46e5";
 
@@ -38,8 +39,14 @@ export default function POLineItems({ vendorId, rows, onChange, readOnly = false
             unitPrice: parseFloat(item.vendor_unit_price),
           })));
         }
+        else {
+          throw new Error(res?.errors?.[0] ?? "Something went wrong")
+        }
       })
-      .catch(() => { })
+      .catch((err) => { 
+        console.log(err);
+        toast.error("Failed to fetch vendor sku mappings data "+err.message);
+      })
       .finally(() => setLoadingSkus(false));
   }, [vendorId]);
 

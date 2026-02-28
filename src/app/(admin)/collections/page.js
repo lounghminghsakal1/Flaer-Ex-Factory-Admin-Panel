@@ -71,6 +71,7 @@ export default function CollectionsPage() {
       );
 
       const result = await res.json();
+      if (!res.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
       if (isLoadMore) {
         setData(prev => {

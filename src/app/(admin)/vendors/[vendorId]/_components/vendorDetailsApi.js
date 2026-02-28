@@ -70,7 +70,7 @@ export async function getVendor(vendorId) {
   );
   if (!res.ok) throw new Error(`Failed to fetch vendor: ${res.status}`);
   const json = await res.json();
-  if (json.status !== "success") throw new Error(json.message || "Failed to load vendor");
+  if (json.status !== "success") throw new Error(json.errors[0] || "Failed to load vendor");
   return json.data;
 }
 

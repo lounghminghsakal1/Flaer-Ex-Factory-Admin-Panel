@@ -23,9 +23,11 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collection.id}`;
       const response = await fetch(url);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setFormData(result.data);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch collection data "+err.message);
     }
   }
 
@@ -80,6 +82,7 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
 
       if (response.ok) {
         const data = await response.json();
+        if (data.status === "failure") throw new Error(data?.errors[0] ?? "Something went wrong");
         console.log('Collection updated:', data);
         if (onUpdate) {
           onUpdate();
@@ -90,8 +93,8 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
         console.error('Failed to update collection');
       }
     } catch (error) {
-      console.error('Error updating collection:', error);
-      toast.error("Failed to update collection");
+      console.error(error);
+      toast.error("Failed to update collection "+error.message);
     } finally {
       setLoading(false);
     }

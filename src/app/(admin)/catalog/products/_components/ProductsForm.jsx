@@ -141,12 +141,12 @@ export default function ProductsForm() {
     try {
       setInitialLoading(true);
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/${productId}`);
-      if (!response.ok) throw new Error("Failed to fetch product details");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       mapBackendDataToViewFormData(result.data);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch product details");
+      toast.error("Failed to fetch product details "+err.message);
     } finally {
       setInitialLoading(false);
     }
@@ -176,15 +176,12 @@ export default function ProductsForm() {
           }
         );
 
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${actualFile.name}`);
-        }
-
         const result = await response.json();
+        if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
         uploadedUrls.push(result.data.url);
       } catch (err) {
-        console.error(`Error uploading file:`, err);
-        toast.error(`Failed to upload file`);
+        console.error(err);
+        toast.error(`Failed to upload file ${err.message}`);
       }
     }
     return uploadedUrls;
@@ -1059,26 +1056,26 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
   async function fetchCategoryOptions() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories`);
-      if (!response.ok) throw new Error("Failed to fetch categories list");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       const namesArray = result.data.map(item => ({ id: item.id, name: item.name }));
       setCategoryOptions(namesArray);
     } catch (err) {
       console.log(err);
-      // toast.error("Failed to fetch categories");
+      toast.error("Failed to fetch categories "+err.message);
     }
   }
 
   async function fetchTaxOptions() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/tax_types?only_names=true`);
-      if (!response.ok) throw new Error("Failed to fetch tax types");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       const namesArray = result.data.map(item => ({ id: item.id, name: item.name }));
       setTaxoptions(namesArray);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch Tax options");
+      toast.error("Failed to fetch Tax options "+err.message);
     }
   }
 

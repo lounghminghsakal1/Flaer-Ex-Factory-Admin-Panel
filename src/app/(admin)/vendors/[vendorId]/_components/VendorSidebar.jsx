@@ -4,6 +4,7 @@ import { useRouter,useSearchParams } from "next/navigation";
 import { STATUS_VALUE_TO_LABEL, VENDOR_TYPE_VALUE_TO_LABEL, STATUS_LABEL_TO_VALUE, VENDOR_TYPE_LABEL_TO_VALUE } from "./vendorDetailsApi";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
 const STATUS_BADGE = {
   1: "bg-green-100 text-green-700",
@@ -61,12 +62,13 @@ export default function VendorSidebar({ currentVendorId }) {
       const response = await fetch(url);
       const json = await response.json();
       if (json.status === "failure") {
-        throw new Error(json?.errors[0]); 
+        throw new Error(json?.errors[0] ?? "Something went wrong"); 
       }
       setVendorsData(json.data);
       setFiltersVendorsData(json.data);
     } catch(err) {
       console.log(err);
+      toast.error("Failed to load vendors data "+err.message);
       
     }
   }

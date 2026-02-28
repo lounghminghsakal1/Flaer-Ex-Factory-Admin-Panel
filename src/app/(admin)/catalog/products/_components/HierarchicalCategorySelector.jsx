@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Minus, X } from 'lucide-react';
 import SearchableDropdown from '../../../../../../components/shared/SearchableDropdown';
 import { toast } from 'react-toastify';
 
-const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCategory, onCategorySelect, disabled, required=false }) => {
+const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCategory, onCategorySelect, disabled, required = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState([]);
@@ -19,6 +19,8 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
   const dropdownRef = useRef(null);
   const subcategoryCache = useRef({});
   const categoryRefs = useRef({});
+
+  const [creating, setCreating] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -88,6 +90,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       const categoriesWithChildren = (result.data || []).map(cat => ({
         ...cat,
         children: [],
@@ -95,8 +98,8 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
       }));
       setCategories(categoriesWithChildren);
     } catch (error) {
-      console.error('Error fetching root categories:', error);
-      toast.error("Error fetching root categories");
+      console.error(error);
+      toast.error("Error fetching root categories " + error.message);
     } finally {
       setLoading(false);
     }
@@ -116,6 +119,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
 
       const result = await response.json();
 
+      if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       const children = (result.data || []).map(cat => ({
         ...cat,
         children: [],
@@ -126,9 +130,9 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
 
       return children;
 
-    } catch(err) {
+    } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch sub categories");
+      toast.error("Failed to fetch sub categories " + err.message);
       return [];
     }
   };
@@ -204,7 +208,9 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
   };
 
   const handleCreateCategory = async () => {
+    if (creating) return;
     try {
+      setCreating(true);
       const body = {
         name: formData.name,
         description: formData.description,
@@ -231,6 +237,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
 
       if (response.ok) {
         const result = await response.json();
+        if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
         const newCategory = result.data;
 
         const parentId = lockedParentForChild?.id || formData.parent_id;
@@ -308,8 +315,10 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
       }
       setIsCreated(true);
     } catch (error) {
-      console.error('Error creating category:', error);
-      toast.error("Error creating category");
+      console.error(error);
+      toast.error("Error creating category " + error.message);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -540,7 +549,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
               {lockedParentForChild ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Parent Category 
+                    Parent Category
                   </label>
                   <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700">
                     {lockedParentForChild.name}
@@ -649,7 +658,12 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
                 </button>
                 <button
                   onClick={handleCreateCategory}
-                  disabled={!formData.name || !formData.title || (!isParentToggle && !lockedParentForChild && !formData.parent_id)}
+                  disabled={
+                    creating ||
+                    !formData.name ||
+                    !formData.title ||
+                    (!isParentToggle && !lockedParentForChild && !formData.parent_id)
+                  }
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {!isParentToggle ? 'Create Subcategory' : 'Create Category'}

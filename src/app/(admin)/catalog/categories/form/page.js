@@ -43,6 +43,7 @@ export default function CategoryFormPage() {
       );
 
       const result = await res.json();
+      if (!res.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       const data = result.data;
 
       setFormData({
@@ -53,8 +54,9 @@ export default function CategoryFormPage() {
         parent_id: data.parent?.id ?? null
       });
 
-    } catch {
-      toast.error("Failed to load category");
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to load category " + err.message);
     } finally {
       setInitialLoading(false);
     }
@@ -87,7 +89,8 @@ export default function CategoryFormPage() {
         body: JSON.stringify(formData)
       });
 
-      if (!res.ok) throw new Error();
+      const result = await res.json();
+      if (!res.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
 
       toast.success(isCreateNew ? "Category created" : "Category updated");
       const returnTo = searchParams.get("returnTo");
@@ -97,8 +100,9 @@ export default function CategoryFormPage() {
         }`
       );
 
-    } catch {
-      toast.error("Failed to save category");
+    } catch(err) {
+      console.log(err);
+      toast.error("Failed to save category "+ err.message);
     } finally {
       setLoading(false);
     }
@@ -112,7 +116,7 @@ export default function CategoryFormPage() {
     handleSubmit();
   };
 
-  if (initialLoading && !isCreateNew) return <CategoryDetailsSkeleton /> ;
+  if (initialLoading && !isCreateNew) return <CategoryDetailsSkeleton />;
 
   return (
     <div className="px-2 py-4">

@@ -39,7 +39,7 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
   useEffect(() => {
     if (!isOpen) return;
     if (grn) {
-      setNodeId(grn.node_id ? { value: grn.node_id, label: grn.node_name || `Node #${grn.node_id}` } : null);
+      setNodeId(grn.node.id ? { value: grn.node.id, label: grn.node.name || `Node #${grn.node_id}` } : null);
       setVendorInvoiceDate(grn.vendor_invoice_date ? new Date(grn.vendor_invoice_date) : null);
       setVendorInvoiceNo(grn.vendor_invoice_no || "");
       setReceivedDate(grn.received_date ? new Date(grn.received_date) : null);
@@ -68,10 +68,11 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
           const opts = data.data.map((n) => ({ value: n.id, label: n.name }));
           if (opts.length > 0) setNodeOptions(opts);
         }
-        if (data.status === "failure") throw new Error(data?.errors[0]);
+        if (data.status === "failure") throw new Error(data?.errors[0] ?? "Something went wrong");
       } catch(err) {
         // keep dummy options
-        toast.error("Failed to fetch nodes list "+err);
+        console.log(err);
+        toast.error("Failed to fetch nodes list "+err.message);
       }
     };
     fetchNodes();
@@ -96,10 +97,10 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
       } else {
         //toast.error(data?.errors[0] || "File upload failed.");
         setMediaFile(null);
-        throw new Error(data?.errors[0]);
+        throw new Error(data?.errors[0]) ?? "Something went wrong";
       }
     } catch(err) {
-      toast.error("File upload failed "+err);
+      toast.error("File upload failed "+err.message);
       setMediaFile(null);
     } finally {
       setUploading(false);
@@ -149,11 +150,11 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
         onSaved(data.data);
         onClose();
       } else {
-        throw new Error(data?.errors[0]);
+        throw new Error(data?.errors[0] ?? "Something went wrong");
       }
     } catch(err) {
       console.log(err);
-      toast.error("Failed to create GRN "+err);
+      toast.error("Failed to create GRN "+err.message);
     } finally {
       setSaving(false);
     }

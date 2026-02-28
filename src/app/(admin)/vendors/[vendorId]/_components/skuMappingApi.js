@@ -9,7 +9,7 @@ export async function getSkuMappings(vendorId, page = 1) {
   );
   if (!res.ok) throw new Error(`Failed to fetch SKU mappings: ${res.status}`);
   const json = await res.json();
-  if (json.status !== "success") throw new Error(json.message || "Failed to load SKU mappings");
+  if (json.status !== "success") throw new Error(json.errors[0] || "Failed to load SKU mappings");
   return { data: json.data ?? [], meta: json.meta ?? {} };
 }
 
@@ -73,6 +73,6 @@ export async function getAllProductSkus(vendorId) {
   );
   if (!res.ok) throw new Error(`Failed to fetch product SKUs: ${res.status}`);
   const json = await res.json();
-  if (json.status !== "success") throw new Error(json.message || "Failed to load SKUs");
+  if (json.status !== "success") throw new Error(json.errors[0] || "Failed to load SKUs");
   return json.data ?? [];
 }

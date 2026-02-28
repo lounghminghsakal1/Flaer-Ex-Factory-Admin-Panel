@@ -64,15 +64,16 @@ export default function CategoriesPage() {
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&${query}`
       );
 
-      if (!response.ok) throw new Error();
-
       const result = await response.json();
+
+      if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
 
       setCategories(result.data || []);
       setTotalPages(result.meta?.total_pages || 1);
 
-    } catch {
-      toast.error("Failed to fetch categories");
+    } catch(err) {
+      console.log(err);
+      toast.error("Failed to fetch categories "+err.message);
     } finally {
       setLoading(false);
     }

@@ -52,13 +52,14 @@ export default function CategoryForm({
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`
       );
-      if (!response.ok) throw new Error("Failed to fetch categories");
+
       const result = await response.json();
+      if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       const namesArray = result.data.map((item) => ({ id: item.id, name: item.name }));
       setCategories(namesArray);
     } catch (err) {
-      console.error("Error fetching categories:", err);
-      toast.error("Error fetching categories");
+      console.error(err);
+      toast.error("Failed to fetch categories "+err.message);
     }
   };
 
@@ -71,13 +72,12 @@ export default function CategoryForm({
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${categoryId}`
       );
 
-      if (!response.ok) throw new Error("Failed to fetch subcategories");
-
       const result = await response.json();
+      if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       setSubcategories(result.data || []);
     } catch (err) {
-      console.error("Error fetching subcategories:", err);
-      toast.error("Error fetching subcategories");
+      console.error(err);
+      toast.error("Failed to fetch subcategories "+err.message);
     } finally {
       setSubcategoriesLoading(false);
     }
@@ -156,11 +156,9 @@ export default function CategoryForm({
         },
         body: JSON.stringify(payload)
       });
+      const result = await response.json();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to save subcategory");
-      }
+      if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
 
       toast.success(
         showCreateSubcategoryPopup
@@ -173,8 +171,8 @@ export default function CategoryForm({
       setIsEditingPopup(true);
       fetchSubcategories();
     } catch (err) {
-      toast.error(err.message || "Something went wrong!");
-      console.log(err.message, err);
+      console.log(err);
+      toast.error("Failed to complete action "+err.message);
     } finally {
       setLoading(false);
     }

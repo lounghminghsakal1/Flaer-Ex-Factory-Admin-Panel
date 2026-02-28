@@ -55,11 +55,12 @@ export default function VendorDetailPage() {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/vendors`
       );
-      if (!res.ok) return [];
       const json = await res.json();
+      if (!res.ok || json.status === "failure") throw new Error(json?.errors[0] ?? "Something went wrong");
       setVendorsData(json.data ?? []);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch vendors data "+err.message);
       console.log(isOnline ? "true" : "false");
       if (!isOnline) toast.error('Seems like your internet is off, check your internet connection');
       return [];

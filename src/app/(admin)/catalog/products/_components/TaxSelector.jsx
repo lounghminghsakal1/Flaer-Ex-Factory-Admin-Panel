@@ -78,8 +78,8 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
     setLoading(true);
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/tax_types`);
-      if (!response.ok) throw new Error("Failed to fetch tax types list");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       const taxArray = result.data.map(item => ({ 
         id: item.id, 
         name: item.name,
@@ -89,7 +89,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
       setTaxOptions(taxArray);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to load tax types");
+      toast.error("Failed to load tax types "+err.message);
     } finally {
       setLoading(false);
     }

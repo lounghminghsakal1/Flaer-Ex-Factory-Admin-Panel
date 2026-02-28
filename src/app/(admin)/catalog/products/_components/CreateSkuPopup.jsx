@@ -59,14 +59,12 @@ function CreateSkuPopup({
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/option_types?only_names=true`
       );
-
-      if (!res.ok) throw new Error("Failed to fetch option types");
-
       const result = await res.json();
+      if (!res.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load option types");
+      toast.error("Failed to load option types "+err.message);
     }
   }
 
@@ -299,7 +297,7 @@ function CreateSkuPopup({
 
       const result = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || result.status === "failure") {
         let errorMessage = "Failed to create SKU";
         if (Array.isArray(result?.errors)) {
           errorMessage = result.errors.join(", ");
@@ -856,9 +854,8 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
           }
         );
 
-        if (!response.ok) throw new Error('Upload failed');
-
-        const result = await response.json();
+        const result = await response.json(); 
+        if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
         uploadedUrls.push(result.data.media_url);
       }
 

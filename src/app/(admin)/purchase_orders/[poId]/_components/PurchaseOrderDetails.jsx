@@ -1,6 +1,6 @@
 "use client";
 import { useState, useCallback, useMemo, useRef } from "react";
-import { Pencil, Save, ArrowRight, Check, X, XCircleIcon } from "lucide-react";
+import { Pencil, Save, ArrowRight, Check, X, MoreVertical } from "lucide-react";
 import SearchableDropdown from "../../create/_components/SearchableDropdown";
 import DatePicker from "../../create/_components/DatePicker";
 import POLineItems from "../../create/_components/POLineItems";
@@ -33,15 +33,35 @@ function statusLabel(status) {
   return map[status] || status;
 }
 
-function statusBadgeStyle(status) {
+function statusBadgeStyle(status, variant = "badge") {
   const map = {
-    created: { bg: "#f3f4f6", color: "#374151" },
-    waiting_for_approval: { bg: "#fef3c7", color: "#92400e" },
-    approved: { bg: "#dcfce7", color: "#166534" },
-    rejected: { bg: "#fee2e2", color: "#991b1b" },
-    completed: { bg: "#dbeafe", color: "#1e40af" },
+    created: {
+      badge: "bg-gray-100 text-gray-700",
+      text: "text-gray-700",
+    },
+
+    waiting_for_approval: {
+      badge: "bg-amber-100 text-amber-700",
+      text: "text-amber-700",
+    },
+
+    approved: {
+      badge: "bg-green-100 text-green-700",
+      text: "text-green-700",
+    },
+
+    rejected: {
+      badge: "bg-red-100 text-red-700",
+      text: "text-red-700",
+    },
+
+    completed: {
+      badge: "bg-blue-100 text-blue-700",
+      text: "text-blue-700",
+    },
   };
-  return map[status] || { bg: "#f3f4f6", color: "#374151" };
+
+  return map[status]?.[variant] || map.created[variant];
 }
 
 function checkValid(vendor, deliveryDate, rows) {
@@ -89,6 +109,29 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
   const [expiryDate, setExpiryDate] = useState(initExpiry);
   const [rows, setRows] = useState(initRows);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  const menuRef = useRef();
+  const canCancel = poData.status === "created";
+  const hasMenuItems = canCancel;
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleCancelPO = async () => {
+    try {
+      setCancelling(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}/cancel`;
+      const response = await fetch(url, { method:"PATCH", headers: { "Content-Type": "application/json" } });
+      //if (!response.ok) throw new Error(`Network error (${response.status})`);
+      const result = await response.json();
+      if (result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
+      toast.success("PO cancelled successfully");
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to cancel PO "+err.message);
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   const isFormValid = useMemo(
     () => checkValid(vendor, deliveryDate, rows),
@@ -107,8 +150,12 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
         .then((res) => {
           if (res.status === "success")
             setVendorOptions(res.data.map((v) => ({ value: v.id, label: v.firm_name })));
+          else throw new Error(res?.errors[0] ?? "Something went wrong");
         })
-        .catch(() => { })
+        .catch((err) => {
+          console.log(err);
+          toast.error("Failed to fetch vendors list "+err.message);
+         })
         .finally(() => setVendorLoading(false));
     }, 300);
   }, []);
@@ -157,9 +204,12 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
         setEditing(false);
         toast.success("PO sent for approval successfully");
         if (onRefresh) onRefresh();
+      } else {
+        throw new Error(data?.errors[0] ?? "Something went wrong");
       }
     } catch (err) {
       console.error(err);
+      toast.error("Failed to save purchase order "+err.message);
     } finally {
       setSaving(false);
     }
@@ -175,10 +225,11 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
         { method: "PATCH", headers: { "Content-Type": "application/json" } }
       );
       const data = await res.json();
+      if (!res.ok || data.status === "failure") throw new Error(data.errors[0] ?? "Something went wrong ");
       if (data.status === "success" && onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to send PO for approval" + err);
+      toast.error("Failed to send PO for approval" + err.message);
     } finally {
       setApproving(false);
     }
@@ -202,7 +253,7 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
       );
       const json = await res.json();
 
-      if (!res.ok || json.status === "failure") throw new Error(json?.errors[0]);
+      if (!res.ok || json.status === "failure") throw new Error(json?.errors[0] ?? "Something went wrong");
 
       toast.success("Purchase Order rejected successfully");
       onRefresh();
@@ -210,7 +261,7 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
 
     } catch (err) {
       console.log(err);
-      toast.error("Failed to reject PO: " + err);
+      toast.error("Failed to reject PO: " + err.message);
     }
   };
 
@@ -219,13 +270,13 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}}/approve`, { method: "PATCH", headers: { "Content-Type": "application/json" } });
       const json = await res.json();
       if (!res.ok || json.status === "failure") {
-        throw new Error(json?.errors[0]);
+        throw new Error(json?.errors[0] ?? "Something went wrong");
       }
       if (json.status === "success" && onRefresh) onRefresh();
       toast.success("PO approved successfully");
     } catch (err) {
       console.log(err);
-      toast.error("Failed to approve PO" + err);
+      toast.error("Failed to approve PO" + err.message);
     }
   }
 
@@ -235,7 +286,8 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
   const isApproved = status === "approved";
   const badgeStyle = statusBadgeStyle(status);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const vendorLocked = editing;
+
   return (
     // White card — the scrollable area in page.js scrolls this entire card
     <div className="bg-white rounded-xl p-5 space-y-4">
@@ -245,8 +297,7 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-gray-800">{poData?.purchase_order_number}</h2>
           <span
-            className="text-xs font-medium px-2.5 py-0.5 rounded-full"
-            style={{ backgroundColor: badgeStyle.bg, color: badgeStyle.color }}
+            className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${statusBadgeStyle(status)}`}
           >
             {statusLabel(status)}
           </span>
@@ -286,6 +337,40 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
               </button>
             </>
           )}
+          {hasMenuItems && (
+            <div className="relative" ref={menuRef}>
+              <div
+                role="button"
+                onClick={(e) => { e.stopPropagation(); setMenuOpen((prev) => !prev); }}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${menuOpen
+                  ? "bg-gray-100 text-gray-700"
+                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  }`}
+                aria-label="More options"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </div>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
+                  {canCancel && (
+                    <div
+                      role="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                        handleCancelPO();
+                      }}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      {cancelling ? "Cancelling..." : "Cancel PO"}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -302,7 +387,7 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
             onSearch={fetchVendors}
             loading={vendorLoading}
             optionsMaxHeight={220}
-            readOnly={!editing}
+            readOnly={!editing || vendorLocked}
           />
         </div>
         <div className="w-56">
@@ -328,8 +413,7 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
         <div className="pb-0.5">
           <p className="text-xs text-gray-500 mb-1">Status</p>
           <p
-            className="text-sm font-bold"
-            style={{ color: badgeStyle.color }}
+            className={`text-sm font-bold ${statusBadgeStyle(status, "text")}`}
           >
             {statusLabel(status)}
           </p>
@@ -396,8 +480,7 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
             <button
               type="button"
               disabled
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white cursor-default"
-              style={{ backgroundColor: "#16a34a" }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-green-700 text-sm font-semibold text-white cursor-default"
             >
               Approved
               <Check size={16} />
@@ -506,11 +589,10 @@ function RejectPurchaseOrderModal({
             <button
               onClick={handleReject}
               disabled={!isValid}
-              className={`flex-1 rounded-xl px-6 py-3 text-sm font-semibold transition-all active:scale-[0.98] ${
-                isValid
-                  ? "bg-red-500 text-white hover:bg-red-600"
-                  : "cursor-not-allowed bg-gray-200 text-gray-400"
-              }`}
+              className={`flex-1 rounded-xl px-6 py-3 text-sm font-semibold transition-all active:scale-[0.98] ${isValid
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "cursor-not-allowed bg-gray-200 text-gray-400"
+                }`}
             >
               Reject
             </button>

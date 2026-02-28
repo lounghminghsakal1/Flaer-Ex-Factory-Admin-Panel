@@ -51,7 +51,7 @@ function AmendmentStatusBadge({ status }) {
   );
 }
 
-// Reject Amendment Modal
+// Reject Amendment Modal — UNCHANGED
 function RejectAmendmentModal({ isOpen, onClose, onReject }) {
   const [rejection_reason, setRejection_reason] = useState("");
 
@@ -135,20 +135,21 @@ function RejectAmendmentModal({ isOpen, onClose, onReject }) {
   );
 }
 
-// Single editable row
-function AmendmentRow({ row, allLineItems, usedIds, poStatus, onChange, onRemove, disabled }) {
+// ─── Single editable table row (CREATE mode) ──────────────────────────────────
+// Shows simplified "Units" and "Price" columns (no before/after split)
+function AmendmentCreateRow({ row, allLineItems, usedIds, poStatus, onChange, onRemove, disabled }) {
+  const [searchText, setSearchText] = useState("");
+
   const allSkuOptions = allLineItems
-    .filter((i) => !usedIds.includes(i.id) || i.id === row.lineItemId)
-    .map((i) => ({
-      value: i.id,
-      label: i.product_sku.display_name,
-      meta: i,
-    }));
+    .filter((i) => (!usedIds.includes(i.id) || i.id === row.lineItemId) &&
+      i.product_sku.display_name.toLowerCase().includes(searchText.toLocaleLowerCase()))
+    .map((i) => ({ value: i.id, label: i.product_sku.display_name, meta: i }));
 
   const selectedOption = allSkuOptions.find((o) => o.value === row.lineItemId) || null;
 
   const canEditUnits = !disabled && poStatus === "approved";
   const canEditPrice = !disabled && (poStatus === "approved" || poStatus === "completed");
+  const showUnits = poStatus !== "completed";
 
   const handleSkuChange = (option) => {
     if (!option) return;
@@ -164,17 +165,16 @@ function AmendmentRow({ row, allLineItems, usedIds, poStatus, onChange, onRemove
     });
   };
 
-  const baseInput = "px-2 py-2 rounded-lg border text-sm w-full";
+  const baseInput = "px-2 py-1.5 rounded-lg border text-sm w-full";
   const readonlyInput = `${baseInput} border-gray-200 bg-gray-50 text-gray-600`;
   const editableInput = `${baseInput} border-gray-300 bg-white text-gray-800 focus:outline-none focus:border-primary`;
   const lockedInput = `${baseInput} border-gray-200 bg-gray-50 text-gray-500`;
 
   return (
-    <div className="flex items-end gap-2 p-2 bg-gray-50 rounded-xl border border-gray-100 flex-wrap">
-      {/* SKU Dropdown */}
-      <div className="flex-[3] min-w-[220px]">
+    <tr className="border-b border-gray-100 last:border-0 hover:bg-gray-50/40 transition-colors">
+      {/* SKU dropdown */}
+      <td className="px-3 py-2 w-48" style={{ overflow: "visible" }}>
         <SearchableDropdown
-          label="SKU"
           options={allSkuOptions}
           value={selectedOption}
           placeholder="Select SKU..."
@@ -183,112 +183,226 @@ function AmendmentRow({ row, allLineItems, usedIds, poStatus, onChange, onRemove
           readOnly={disabled}
           optionsMaxHeight={180}
           dropUp={false}
-          onSearch={() => { }}
+          onSearch={(text) => setSearchText(text)}
         />
-      </div>
+      </td>
 
       {/* SKU Code */}
-      <div className="flex-[1.7] min-w-[140px]">
-        <label className="block text-xs text-gray-500 mb-1">SKU Code</label>
+      <td className="px-3 py-2 w-32">
         <input
           readOnly
           value={row.skuCode || ""}
           placeholder="Auto-filled"
           className={readonlyInput}
         />
-      </div>
+      </td>
 
-      {/* Units group */}
-      <div className="flex items-end gap-1.5">
-        <div className="w-18">
-          <label className="block text-xs text-gray-500 mb-1 whitespace-nowrap">
-            {poStatus === "completed" ? "Units" : "Before Units"}
-          </label>
-          <input
-            readOnly
-            value={row.beforeUnits || ""}
-            placeholder="—"
-            className={readonlyInput}
-          />
-        </div>
-        {poStatus !== "completed" && (
-          <>
-            <ArrowRight className="w-4 h-4 text-gray-700 mb-2.5 shrink-0" />
-            <div className="w-18">
-              <label className="block text-xs text-gray-500 mb-1">After Units</label>
-              <input
-                type="number"
-                min="1"
-                disabled={!canEditUnits}
-                value={row.afterUnits}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || (Number(v) > 0 && !isNaN(Number(v))))
-                    onChange({ ...row, afterUnits: v });
-                }}
-                placeholder="Enter"
-                className={canEditUnits ? editableInput : lockedInput}
-                onWheel={(e) => e.target.blur()}
-              />
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Vertical divider */}
-      <div className="w-px h-9 bg-gray-200 self-end mb-0.5 shrink-0" />
-
-      {/* Price group */}
-      <div className="flex items-end gap-1.5">
-        <div className="w-24">
-          <label className="block text-xs text-gray-500 mb-1">Before Price</label>
-          <input
-            readOnly
-            value={
-              row.beforePrice ? `₹${parseFloat(row.beforePrice).toLocaleString()}` : ""
-            }
-            placeholder="—"
-            className={readonlyInput}
-          />
-        </div>
-        <ArrowRight className="w-4 h-4 text-gray-700 mb-2.5 shrink-0" />
-        <div className="w-24">
-          <label className="block text-xs text-gray-500 mb-1">After Price</label>
+      {/* Units — single input (only for approved PO) */}
+      {showUnits && (
+        <td className="px-3 py-2 w-24">
           <input
             type="number"
-            min="0.01"
-            step="0.01"
-            disabled={!canEditPrice}
-            value={row.afterPrice}
+            min="1"
+            disabled={!canEditUnits}
+            value={row.afterUnits}
             onChange={(e) => {
               const v = e.target.value;
               if (v === "" || (Number(v) > 0 && !isNaN(Number(v))))
-                onChange({ ...row, afterPrice: v });
+                onChange({ ...row, afterUnits: v });
             }}
-            placeholder="Enter"
-            className={canEditPrice ? editableInput : lockedInput}
+            placeholder="Enter units"
+            className={(canEditUnits ? editableInput : lockedInput) + " text-left"}
             onWheel={(e) => e.target.blur()}
           />
-        </div>
-      </div>
+        </td>
+      )}
+
+      {/* Price — single input */}
+      <td className="px-3 py-2 w-24">
+        <input
+          type="number"
+          min="0.01"
+          step="0.01"
+          disabled={!canEditPrice}
+          value={row.afterPrice}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || (Number(v) > 0 && !isNaN(Number(v))))
+              onChange({ ...row, afterPrice: v });
+          }}
+          placeholder="Enter price"
+          className={(canEditPrice ? editableInput : lockedInput) + " text-left"}
+          onWheel={(e) => e.target.blur()}
+        />
+      </td>
 
       {/* Delete */}
-      {!disabled ? (
-        <div
-          role="button"
-          onClick={onRemove}
-          className="p-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer mb-0.5 shrink-0"
-        >
-          <Trash2 className="w-4 h-4" />
-        </div>
-      ) : (
-        <div className="w-8 shrink-0" />
-      )}
-    </div>
+      <td className="px-2 py-2 w-10">
+        {!disabled ? (
+          <div
+            role="button"
+            onClick={onRemove}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </div>
+        ) : (
+          <span className="w-8 inline-block" />
+        )}
+      </td>
+    </tr>
   );
 }
 
-// Amendment Form (create / edit)
+// ─── Single editable table row (EDIT mode) ────────────────────────────────────
+// Shows full before → after columns (existing behaviour)
+function AmendmentEditRow({ row, allLineItems, usedIds, poStatus, onChange, onRemove, disabled }) {
+  const [searchText, setSearchText] = useState("");
+
+  const allSkuOptions = allLineItems
+    .filter((i) => (!usedIds.includes(i.id) || i.id === row.lineItemId) &&
+      i.product_sku.display_name.toLowerCase().includes(searchText.toLocaleLowerCase()))
+    .map((i) => ({ value: i.id, label: i.product_sku.display_name, meta: i }));
+
+  const selectedOption = allSkuOptions.find((o) => o.value === row.lineItemId) || null;
+
+  const canEditUnits = !disabled && poStatus === "approved";
+  const canEditPrice = !disabled && (poStatus === "approved" || poStatus === "completed");
+  const showUnits = poStatus !== "completed";
+
+  const handleSkuChange = (option) => {
+    if (!option) return;
+    const item = option.meta;
+    onChange({
+      ...row,
+      lineItemId: item.id,
+      skuCode: item.product_sku.sku_code,
+      beforeUnits: String(item.total_units),
+      beforePrice: String(item.unit_price),
+      afterUnits: "",
+      afterPrice: "",
+    });
+  };
+
+  const baseInput = "px-2 py-1.5 rounded-lg border text-sm w-full";
+  const readonlyInput = `${baseInput} border-gray-200 bg-gray-50 text-gray-600`;
+  const editableInput = `${baseInput} border-gray-300 bg-white text-gray-800 focus:outline-none focus:border-primary`;
+  const lockedInput = `${baseInput} border-gray-200 bg-gray-50 text-gray-500`;
+
+  return (
+    <tr className="border-b border-gray-100 last:border-0 hover:bg-gray-50/40 transition-colors">
+      {/* SKU dropdown */}
+      <td className="px-3 py-2 w-60" style={{ overflow: "visible" }} title={selectedOption?.label ?? ""} >
+        <SearchableDropdown
+          options={allSkuOptions}
+          value={selectedOption}
+          placeholder="Select SKU..."
+          onChange={handleSkuChange}
+          disabled={disabled}
+          readOnly={disabled}
+          optionsMaxHeight={180}
+          dropUp={false}
+          onSearch={(text) => setSearchText(text)}
+        />
+      </td>
+
+      {/* SKU Code */}
+      <td className="px-3 py-2 w-32" title={row.skuCode ?? ""}>
+        <input
+          readOnly
+          value={row.skuCode || ""}
+          placeholder="Auto-filled"
+          className={readonlyInput}
+        />
+      </td>
+
+      {/* Before Units */}
+      {showUnits && (
+        <td className="px-3 py-2 w-24">
+          <input readOnly value={row.beforeUnits || ""}
+            className={readonlyInput + " text-left"} />
+        </td>
+      )}
+      {/* → arrow between units */}
+      {showUnits && (
+        <td className="w-6 text-center">
+          <ArrowRight className="w-3 h-3 text-gray-400 mx-auto" />
+        </td>
+      )}
+      {/* After Units */}
+      {showUnits && (
+        <td className="px-3 py-2 w-24">
+          <input
+            type="number" min="1"
+            disabled={!canEditUnits}
+            value={row.afterUnits}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (Number(v) > 0 && !isNaN(Number(v))))
+                onChange({ ...row, afterUnits: v });
+            }}
+            placeholder="Enter"
+            className={(canEditUnits ? editableInput : lockedInput) + " text-left"}
+            onWheel={(e) => e.target.blur()}
+          />
+        </td>
+      )}
+      {/* Units (completed PO — no arrow) */}
+      {!showUnits && (
+        <td className="px-3 py-2 w-24">
+          <input readOnly value={row.beforeUnits || ""}
+            className={readonlyInput + " text-left"} />
+        </td>
+      )}
+
+      {/* Before Price */}
+      <td className="px-3 py-2 w-24">
+        <input
+          readOnly
+          value={row.beforePrice ? `₹${parseFloat(row.beforePrice).toLocaleString()}` : ""}
+          className={readonlyInput + " text-left"}
+        />
+      </td>
+      {/* → arrow between prices */}
+      <td className="w-6 text-center">
+        <ArrowRight className="w-3 h-3 text-gray-400 mx-auto" />
+      </td>
+      {/* After Price */}
+      <td className="px-3 py-2 w-24">
+        <input
+          type="number" min="0.01" step="0.01"
+          disabled={!canEditPrice}
+          value={row.afterPrice}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || (Number(v) > 0 && !isNaN(Number(v))))
+              onChange({ ...row, afterPrice: v });
+          }}
+          placeholder="Enter"
+          className={(canEditPrice ? editableInput : lockedInput) + " text-left"}
+          onWheel={(e) => e.target.blur()}
+        />
+      </td>
+
+      {/* Delete */}
+      <td className="px-2 py-2 w-10">
+        {!disabled ? (
+          <div
+            role="button"
+            onClick={onRemove}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </div>
+        ) : (
+          <span className="w-8 inline-block" />
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// Amendment Form — isCreating=true uses simplified columns, isCreating=false uses full before/after
 function AmendmentForm({
   poId,
   poStatus,
@@ -297,6 +411,7 @@ function AmendmentForm({
   initialRows,
   onSaved,
   onCancel,
+  isCreating = false,
 }) {
   const [rows, setRows] = useState(() =>
     initialRows && initialRows.length > 0 ? initialRows : [makeEmptyRow()]
@@ -305,6 +420,7 @@ function AmendmentForm({
 
   const usedIds = rows.map((r) => r.lineItemId).filter(Boolean);
   const canAddMore = usedIds.length < lineItems.length;
+  const showUnits = poStatus !== "completed";
 
   const handleSave = async () => {
     for (const row of rows) {
@@ -314,16 +430,16 @@ function AmendmentForm({
       }
       if (poStatus === "approved") {
         if (!row.afterUnits || Number(row.afterUnits) <= 0) {
-          toast.error("After Units must be > 0 for all rows.");
+          toast.error("Units must be > 0 for all rows.");
           return;
         }
         if (!row.afterPrice || Number(row.afterPrice) <= 0) {
-          toast.error("After Price must be > 0 for all rows.");
+          toast.error("Price must be > 0 for all rows.");
           return;
         }
       } else if (poStatus === "completed") {
         if (!row.afterPrice || Number(row.afterPrice) <= 0) {
-          toast.error("After Price must be > 0 for all rows.");
+          toast.error("Price must be > 0 for all rows.");
           return;
         }
       }
@@ -361,11 +477,14 @@ function AmendmentForm({
         throw new Error(data?.errors[0]);
       }
     } catch (err) {
-      toast.error("Something went wrong " + err);
+      console.log(err);
+      toast.error("Something went wrong: " + err.message);
     } finally {
       setSaving(false);
     }
   };
+
+  const RowComponent = isCreating ? AmendmentCreateRow : AmendmentEditRow;
 
   return (
     <div className="border border-gray-200 rounded-2xl bg-white shadow-sm overflow-visible">
@@ -383,59 +502,130 @@ function AmendmentForm({
         </div>
       </div>
 
-      {/* Rows */}
-      <div className="p-2 space-y-2">
-        {rows.map((row, idx) => (
-          <AmendmentRow
-            key={row._id}
-            row={row}
-            allLineItems={lineItems}
-            usedIds={usedIds}
-            poStatus={poStatus}
-            disabled={false}
-            onChange={(updated) =>
-              setRows((prev) => prev.map((r, i) => (i === idx ? updated : r)))
-            }
-            onRemove={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
-          />
-        ))}
+      {/* Table */}
+      <div className="overflow-visible">
+        <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-72">SKU</th>
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-44">SKU Code</th>
 
-        {/* Bottom action row: Add Item left, Save right */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-3">
-            {canAddMore && (
-              <div
-                role="button"
-                onClick={() => setRows((prev) => [...prev, makeEmptyRow()])}
-                className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-75 transition-opacity cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Add Item
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div
-              role="button"
-              onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-lg hover:opacity-80 hover:text-gray-800 transition-colors cursor-pointer"
-            >
-              Cancel
-            </div>
-            <div
-              role="button"
-              onClick={!saving ? handleSave : undefined}
-              className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg transition-opacity cursor-pointer ${saving ? "opacity-60" : "hover:opacity-90"
-                }`}
-            >
-              {saving ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
+              {/* CREATE mode: simple single columns */}
+              {isCreating && showUnits && (
+                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-24">Units</th>
               )}
-              {saving ? "Saving..." : amendmentId ? "Save Changes" : "Save"}
+              {isCreating && (
+                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-24">Price</th>
+              )}
+
+              {/* EDIT mode: full before/after columns */}
+              {/* {!isCreating && showUnits && (
+                <>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">Before Units</th>
+                  <th className="w-6" />
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">After Units</th>
+                </>
+              )}
+              {!isCreating && !showUnits && (
+                <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">Units</th>
+              )}
+              {!isCreating && (
+                <>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-36">Before Price</th>
+                  <th className="w-6" />
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-36">After Price</th>
+                </>
+              )} */}
+
+              {/* EDIT MODE */}
+              {!isCreating && showUnits && (
+                <>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+    text-gray-500 uppercase tracking-wide w-20">
+                    Before Units
+                  </th>
+
+                  <th className="w-6" />
+
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+    text-gray-500 uppercase tracking-wide w-20">
+                    After Units
+                  </th>
+                </>
+              )}
+
+              {!isCreating && (
+                <>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+    text-gray-500 uppercase tracking-wide w-24">
+                    Before Price
+                  </th>
+
+                  <th className="w-6" />
+
+                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+    text-gray-500 uppercase tracking-wide w-28">
+                    After Price
+                  </th>
+                </>
+              )}
+
+              <th className="px-3 py-2.5 w-10" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <RowComponent
+                key={row._id}
+                row={row}
+                allLineItems={lineItems}
+                usedIds={usedIds}
+                poStatus={poStatus}
+                disabled={false}
+                onChange={(updated) =>
+                  setRows((prev) => prev.map((r, i) => (i === idx ? updated : r)))
+                }
+                onRemove={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer: Add Item left, Cancel + Save right */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+        <div>
+          {canAddMore && (
+            <div
+              role="button"
+              onClick={() => setRows((prev) => [...prev, makeEmptyRow()])}
+              className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-75 transition-opacity cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Add Item
             </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div
+            role="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-lg hover:opacity-80 hover:text-gray-800 transition-colors cursor-pointer"
+          >
+            Cancel
+          </div>
+          <div
+            role="button"
+            onClick={!saving ? handleSave : undefined}
+            className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg transition-opacity cursor-pointer ${saving ? "opacity-60" : "hover:opacity-90"}`}
+          >
+            {saving ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {saving ? "Saving..." : amendmentId ? "Save Changes" : "Save"}
           </div>
         </div>
       </div>
@@ -463,6 +653,7 @@ function AmendmentAccordion({
   const amendmentStatus = amendment.status;
   const isDraft = amendmentStatus === "draft";
   const isWaitingForApproval = amendmentStatus === "waiting_for_approval";
+  const showUnits = poStatus !== "completed";
 
   const handleSaved = () => {
     setEditing(false);
@@ -484,7 +675,8 @@ function AmendmentAccordion({
         throw new Error(data?.errors[0]);
       }
     } catch (err) {
-      toast.error("Something went wrong " + err);
+      console.log(err);
+      toast.error("Something went wrong " + err.message);
     } finally {
       setSendingApproval(false);
     }
@@ -504,8 +696,9 @@ function AmendmentAccordion({
       } else {
         throw new Error(data?.errors[0]);
       }
-    } catch {
-      toast.error("Something went wrong " + err);
+    } catch(err) {
+      console.log(err);
+      toast.error("Something went wrong " + err.message);
     } finally {
       setApprovingAmendment(false);
     }
@@ -530,8 +723,9 @@ function AmendmentAccordion({
       } else {
         throw new Error(data?.errors[0]);
       }
-    } catch {
-      toast.error("Something went wrong " + err);
+    } catch(err) {
+      console.log(err);
+      toast.error("Something went wrong " + err.message);
     } finally {
       setCancelling(false);
     }
@@ -558,6 +752,7 @@ function AmendmentAccordion({
         initialRows={initialRows}
         onSaved={handleSaved}
         onCancel={() => setEditing(false)}
+        isCreating={false}
       />
     );
   }
@@ -571,13 +766,12 @@ function AmendmentAccordion({
       />
 
       <div className="border border-gray-200 rounded-2xl bg-white overflow-hidden shadow-sm">
-        {/* Accordion Header */}
+        {/* Accordion Header — UNCHANGED */}
         <div
           role="button"
           onClick={onToggle}
           className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
         >
-          {/* Left */}
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
               {index + 1}
@@ -601,15 +795,11 @@ function AmendmentAccordion({
             </div>
           </div>
 
-          {/* Right: Edit + Chevron only */}
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             {isOpen && isDraft && (
               <div
                 role="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditing(true);
-                }}
+                onClick={(e) => { e.stopPropagation(); setEditing(true); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-md hover:bg-primary hover:text-gray-100 transition-colors cursor-pointer"
               >
                 <Edit2 className="w-3 h-3" />
@@ -617,10 +807,7 @@ function AmendmentAccordion({
               </div>
             )}
             <div
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle();
-              }}
+              onClick={(e) => { e.stopPropagation(); onToggle(); }}
               className="cursor-pointer"
             >
               {isOpen ? (
@@ -632,72 +819,100 @@ function AmendmentAccordion({
           </div>
         </div>
 
-        {/* Accordion Body */}
+        {/* Accordion Body — view rows in a <table> with full before/after */}
         {isOpen && (
-          <div className="px-2 pb-4 border-t border-gray-100 pt-3 space-y-2">
+          <div className="border-t border-gray-100">
             {viewRows.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No line items recorded.</p>
+              <p className="text-sm text-gray-400 text-center py-6">No line items recorded.</p>
             ) : (
-              viewRows.map((li, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-300 flex-wrap"
-                >
-                  {/* SKU */}
-                  <div className="flex-[2] min-w-[140px]">
-                    <p className="text-xs text-gray-500 mb-0.5">SKU</p>
-                    <p className="text-sm font-medium text-gray-800 leading-tight">
-                      {li.sku_name || `Line Item #${li.purchase_order_line_item_id}`}
-                    </p>
-                    {li.sku_code && (
-                      <p className="text-xs text-gray-400 mt-0.5">{li.sku_code}</p>
-                    )}
-                  </div>
-
-                  {/* Units */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Before Units</p>
-                      <p className="text-sm font-semibold text-gray-700">{li.before_units}</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400 mt-3" />
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">After Units</p>
-                      <p className="text-sm font-semibold text-primary">{li.after_units}</p>
-                    </div>
-                  </div>
-
-                  <div className="w-px h-8 bg-gray-200 shrink-0" />
-
-                  {/* Price */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Before Price</p>
-                      <p className="text-sm font-semibold text-gray-700">
-                        ₹{parseFloat(li.before_unit_price || 0).toLocaleString()}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400 mt-3" />
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">After Price</p>
-                      <p className="text-sm font-semibold text-primary">
-                        ₹{parseFloat(li.after_unit_price || 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-48">SKU</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">SKU Code</th>
+                      {showUnits && (
+                        <>
+                          <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">Before Units</th>
+                          <th className="w-6" />
+                          <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">After Units</th>
+                        </>
+                      )}
+                      {!showUnits && (
+                        <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">Units</th>
+                      )}
+                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">Before Price</th>
+                      <th className="w-6" />
+                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">After Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {viewRows.map((li, i) => (
+                      <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                        {/* SKU Name */}
+                        <td className="px-4 py-3 w-48">
+                          <p className="text-sm font-medium text-gray-800 leading-tight truncate">
+                            {li.sku_name || `Line Item #${li.purchase_order_line_item_id}`}
+                          </p>
+                        </td>
+                        {/* SKU Code */}
+                        <td className="px-4 py-3 w-28">
+                          <span className="text-xs text-gray-400 font-mono">{li.sku_code || "—"}</span>
+                        </td>
+                        {/* Before Units */}
+                        {showUnits && (
+                          <td className="px-4 py-3 text-center w-32">
+                            <span className="text-sm font-semibold text-gray-600">{li.before_units ?? "—"}</span>
+                          </td>
+                        )}
+                        {/* → arrow */}
+                        {showUnits && (
+                          <td className="w-6 text-center">
+                            <ArrowRight className="w-3 h-3 text-gray-600 mx-auto" />
+                          </td>
+                        )}
+                        {/* After Units */}
+                        {showUnits && (
+                          <td className="px-4 py-3 text-center w-32">
+                            <span className="text-sm font-semibold text-primary">{li.after_units ?? "—"}</span>
+                          </td>
+                        )}
+                        {/* Units (completed PO — single col) */}
+                        {!showUnits && (
+                          <td className="px-4 py-3 text-center w-32">
+                            <span className="text-sm font-semibold text-gray-700">{li.before_units ?? "—"}</span>
+                          </td>
+                        )}
+                        {/* Before Price */}
+                        <td className="px-4 py-3 text-center w-36">
+                          <span className="text-sm font-semibold text-gray-600">
+                            ₹{parseFloat(li.before_unit_price || 0).toLocaleString()}
+                          </span>
+                        </td>
+                        {/* → arrow */}
+                        <td className="w-6 text-center">
+                          <ArrowRight className="w-3 h-3 text-gray-600 mx-auto" />
+                        </td>
+                        {/* After Price */}
+                        <td className="px-4 py-3 text-center w-36">
+                          <span className="text-sm font-semibold text-primary">
+                            ₹{parseFloat(li.after_unit_price || 0).toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
 
-            {/* Action buttons — below line items, left aligned */}
-            <div className="flex items-center gap-2 pt-2">
-              {/* Send for Approval — draft only */}
+            {/* Action buttons — UNCHANGED logic */}
+            <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-100">
               {isDraft && (
                 <div
                   role="button"
                   onClick={handleSendForApproval}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold bg-green-600 cursor-pointer text-white transition-all hover:scale-103 ${sendingApproval ? "opacity-60" : "hover:opacity-90"
-                    }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold bg-green-600 cursor-pointer text-white transition-all hover:scale-103 ${sendingApproval ? "opacity-60" : "hover:opacity-90"}`}
                 >
                   {sendingApproval ? (
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -708,13 +923,11 @@ function AmendmentAccordion({
                 </div>
               )}
 
-              {/* Approve — waiting_for_approval only */}
               {isWaitingForApproval && (
                 <div
                   role="button"
                   onClick={handleApprove}
-                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white hover:scale-103 bg-green-600 rounded-lg transition-opacity  cursor-pointer ${approvingAmendment ? "opacity-60" : "hover:opacity-90"
-                    }`}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white hover:scale-103 bg-green-600 rounded-lg transition-opacity cursor-pointer ${approvingAmendment ? "opacity-60" : "hover:opacity-90"}`}
                 >
                   {approvingAmendment ? (
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -725,13 +938,11 @@ function AmendmentAccordion({
                 </div>
               )}
 
-              {/* Cancel Amendment — draft or waiting_for_approval */}
               {(isDraft || isWaitingForApproval) && isWaitingForApproval && (
                 <div
                   role="button"
                   onClick={() => setCancelModalOpen(true)}
-                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white hover:scale-103 bg-red-500 rounded-lg transition-all cursor-pointer ${cancelling ? "opacity-60" : "hover:opacity-90"
-                    }`}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white hover:scale-103 bg-red-500 rounded-lg transition-all cursor-pointer ${cancelling ? "opacity-60" : "hover:opacity-90"}`}
                 >
                   {cancelling ? (
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -749,7 +960,7 @@ function AmendmentAccordion({
   );
 }
 
-// Main Component
+// Main Component — UNCHANGED
 export default function PurchaseOrderAmendments({ poId, refreshPo }) {
   const [amendments, setAmendments] = useState([]);
   const [poData, setPoData] = useState(null);
@@ -770,7 +981,8 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
       }
       if (data.status === "failure") throw new Error(data?.errors[0]);
     } catch (err) {
-      toast.error("Failed to fetch amendments " + err);
+      console.log(err);
+      toast.error("Failed to fetch amendments " + err.message);
     }
   };
 
@@ -783,7 +995,8 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
       if (data.status === "success") setPoData(data.data);
       if (data.status === "failure") throw new Error(data?.errors[0]);
     } catch (err) {
-      toast.error("Failed to fetch amendments " + err);
+      console.log(err);
+      toast.error("Failed to fetch amendments " + err.message);
     }
   };
 
@@ -794,7 +1007,6 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
   const handleRefresh = async () => {
     try {
       refreshPo();
-      // fetch amendments
       const resAm = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}/purchase_order_amendments`
       );
@@ -803,30 +1015,29 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
       if (dataAm.status === "success") {
         const list = dataAm.data?.amendments || [];
         setAmendments(list);
-
         if (list.length > 0) {
           setOpenAccordion(list[list.length - 1].id);
         }
       }
 
-      // ALSO FETCH PO DATA
       const resPo = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}`
       );
       const dataPo = await resPo.json();
+      if (!resPo.ok || dataPo.status === "failure") throw new Error(dataPo.errors[0] ?? "Something went wrong ");
 
       if (dataPo.status === "success") {
         setPoData(dataPo.data);
       }
 
       setShowCreateForm(false);
-    } catch {
-      toast.error("Failed to refresh data");
+    } catch(err) {
+      console.log(err);
+      toast.error("Failed to refresh data "+err.message);
     }
   };
 
   const handleCreateClick = () => {
-    // Guard: all existing amendments must be approved or cancelled
     const ALLOWED = ["approved", "cancelled", "rejected"];
     const hasUnfinished = amendments.some((a) => !ALLOWED.includes(a.status));
     if (hasUnfinished) {
@@ -910,6 +1121,7 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
             initialRows={null}
             onSaved={handleRefresh}
             onCancel={() => setShowCreateForm(false)}
+            isCreating={true}
           />
         )}
 
@@ -932,4 +1144,3 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
     </div>
   );
 }
-

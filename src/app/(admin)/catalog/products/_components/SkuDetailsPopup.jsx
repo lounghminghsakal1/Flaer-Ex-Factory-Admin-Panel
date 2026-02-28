@@ -66,8 +66,8 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/product_skus/${sku.id}`
       );
-      if (!response.ok) throw new Error("Failed to fetch SKU details");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       const data = result.data;
       setSkuData(data);
 
@@ -118,7 +118,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load SKU details");
+      toast.error("Failed to load SKU details "+err.message);
     } finally {
       setLoading(false);
     }
@@ -129,12 +129,12 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/option_types?only_names=true`
       );
-      if (!res.ok) throw new Error("Failed to fetch option types");
       const result = await res.json();
+      if (!res.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load option types");
+      toast.error("Failed to load option types "+err.message);
     }
   }
 
@@ -996,9 +996,8 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
           }
         );
 
-        if (!response.ok) throw new Error("Upload failed");
-
         const result = await response.json();
+        if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
         uploadedUrls.push(result.data.media_url);
       }
 
@@ -1026,8 +1025,8 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
       setSkuMedia((prev) => [...prev, ...newMedia]);
       toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
     } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("Failed to upload images");
+      console.error(error);
+      toast.error("Failed to upload images "+error.message);
     } finally {
       setUploading(false);
     }

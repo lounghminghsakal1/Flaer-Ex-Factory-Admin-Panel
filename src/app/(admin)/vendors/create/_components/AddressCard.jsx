@@ -59,7 +59,7 @@ export default function AddressCard({ form, errors = {}, onChange, isEditing = t
           onChange("state", json.data.state || "");
           onChange("country", "India");
         } else {
-          throw new Error(json.message || "Invalid pincode");
+          throw new Error(json.errors[0] || "Invalid pincode");
         }
       } catch {
         setPincodeError("Could not fetch location for this pincode");

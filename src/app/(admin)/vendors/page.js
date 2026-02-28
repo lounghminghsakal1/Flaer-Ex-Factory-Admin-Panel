@@ -64,7 +64,7 @@ export default function VendorsPage() {
       setTotalPages(result.meta.total_pages);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch vendors data" + err);
+      toast.error("Failed to fetch vendors data" + err.message);
     } finally {
       setLoading(false);
     }

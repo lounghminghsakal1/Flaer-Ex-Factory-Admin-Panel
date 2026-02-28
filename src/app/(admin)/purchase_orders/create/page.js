@@ -55,8 +55,12 @@ export default function CreatePurchaseOrderForm() {
         .then((res) => {
           if (res.status === "success")
             setVendorOptions(res.data.map((v) => ({ value: v.id, label: v.firm_name })));
+          else throw new Error(res?.errors?.[0] ?? "Something went wrong")
         })
-        .catch(() => {})
+        .catch((err) => {
+          console.log(err);
+          toast.error("Failed to fetch vendors data "+err.message);
+        })
         .finally(() => setVendorLoading(false));
     }, 300);
   }, []);
@@ -92,12 +96,11 @@ export default function CreatePurchaseOrderForm() {
         router.push(`/purchase_orders/${data.data.id}`);
         return;
       } else {
-        console.error("Save failed", data);
-        toast.error("Failed to create purchase order");
+        throw new Error(data?.errors?.[0] ?? "Something went wrong")
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save purchase order");
+      toast.error("Failed to save purchase order "+err.message);
     } finally {
       setSaving(false);
     }

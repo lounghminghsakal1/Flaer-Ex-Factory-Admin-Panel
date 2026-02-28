@@ -75,17 +75,16 @@ export default function BrandsPage() {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/brands?${query}`
       );
-
-      if (!response.ok) throw new Error("Failed to fetch brands");
-
       const result = await response.json();
-
+      if (!response.ok || result?.status === "failure") {
+        throw new Error(result?.errors[0] ?? "Something went wrong");
+      }
       setBrands(result.data || []);
       setTotalPages(result.meta?.total_pages || 1);
 
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch brands");
+      toast.error("Failed to fetch brands: " + err.message);
     } finally {
       setLoading(false);
     }

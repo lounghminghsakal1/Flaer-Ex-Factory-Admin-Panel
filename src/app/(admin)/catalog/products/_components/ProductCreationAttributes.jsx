@@ -168,12 +168,12 @@ export default function ProductCreationAttributes({
   async function fetchPropertyNames() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products/get_property_names`);
-      if (!response.ok) throw new Error("Failed to fetch property names");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       setPropertyNames(result.data);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch property names");
+      toast.error("Failed to fetch property names " + err.message);
     }
   }
 
@@ -183,13 +183,12 @@ export default function ProductCreationAttributes({
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/option_types?only_names=true`
       );
 
-      if (!res.ok) throw new Error("Failed to fetch option types");
-
       const result = await res.json();
+      if (!res.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setOptionTypes(result.data || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load option types");
+      toast.error("Failed to load option types " + err.message);
     }
   }
 
@@ -1758,9 +1757,8 @@ export default function ProductCreationAttributes({
                                           }
                                         );
 
-                                        if (!response.ok) throw new Error('Upload failed');
-
                                         const result = await response.json();
+                                        if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
                                         const uploadedUrls = result.data?.media_url ? [result.data.media_url] : [];
 
                                         setProducts(prev =>
@@ -1790,8 +1788,8 @@ export default function ProductCreationAttributes({
 
                                         toast.success(`${files.length} image(s) uploaded`);
                                       } catch (error) {
-                                        console.error('Upload error:', error);
-                                        toast.error('Upload failed');
+                                        console.error(error);
+                                        toast.error('Upload failed '+error.message);
 
                                         // Remove loading state on error
                                         setProducts(prev =>
@@ -1963,9 +1961,8 @@ export default function ProductCreationAttributes({
                                             }
                                           );
 
-                                          if (!response.ok) throw new Error('Upload failed');
-
                                           const result = await response.json();
+                                          if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
                                           const uploadedUrls = result.data?.media_url ? [result.data.media_url] : [];
 
                                           // Replace loading items with uploaded media
@@ -1999,8 +1996,8 @@ export default function ProductCreationAttributes({
 
                                           toast.success(`${files.length} image(s) uploaded`);
                                         } catch (error) {
-                                          console.error('Upload error:', error);
-                                          toast.error('Upload failed');
+                                          console.error(error);
+                                          toast.error('Upload failed '+error.message);
 
                                           // Remove loading items on error
                                           setProducts(prev =>
@@ -2319,9 +2316,8 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
           }
         );
 
-        if (!response.ok) throw new Error('Upload failed');
-
         const result = await response.json();
+        if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
         uploadedUrls.push(result.data.media_url);
       }
 
@@ -2348,8 +2344,8 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
       setProductMedia(prev => [...prev, ...newMedia]);
       toast.success(`${files.length} image(s) uploaded successfully`);
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload images');
+      console.error(error);
+      toast.error('Failed to upload images '+error.message);
     } finally {
       setUploading(false);
     }

@@ -195,7 +195,7 @@ function ReadOnlyRow({ row }) {
 }
 
 // ─── QC Row ───────────────────────────────────────────────────────────────────
-function QCRow({ row, qcData, onQCDataChange, onConfirmed }) {
+function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
   const [viewBatchOpen, setViewBatchOpen] = useState(false);
   const [viewSerialOpen, setViewSerialOpen] = useState(false);
   const [batchQcOpen, setBatchQcOpen] = useState(false);
@@ -305,6 +305,8 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed }) {
             setIsSerialConfirmed(true);
             onConfirmed(); // ← notify parent so allQCDone unlocks Submit
           }}
+          skuId={row.product_sku_id}
+          grnId={grnId}
           skuName={displayName}
           serials={serials}
           savedQcData={qc}
@@ -353,9 +355,9 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed }) {
               onClick={() => setBatchQcOpen(true)}
               className={`text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1
                 ${isBatchConfirmed
-                  ? "text-emerald-600 hover:text-emerald-700"
+                  ? "bg-green-200 text-emerald-600 hover:text-emerald-700"
                   : hasQC
-                    ? "text-yellow-500 hover:text-yellow-600"
+                    ? "bg-yellow-500 text-gray-100 hover:opacity-80"
                     : "text-primary hover:opacity-75"}`}
             >
               {(hasQC || isBatchConfirmed) && <CheckCircle2 className="w-3 h-3 shrink-0" />}
@@ -365,11 +367,11 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed }) {
           {isSerial && (
             <button
               onClick={() => setSerialQcOpen(true)}
-              className={`text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1
+              className={`text-[11px] px-2 py-1 font-semibold rounded-md transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1
                 ${isSerialConfirmed
                   ? "text-emerald-600 hover:text-emerald-700"
                   : hasQC
-                    ? "text-yellow-500 hover:text-yellow-600"
+                    ? "bg-yellow-500 text-gray-100 hover:opacity-80"
                     : "text-primary hover:opacity-75"}`}
             >
               {(hasQC || isSerialConfirmed) && <CheckCircle2 className="w-3 h-3 shrink-0" />}
@@ -394,6 +396,8 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed }) {
               )}
             </div>
           )}
+          {isSerial && !isSerialConfirmed && (<p className="text-xs text-gray-500">Click to confirm serials</p>)}
+          {isBatch && !isBatchConfirmed && (<p className="text-xs text-gray-500">Click to confirm batches</p>) }
         </td>
 
         {/* Col 5 — Accepted Qty */}
@@ -435,7 +439,7 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed }) {
 }
 
 // ─── Editable existing row ────────────────────────────────────────────────────
-function EditableExistingRow({ row, skuOptions, onChange }) {
+function EditableExistingRow({ row, skuOptions, onChange, }) {
   const [batchingOpen, setBatchingOpen] = useState(false);
   const [serialOpen, setSerialOpen] = useState(false);
 
@@ -450,6 +454,7 @@ function EditableExistingRow({ row, skuOptions, onChange }) {
     const intVal = v === "" ? "" : String(Math.floor(Number(v)));
     if (intVal === "" || Number(intVal) > 0) onChange({ ...row, received_quantity: intVal });
   };
+
 
   return (
     <>
@@ -498,7 +503,7 @@ function EditableExistingRow({ row, skuOptions, onChange }) {
 }
 
 // ─── Editable new row ─────────────────────────────────────────────────────────
-function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove }) {
+function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove, grnId }) {
   const [batchingOpen, setBatchingOpen] = useState(false);
   const [serialOpen, setSerialOpen] = useState(false);
 
@@ -540,7 +545,7 @@ function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove }) {
       {trackingType === "serial" && (
         <SerialModal key={`serial-new-${row._id}-${row.received_quantity}`} isOpen={serialOpen} onClose={() => setSerialOpen(false)}
           onSave={(s) => onChange({ ...row, serials: s })} skuName={selectedSku?.product_name || ""}
-          totalQuantity={row.received_quantity || 0} initialSerials={serials} />
+          totalQuantity={row.received_quantity || 0} initialSerials={serials} skuId={row.product_sku_id}  grnId={grnId} />
       )}
       <tr className="border-b border-blue-100 bg-blue-50/30">
         <td className="px-2 py-2 w-[240px] max-w-[240px]" style={{ overflow: "visible" }}>
@@ -814,8 +819,8 @@ export default function GrnLineItems({
         setIsEditing(false);
         setIsLineItemsEditing?.(false);
         onSaved?.();
-      } else throw new Error(data?.errors?.[0]);
-    } catch (err) { toast.error("Failed to save GRN line items " + err); }
+      } else throw new Error(data?.errors?.[0] ?? "Something went wrong");
+    } catch (err) { toast.error("Failed to save GRN line items " + err.message); }
     finally { setSaving(false); }
   };
 
@@ -889,8 +894,8 @@ export default function GrnLineItems({
         setSubmittedQC?.(true);
         setHasSubmitted?.(true);
         onSaved?.();
-      } else throw new Error(data?.errors?.[0]);
-    } catch (err) { toast.error("Failed to save QC results: " + err); }
+      } else throw new Error(data?.errors?.[0] ?? "Something went wrong");
+    } catch (err) { toast.error("Failed to save QC results: " + err.message); }
     finally { setSaving(false); }
   };
 
@@ -982,6 +987,7 @@ export default function GrnLineItems({
                           qcData={qcDataMap[rowKey]}
                           onQCDataChange={(data) => setQcDataMap((prev) => ({ ...prev, [rowKey]: data }))}
                           onConfirmed={() => setConfirmedRowKeys((prev) => ({ ...prev, [rowKey]: true }))}
+                          grnId={grnId}
                         />
                       );
                     })}
@@ -1065,7 +1071,7 @@ export default function GrnLineItems({
                   {newRows.map((row, idx) => (
                     <EditableRow key={row._id} row={row} skuOptions={skuOptions} usedSkuIds={usedSkuIds}
                       onChange={(updated) => setNewRows((prev) => prev.map((r, i) => i === idx ? updated : r))}
-                      onRemove={() => setNewRows((prev) => prev.filter((_, i) => i !== idx))} />
+                      onRemove={() => setNewRows((prev) => prev.filter((_, i) => i !== idx))} grnId={grnId} />
                   ))}
                   <tr>
                     <td colSpan={9} className="px-3 py-3 border-t border-gray-50">

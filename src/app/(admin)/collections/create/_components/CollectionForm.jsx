@@ -78,10 +78,11 @@ const CollectionForm = ({
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}`;
       const response = await fetch(url);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setFormData(result.data);
     } catch (err) {
-      console.error('Error fetching collection:', err);
-      toast.error('Failed to fetch collection details');
+      console.error(err);
+      toast.error('Failed to fetch collection details '+err.message);
     } finally {
       setIsFetching(false);
     }

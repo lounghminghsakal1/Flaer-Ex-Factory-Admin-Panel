@@ -47,6 +47,9 @@ export default function BrandDetailsPage() {
       );
 
       const result = await res.json();
+      if (!res.ok || result?.status === "failure") {
+        throw new Error(result?.errors[0] ?? "Something went wrong");
+      }
       const data = result.data;
 
       setFormData({
@@ -65,8 +68,10 @@ export default function BrandDetailsPage() {
         }
       });
 
-    } catch {
-      toast.error("Failed to fetch brand");
+
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to fetch brand " + err.message);
     } finally {
       setLoading(false);
     }
@@ -103,17 +108,19 @@ export default function BrandDetailsPage() {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error();
+      const result = await res.json()
+      if (!res.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
 
       toast.success(brandId ? "Brand updated" : "Brand created", {
-        
+
       });
       const returnTo = searchParams.get("returnTo");
 
       router.push(`/catalog/brands${returnTo ? `?${decodeURIComponent(returnTo)}` : ""}`);
 
-    } catch {
-      toast.error("Error saving brand");
+    } catch (err) {
+      console.log(err);
+      toast.error("Error saving brand " + err.message);
     } finally {
       setLoading(false);
     }

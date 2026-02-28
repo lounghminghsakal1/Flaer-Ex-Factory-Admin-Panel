@@ -91,9 +91,11 @@ export default function ProductsListing() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/brands?only_names=true`);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setBrandOptions(result.data.map(b => ({...b, id: String(b.id)})));
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch brands list "+ err.message);
     }
   }
 
@@ -101,9 +103,11 @@ export default function ProductsListing() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setParentCategoryOptions(result.data.map(c => ({...c, id: String(c.id)})));
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch category options "+err.message);
     }
   }
 
@@ -111,9 +115,11 @@ export default function ProductsListing() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${parentId}&only_names=true`);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setSubCategoryOptions(result.data.map(subC => ({...subC, id: String(subC.id)})));
     } catch (err) {
       console.log(err);
+      toast.error("Failed to fetch sub categories "+err.message);
     }
   }
 
@@ -134,16 +140,15 @@ export default function ProductsListing() {
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?${query}`
       );
 
-      if (!response.ok) throw new Error("Failed to fetch products");
-
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
       setData(result.data || []);
       setTotalPages(result.meta?.total_pages || 1);
 
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch product details");
+      toast.error("Failed to fetch product details "+err.message);
     } finally {
       setLoading(false);
     }

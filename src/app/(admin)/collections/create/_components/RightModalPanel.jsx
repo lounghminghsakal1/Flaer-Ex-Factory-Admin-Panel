@@ -37,7 +37,7 @@ const ProductCard = ({ product, isSelected, onToggle, isAlreadyAdded }) => {
         {/* Image Section */}
         <div
           className={`shrink-0 ${product?.media ? 'cursor-pointer' : ''}`}
-          onClick={() => {}} //handleImageClick
+          onClick={() => { }} //handleImageClick
         >
           {product?.media ? (
             <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden group/image">
@@ -213,11 +213,12 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/brands?only_names=true`);
       if (!response.ok) throw new Error("Failed to fetch brands list");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       const namesArray = result.data;
       setBrandOptions(namesArray);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch brands list");
+      toast.error("Failed to fetch brands list " + err.message);
     }
   }
 
@@ -226,11 +227,12 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?categories=true&only_names=true`);
       if (!response.ok) throw new Error("Failed to fetch categories list");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       const namesArray = result.data.map(item => ({ id: item.id, name: item.name }));
       setParentCategoryOptions(namesArray);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch categories list");
+      toast.error("Failed to fetch categories list " + err.message);
     }
   }
 
@@ -239,11 +241,12 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories?parent_id=${parentId}&only_names=true`);
       if (!response.ok) throw new Error("Failed to fetch sub-categories list");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       const namesArray = result.data.map(item => ({ id: item.id, name: item.name }));
       setSubCategoryOptions(namesArray);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch sub-categories list");
+      toast.error("Failed to fetch sub-categories list " + err.message);
     }
   }
 
@@ -276,13 +279,14 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch products");
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setProducts(result.data);
       setTotalPages(result.meta.total_pages || 1);
       setTotalProducts(result.meta.total_data_count || 0);
       setSelectedProducts([]);
     } catch (err) {
       console.log(err);
-      toast.error("Failed to fetch products");
+      toast.error("Failed to fetch products " + err.message);
       setProducts([]);
     } finally {
       setIsLoading(false);
@@ -428,8 +432,8 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
           body: JSON.stringify(payload)
         }
       );
-
-      if (!response.ok) throw new Error("Failed to map products");
+      const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
       const newlyMappedProducts = products.filter(p =>
         selectedProducts.includes(p.id)
@@ -444,7 +448,7 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
       refreshProductsList();
     } catch (err) {
       console.log(err);
-      toast.error("Failed to map products");
+      toast.error("Failed to map products "+err.message);
     } finally {
       setIsMappingProducts(false);
     }
@@ -455,9 +459,11 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}`;
       const response = await fetch(url);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setCollectionData(result.data);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to update products data "+err.message);
     }
   }
 

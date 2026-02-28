@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect,useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -14,7 +14,8 @@ import {
   ExternalLink,
   Loader2,
   X,
-  Send
+  Send,
+  MoreVertical
 } from "lucide-react";
 import { toast } from "react-toastify";
 import GrnFormModal from "./GrnFormModal";
@@ -56,6 +57,22 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
   const [isLineItemsEditing, setIsLineItemsEditing] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target))
+        setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const canCancel = grn.status === "created" || grn.status === "qc_pending";
+  const hasMenuItems = canCancel; // extend here as you add more options
+
   const formatDate = (str) => {
     if (!str) return "--";
     const d = new Date(str);
@@ -76,10 +93,11 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
         } else {
           toast.error("Failed to load GRN details.");
           setLineItems([]);
+          throw new Error(data?.errors[0] ?? "Something went wrong");
         }
       })
-      .catch(() => {
-        toast.error("Failed to load GRN details.");
+      .catch((err) => {
+        toast.error("Failed to load GRN details "+err.message);
         setLineItems([]);
       })
       .finally(() => setLoadingDetail(false));
@@ -101,9 +119,14 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
       .then((data) => {
         if (data.status === "success") {
           setLineItems(data.data?.line_items || []);
+        } else {
+          throw new Error(data?.errors[0] ?? "Something went wrong");
         }
       })
-      .catch(() => { });
+      .catch((err) => { 
+        console.log(err);
+        toast.error("Failed to save GRN line items "+ err.message);
+      });
     onRefresh(); // refresh the list-level data (totals etc.)
   };
 
@@ -120,7 +143,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
       onRefresh();
     } catch (err) {
       console.log(err);
-      toast.error("Failed to complete GRN " + err)
+      toast.error("Failed to complete GRN " + err.message);
     } finally {
       setCompleting(false);
     }
@@ -129,16 +152,16 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
   const handleCancelGrn = async () => {
     setCancelling(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grn.id}`;
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grn.id}/cancel`;
       const res = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" } });
       const data = await res.json();
       if (!res.ok || data.status === "failure") {
-        throw new Error(data?.errors[0]);
+        throw new Error(data?.errors[0] ?? "Something went wrong");
       }
       toast.success("GRN cancelled successfully");
       onRefresh();
     } catch (err) {
-      toast.error("Failed to cancel GRN " + err);
+      toast.error("Failed to cancel GRN " + err.message);
     } finally {
       setCancelling(false);
     }
@@ -151,12 +174,12 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
       const res = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" } });
       const data = await res.json();
       if (!res.ok || data.status === "failure") {
-        throw new Error(data?.errors[0]);
+        throw new Error(data?.errors[0] ?? "Something went wrong");
       }
       toast.success("GRN sent to QC successfully");
       onRefresh();
     } catch (err) {
-      toast.error("Failed to send GRN to QC " + err);
+      toast.error("Failed to send GRN to QC " + err.message);
     } finally {
       setSendingToQC(false);
     }
@@ -193,7 +216,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
                     ? "bg-green-50 text-green-700 border border-green-200"
                     : grn.status === "draft"
                       ? "bg-gray-100 text-gray-600"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                      : grn.status === "cancelled" ? " bg-red-100 text-red-600" : "bg-amber-50 text-amber-700 border border-amber-200"
                     }`}
                 >
                   {grn.status || "draft"}
@@ -206,10 +229,10 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
                     <CalendarDays className="w-3 h-3" />
                     {formatDate(grn.received_date)}
                   </span>
-                  {grn.node_name && (
+                  {grn?.node?.name && (
                     <span className="flex items-center gap-1 text-xs text-gray-400">
                       <MapPin className="w-3 h-3" />
-                      {grn.node_name}
+                      {grn.node.name}
                     </span>
                   )}
                   <span className="flex items-center gap-1 text-xs text-gray-400">
@@ -251,11 +274,44 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
                 Update GRN
               </div>
             )}
+
+            {hasMenuItems && (
+              <div className="relative" ref={menuRef}>
+                <div
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen((prev) => !prev); }}
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${menuOpen
+                      ? "bg-gray-100 text-gray-700"
+                      : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                    }`}
+                  aria-label="More options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </div>
+
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
+                    {canCancel && (
+                      <div
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(false);
+                          handleCancelGrn();
+                        }}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        {cancelling ? "Cancelling..." : "Cancel GRN"}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle();
-              }}
+              onClick={(e) => { e.stopPropagation(); onToggle(); }}
               className="cursor-pointer"
             >
               {isOpen ? (
@@ -271,10 +327,10 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
         {isOpen && (
           <div className="px-4 pb-5 border-t border-gray-100 pt-4 space-y-4">
             {/* GRN Details */}
-            <div className="grid grid-cols-4 gap-3 ">
+            <div className="grid grid-cols-5 gap-3 ">
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-gray-400">Node</span>
-                <span className="text-sm font-medium text-gray-800">{grn.node_name || "--"}</span>
+                <span className="text-sm font-medium text-gray-800">{grn?.node?.name || "--"}</span>
               </div>
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-gray-400">Vendor Invoice No.</span>
@@ -338,7 +394,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
             )}
 
             <div className="flex justify-end items-center gap-3">
-              {(grn.status === "created" || grn.status === "qc_pending") && (
+              {/* {(grn.status === "created" || grn.status === "qc_pending") && (
                 <div className="flex justify-end pt-1">
                   <div
                     role="button"
@@ -351,7 +407,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
                     {cancelling ? "Cancelling..." : "Cancel GRN"}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {grn.status === "created" && (lineItems !== null && lineItems.length > 0) && (
                 <div className="flex justify-end pt-1">
@@ -364,10 +420,10 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
                       }
                       handleSendToQC();
                     }}
-                    className="flex items-center gap-2 px-5 py-2 bg-green-600 text-gray-100 text-sm font-semibold rounded-md cursor-pointer hover:scale-103 transition-all hover:opacity-80"
+                    className={`flex items-center gap-2 px-5 py-2 ${isLineItemsEditing ? "bg-gray-600" : " bg-green-600"} text-gray-100 text-sm font-semibold rounded-md cursor-pointer hover:scale-103 transition-all hover:opacity-80`}
                   >
                     <Send className="w-4 h-4" />
-                    {sendingToQC ? "Sending..." : "Send to QC"}
+                    {sendingToQC ? "Proceeding..." : "Proceed to QC"}
                   </div>
                 </div>
               )}
@@ -416,7 +472,9 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [meta, setMeta] = useState({});
 
-  const fetchGrns = async () => {
+  const [lastGrnCreatedId, setLastGrnCreatedId] = useState(null);
+
+  const fetchGrns = async (forceOpenId = null) => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes?purchase_order_id=${poId}`
@@ -426,11 +484,22 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
         const list = [...(data.data || [])].sort((a, b) => b.id - a.id);
         setGrns(list);
         setMeta(data.meta || {});
-        if (list.length > 0) setOpenAccordion((prev) => prev ?? list[0].id);
+        if (list.length > 0) setOpenAccordion((prev) => {
+          if (forceOpenId) {
+            const exists = list.find(grn => grn.id === forceOpenId);
+            if (exists) {
+              return forceOpenId;
+            }
+          }
+          if (prev && list.some(grn => grn.id === prev)) {
+            return prev;
+          }
+          return list[0].id;
+        });
       }
-      if (data.status === "failure") throw new Error(data?.errors?.[0]);
+      if (data.status === "failure") throw new Error(data?.errors?.[0] ?? "Something went wrong");
     } catch (err) {
-      toast.error("Failed to fetch GRNs: " + err);
+      toast.error("Failed to fetch GRNs: " + err.message);
     }
   };
 
@@ -438,13 +507,13 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
     fetchGrns().finally(() => setLoading(false));
   }, [poId]);
 
-  const handleGrnCreated = () => {
+  const handleGrnCreated = (newGrn) => {
     setCreateModalOpen(false);
-    fetchGrns();
+    fetchGrns(newGrn.id);
   };
 
   const canCreate = () => {
-    const allowedStatuses = ["completed", "rejected"];
+    const allowedStatuses = ["completed", "cancelled"];
     const hasInCompletedGRNs = grns.some(grn => !allowedStatuses.includes(grn.status));
     if (hasInCompletedGRNs) return false;
     return true;

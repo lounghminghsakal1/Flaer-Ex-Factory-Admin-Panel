@@ -132,9 +132,8 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
         }
       );
 
-      if (!response.ok) throw new Error("Failed to update sequence");
-
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
       // Replace old products with updated temp products
       setProducts(tempProducts);
@@ -144,7 +143,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       toast.success("Sequence updated successfully!");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to update sequence");
+      toast.error("Failed to update sequence "+err.message);
     } finally {
       setIsUpdatingSequence(false);
     }
@@ -197,9 +196,8 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
         }
       );
 
-      if (!response.ok) throw new Error("Failed to remove items");
-
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
       // Update the actual products state
       setProducts(resequencedProducts);
@@ -215,7 +213,7 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       toast.success("Items removed successfully!");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to remove items");
+      toast.error("Failed to remove items "+err.message);
     } finally {
       setIsRemovingItems(false);
     }
@@ -242,11 +240,12 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
         }
       );
 
-      if (!response.ok) throw new Error("Failed to update sequence");
+      const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
     } catch (err) {
       console.error(err);
-      toast.error("Failed to update sequence");
+      toast.error("Failed to update sequence "+err.message);
     }
   };
 
@@ -255,9 +254,11 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections/${collectionId}`;
       const response = await fetch(url);
       const result = await response.json();
+      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setCollectionData(result.data);
     } catch (err) {
       console.log(err);
+      toast.error("Failed to update products data "+err.message);
     }
   }
 
