@@ -353,7 +353,7 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
           {isBatch && (
             <button
               onClick={() => setBatchQcOpen(true)}
-              className={`text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1
+              className={`text-[11px] px-2 py-1 font-semibold rounded-md transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1
                 ${isBatchConfirmed
                   ? "bg-green-200 text-emerald-600 hover:text-emerald-700"
                   : hasQC
@@ -369,7 +369,7 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
               onClick={() => setSerialQcOpen(true)}
               className={`text-[11px] px-2 py-1 font-semibold rounded-md transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1
                 ${isSerialConfirmed
-                  ? "text-emerald-600 hover:text-emerald-700"
+                  ? "bg-green-200 text-emerald-600 hover:text-emerald-700"
                   : hasQC
                     ? "bg-yellow-500 text-gray-100 hover:opacity-80"
                     : "text-primary hover:opacity-75"}`}

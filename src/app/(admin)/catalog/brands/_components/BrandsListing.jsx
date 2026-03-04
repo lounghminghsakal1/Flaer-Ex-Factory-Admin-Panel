@@ -42,7 +42,7 @@ export default function BrandsListing({
       label: "Status",
       render: (value) => (
         <span
-          className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-semibold
+          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold
           ${value === "active"
               ? "bg-green-100 text-green-700"
               : "bg-gray-100 text-gray-700"

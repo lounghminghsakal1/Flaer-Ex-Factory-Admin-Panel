@@ -1046,25 +1046,10 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
 
   const [taxOptions, setTaxoptions] = useState([]);
   const [isTaxPopupOpen, setIsTaxPopupOpen] = useState(false);
-  //const [categoryOptions, setCategoryOptions] = useState([]);
 
   useEffect(() => {
-    fetchCategoryOptions();
     fetchTaxOptions();
   }, []);
-
-  async function fetchCategoryOptions() {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/categories`);
-      const result = await response.json();
-      if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
-      const namesArray = result.data.map(item => ({ id: item.id, name: item.name }));
-      setCategoryOptions(namesArray);
-    } catch (err) {
-      console.log(err);
-      toast.error("Failed to fetch categories "+err.message);
-    }
-  }
 
   async function fetchTaxOptions() {
     try {

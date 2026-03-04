@@ -42,8 +42,9 @@ export default function CollectionDetailsPage() {
       const response = await fetch(url);
       const result = await response.json();
       if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
-      setCollection(result.data);
-      setProductsList(result.data.collection.collection_items);
+      setCollection(result?.data);
+      console.log(result);
+      setProductsList(result?.data?.collection_items);
     } catch (err) {
       console.log(err);
       toast.error("Failed to fetch collections list "+err.message);

@@ -20,6 +20,7 @@ import {
 import { toast } from "react-toastify";
 import GrnFormModal from "./GrnFormModal";
 import GrnLineItems from "./GrnLineItems";
+import GrnPageSkeleton from "./GrnPageSkeleton";
 
 // ─── Stat Cards ───────────────────────────────────────────────────────────────
 function StatCard({ label, value, color = "gray" }) {
@@ -521,10 +522,11 @@ export default function GoodsReceiveNote({ poId, vendorId }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        <span className="text-sm">Loading GRNs…</span>
-      </div>
+      <GrnPageSkeleton />
+      // <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
+      //   <Loader2 className="w-5 h-5 animate-spin" />
+      //   <span className="text-sm">Loading GRNs…</span>
+      // </div>
     );
   }
 

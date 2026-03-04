@@ -146,11 +146,11 @@ export function ViewSerialModal({ isOpen, onClose, skuName, serials = [] }) {
 }
 
 // ─── Reason Modal ─────────────────────────────────────────────────────────────
-export function ReasonModal({ isOpen, onClose, onSave, existingReason = "" }) {
+export function ReasonModal({ isOpen, onClose, onSave, existingReason = "", viewOnly = false }) {
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    if (isOpen) setReason(existingReason || "");
+    if (isOpen && !viewOnly) setReason(existingReason || "");
   }, [isOpen, existingReason]);
 
   const isValid = reason.trim().length >= 10;
@@ -168,7 +168,7 @@ export function ReasonModal({ isOpen, onClose, onSave, existingReason = "" }) {
             </button>
           </div>
           <div className="px-6 py-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Please provide a reason for rejection</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{viewOnly ? "" : "Please provide a reason for rejection"}</label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -177,7 +177,7 @@ export function ReasonModal({ isOpen, onClose, onSave, existingReason = "" }) {
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-none"
             />
             <div className="flex items-center justify-between mt-1.5">
-              {!isValid && reason.length > 0 ? (
+              {!isValid && reason.length > 0 && !viewOnly ? (
                 <span className="flex items-center gap-1 text-xs text-red-500">
                   <AlertCircle className="w-3 h-3" />At least 10 characters required
                 </span>

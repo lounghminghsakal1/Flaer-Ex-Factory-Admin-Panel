@@ -42,16 +42,16 @@ export default function PurchaseOrdersLiting({ data, currentPage, totalPages, ha
       render: (value) => {
         const statusColors = {
           created: "text-gray-600",
-          "waiting for approval": "text-yellow-600",
-          approved: "text-blue-600",
-          completed: "text-green-600",
+          waiting_for_approval: "text-amber-600",
+          approved: "text-green-600",
+          completed: "text-blue-600",
           rejected: "text-red-600",
           cancelled: "text-red-500"
         };
 
         return (
           <span className={`font-semibold capitalize ${statusColors[value] || "text-gray-600"}`}>
-            {value}
+            {value.replaceAll("_", " ")}
           </span>
         );
       }

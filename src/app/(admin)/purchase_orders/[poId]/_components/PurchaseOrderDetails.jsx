@@ -7,6 +7,7 @@ import POLineItems from "../../create/_components/POLineItems";
 import AmountSummary from "./AmountSummary";
 import { toast } from "react-toastify";
 import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
+import PurchaseOrderDetailsSkeleton from "./PurchaseOrderDetailsSkeleton";
 
 function toApiDateStr(date) {
   if (!date) return "";
@@ -55,6 +56,11 @@ function statusBadgeStyle(status, variant = "badge") {
       text: "text-red-700",
     },
 
+    cancelled: {
+      badge: "bg-red-100 text-red-600",
+      text: "text-red-600"
+    },
+
     completed: {
       badge: "bg-blue-100 text-blue-700",
       text: "text-blue-700",
@@ -76,7 +82,7 @@ function checkValid(vendor, deliveryDate, rows) {
   return true;
 }
 
-export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
+export default function PurchaseOrderDetails({ poData,loading = false, poId, onRefresh }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -287,6 +293,8 @@ export default function PurchaseOrderDetails({ poData, poId, onRefresh }) {
   const badgeStyle = statusBadgeStyle(status);
 
   const vendorLocked = editing;
+
+  if (loading) return <PurchaseOrderDetailsSkeleton />
 
   return (
     // White card — the scrollable area in page.js scrolls this entire card

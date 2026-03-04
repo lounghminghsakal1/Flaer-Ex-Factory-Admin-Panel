@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import SearchableDropdown from "../../create/_components/SearchableDropdown";
+import PurchaseOrderAmendmentsSkeleton from "./PurchaseOrderAmendmentsSkeleton";
 
 // Helpers
 const makeEmptyRow = () => ({
@@ -160,8 +161,8 @@ function AmendmentCreateRow({ row, allLineItems, usedIds, poStatus, onChange, on
       skuCode: item.product_sku.sku_code,
       beforeUnits: String(item.total_units),
       beforePrice: String(item.unit_price),
-      afterUnits: "",
-      afterPrice: "",
+      afterUnits: String(item.total_units),
+      afterPrice: String(item.unit_price),
     });
   };
 
@@ -507,15 +508,15 @@ function AmendmentForm({
         <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-72">SKU</th>
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-44">SKU Code</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-72">SKU</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-44">SKU Code</th>
 
               {/* CREATE mode: simple single columns */}
               {isCreating && showUnits && (
-                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-24">Units</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Units</th>
               )}
               {isCreating && (
-                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-24">Price</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Price</th>
               )}
 
               {/* EDIT mode: full before/after columns */}
@@ -540,14 +541,14 @@ function AmendmentForm({
               {/* EDIT MODE */}
               {!isCreating && showUnits && (
                 <>
-                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold
     text-gray-500 uppercase tracking-wide w-20">
                     Before Units
                   </th>
 
                   <th className="w-6" />
 
-                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold
     text-gray-500 uppercase tracking-wide w-20">
                     After Units
                   </th>
@@ -556,14 +557,14 @@ function AmendmentForm({
 
               {!isCreating && (
                 <>
-                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold
     text-gray-500 uppercase tracking-wide w-24">
                     Before Price
                   </th>
 
                   <th className="w-6" />
 
-                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold
     text-gray-500 uppercase tracking-wide w-28">
                     After Price
                   </th>
@@ -829,21 +830,21 @@ function AmendmentAccordion({
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-48">SKU</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">SKU Code</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-48">SKU</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">SKU Code</th>
                       {showUnits && (
                         <>
-                          <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">Before Units</th>
+                          <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Before Units</th>
                           <th className="w-6" />
-                          <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">After Units</th>
+                          <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">After Units</th>
                         </>
                       )}
                       {!showUnits && (
-                        <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">Units</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Units</th>
                       )}
-                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">Before Price</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Before Price</th>
                       <th className="w-6" />
-                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-20">After Price</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">After Price</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1053,10 +1054,11 @@ export default function PurchaseOrderAmendments({ poId, refreshPo }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-        <span className="w-5 h-5 border-2 border-gray-200 border-t-primary rounded-full animate-spin" />
-        <span className="text-sm">Loading amendments…</span>
-      </div>
+      <PurchaseOrderAmendmentsSkeleton />
+      // <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
+      //   <span className="w-5 h-5 border-2 border-gray-200 border-t-primary rounded-full animate-spin" />
+      //   <span className="text-sm">Loading amendments…</span>
+      // </div>
     );
   }
 

@@ -7,6 +7,7 @@ import PurchaseOrdersFilters from "./_components/PurchaseOrdersFilters";
 import PurchaseOrdersListing from "./_components/PurchaseOrdersListing";
 import { toast } from "react-toastify";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import TablePageSkeleton from "../../../../components/shared/TablePageSkeleton";
 
 export default function PurchaseOrders() {
 
@@ -89,10 +90,10 @@ export default function PurchaseOrders() {
     setAppliedFilters(draftFilters);
     setCurrentPage(1);
     const params = new URLSearchParams(searchParams.toString());
-    if (draftFilters.by_purchase_order) params.append("by_purchase_order", draftFilters.by_purchase_order);
-    if (draftFilters.by_status) params.append("by_status", draftFilters.by_status);
-    if (draftFilters.by_vendor) params.append("by_vendor", draftFilters.by_vendor);
-    params.append("page", "1");
+    if (draftFilters.by_purchase_order) params.set("by_purchase_order", draftFilters.by_purchase_order);
+    if (draftFilters.by_status) params.set("by_status", draftFilters.by_status);
+    if (draftFilters.by_vendor) params.set("by_vendor", draftFilters.by_vendor);
+    params.set("page", "1");
     router.push(`${pathName}?${params.toString()}`);
   }
 
@@ -106,15 +107,18 @@ export default function PurchaseOrders() {
   const handlePageChange = (page) => {
     setCurrentPage(page);
     const params = new URLSearchParams(searchParams.toString());
-    if (appliedFilters.by_purchase_order) params.append("by_purchase_order", appliedFilters.by_purchase_order);
-    if (appliedFilters.by_status) params.append("by_status", appliedFilters.by_status);
-    if (appliedFilters.by_vendor) params.append("by_vendor", appliedFilters.by_vendor);
-    params.append("page", page);
+    if (appliedFilters.by_purchase_order) params.set("by_purchase_order", appliedFilters.by_purchase_order);
+    if (appliedFilters.by_status) params.set("by_status", appliedFilters.by_status);
+    if (appliedFilters.by_vendor) params.set("by_vendor", appliedFilters.by_vendor);
+    params.set("page", page);
     router.push(`${pathName}?${params.toString()}`);
   }
 
   const isDirty = JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters);
   const hasActiveFilters = appliedFilters.by_purchase_order || appliedFilters.by_status || appliedFilters.by_vendor;
+
+
+  if(loading) return <TablePageSkeleton />
 
   return (
     <div>

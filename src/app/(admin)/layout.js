@@ -9,8 +9,9 @@ import {
   ChevronRight,
   Layers,
   Store,
-  ShoppingBag,
-  ShoppingBagIcon
+  Users,
+  ShoppingBagIcon,
+  Settings
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -29,7 +30,7 @@ const SidebarItem = ({
 }) => {
   return (
     <div
-      className="w-full mb-1"
+      className="w-full mb-1 "
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -50,6 +51,7 @@ const SidebarItem = ({
             hover:bg-[#1a2332] hover:text-white hover:border-l-4 hover:border-blue-400
             transition-all duration-200
             relative
+            cursor-pointer
             group
           `}
         >
@@ -57,7 +59,7 @@ const SidebarItem = ({
           
           <span
             className={`
-              ${isCollapsed ? 'text-[7px] text-center leading-tight' : 'text-xs flex-1 text-left'}
+              ${isCollapsed ? 'text-[9px] text-center leading-tight' : 'text-xs flex-1 text-left'}
               group-hover:font-medium
             `}
           >
@@ -265,6 +267,37 @@ const SidebarLayout = ({ children }) => {
       shortName: 'PO',
       icon: ShoppingBagIcon,
       href: '/purchase_orders',
+    },
+    {
+      id: 'customers',
+      label: 'Customers',
+      shortName: 'Customers',
+      icon: Users,
+      href: '/customers',
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      shortName: 'Settings',
+      icon: Settings,
+      href: '/settings/taxes',
+      hasSubmenu: true,
+      submenuData: [
+        {
+          heading: 'Taxes',
+          items: [
+            { label: 'Taxes', href: '/settings/taxes' },
+            { label: 'Create Tax', href: '/settings/taxes/form?createNew=true' },
+          ],
+        },
+        {
+          heading: 'Coupons',
+          items: [
+            { label: 'Coupons', href: '/settings/coupons' },
+            { label: 'Create Coupon', href: '/settings/coupons/form?createNew=true' },
+          ],
+        },
+      ]
     },
     {
       id: 'inventory',

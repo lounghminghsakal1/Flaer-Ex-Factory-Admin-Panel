@@ -7,6 +7,7 @@ import HeaderWithBack from "../../../../../components/shared/HeaderWithBack";
 import PurchaseOrderAmendments from "./_components/PurchaseOrderAmendments";
 import GoodsReceiveNote from "./_components/_grn_components/GoodsReceiveNote";
 import { useSearchParams } from "next/navigation";
+import PurchaseOrderDetailsSkeleton from "./_components/PurchaseOrderDetailsSkeleton";
 
 export default function PurchaseOrderDetailsPage() {
   const params = useParams();
@@ -17,14 +18,15 @@ export default function PurchaseOrderDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const searchParams = useSearchParams();
-  const tabFromUrl = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "purchase_order");
+
+  const [activeTab, setActiveTab] = useState("purchase_order");
 
   useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
     if (tabFromUrl) {
       setActiveTab(tabFromUrl);
     }
-  }, [tabFromUrl]);
+  }, [searchParams]);
 
   const handleTabChange = (key) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -48,7 +50,7 @@ export default function PurchaseOrderDetailsPage() {
 
   useEffect(() => { fetchPO(); }, [fetchPO]);
 
-  const showGRNTab = poData?.status === "approved" || poData?.status === "completed" ;
+  const showGRNTab = poData?.status === "approved" || poData?.status === "completed";
   const showAmndTab = poData?.status === "approved" || poData?.status === "completed";
 
   const TABS = [
@@ -95,11 +97,11 @@ export default function PurchaseOrderDetailsPage() {
             </div>
           </div>
 
+
+          {/* <p className="text-sm text-gray-400">Loading purchase order...</p> */}
           <div className="flex-1 min-h-0 overflow-y-auto p-2">
             {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <p className="text-sm text-gray-400">Loading purchase order...</p>
-              </div>
+              <PurchaseOrderDetailsSkeleton />
             ) : error ? (
               <div className="flex items-center justify-center py-20">
                 <p className="text-sm text-red-500">{error}</p>
@@ -107,6 +109,7 @@ export default function PurchaseOrderDetailsPage() {
             ) : activeTab === "purchase_order" && poData ? (
               <PurchaseOrderDetails
                 poData={poData}
+                loading={loading}
                 poId={poId}
                 onRefresh={fetchPO}
               />

@@ -1,18 +1,16 @@
 "use client";
 
-import CreateNewButton from "../../../../../components/shared/CreateNewButton";
 import { useRouter } from "next/navigation";
 import { FilterX, SearchIcon, Check, ChevronDown } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
-import { toast } from "react-toastify";
+import { useEffect, useState,  } from "react";
 
-export default function PurchaseOrdersFilters({ draftFilters = {}, setDraftFilters = null, onApply = null, isDirty = null, onClear = null, hasActiveFilters = null }) {
+export default function CustomersFilters({ draftFilters = {}, setDraftFilters = null, onApply = null, isDirty = null, onClear = null, hasActiveFilters = null }) {
   const router = useRouter();
 
   const [vendorsOptions, setVendorOptions] = useState([]);
-  useEffect(() => {
-    fetchVendorOptions();
-  }, []);
+  // useEffect(() => {
+  //   fetchVendorOptions();
+  // }, []);
 
   // useEffect(() => {
   //   if (draftFilters.by_purchase_order === "") {
@@ -20,20 +18,21 @@ export default function PurchaseOrdersFilters({ draftFilters = {}, setDraftFilte
   //   }
   // }, [draftFilters.by_purchase_order]);
 
-  const fetchVendorOptions = async () => {
-    try {
-      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/vendors?only_names=true`;
-      const response = await fetch(url);
-      const json = await response.json();
-      if (json.status === "failure") {
-        throw new Error(json?.errors[0] ?? "Something went wrong");
-      }
-      setVendorOptions(json.data);
-    } catch (err) {
-      console.log(err);
-      toast.error("Failed to fetch vendor options " + err.message);
-    }
-  }
+  // const fetchVendorOptions = async () => {
+  //   try {
+  //     const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/vendors?only_names=true`;
+  //     const response = await fetch(url);
+  //     const json = await response.json();
+  //     if (json.status === "failure") {
+  //       throw new Error(json?.errors[0] ?? "Something went wrong");
+  //     }
+  //     console.log(json.data);
+  //     setVendorOptions(json.data);
+  //   } catch (err) {
+  //     console.log(err);
+  //     toast.error("Failed to fetch vendor options " + err.message);
+  //   }
+  // }
   const [vendorSearch, setVendorSearch] = useState("");
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
 
@@ -125,7 +124,7 @@ export default function PurchaseOrdersFilters({ draftFilters = {}, setDraftFilte
                         className="text-sm px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-gray-600"
                         onClick={() => { setDraftFilters((prev) => ({ ...prev, by_vendor: "" })); setVendorDropdownOpen(false); setVendorSearch(""); }}
                       >
-                        All vendors
+                        
                       </li>
                     )}
                     {filteredVendors.length > 0 ? (
@@ -204,14 +203,6 @@ export default function PurchaseOrdersFilters({ draftFilters = {}, setDraftFilte
             </button>
           )}
 
-        </div>
-
-        {/* RIGHT SIDE */}
-        <div>
-          <CreateNewButton
-            buttonTitle="Create Purchase Order"
-            onClick={() => router.push("/purchase_orders/create?createNew=true")}
-          />
         </div>
 
       </div>

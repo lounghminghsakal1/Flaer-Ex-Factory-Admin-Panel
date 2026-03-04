@@ -2,7 +2,7 @@ export default function ShimmerUi() {
   const array = Array.from({ length: 16 });
 
   return (
-    <div className="p-5">
+    <div className="w-full mx-auto">
       <style>
         {`
           @keyframes shimmer {
@@ -12,7 +12,7 @@ export default function ShimmerUi() {
         `}
       </style>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,0.4fr))] gap-5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,0.4fr))] gap-5">
 
         {array.map((_, index) => (
           <div key={index}>

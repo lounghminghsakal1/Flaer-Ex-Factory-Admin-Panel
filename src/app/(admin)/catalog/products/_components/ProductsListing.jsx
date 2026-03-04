@@ -213,7 +213,7 @@ export default function ProductsListing() {
       label: 'Status',
       render: (value) => (
         <span
-          className={`px-2 py-1 rounded-full text-[10px] font-semibold
+          className={`px-2.5 py-1 rounded-full text-[10px] font-semibold
             ${value === 'active'
               ? 'bg-green-100 text-green-700'
               : value === 'inactive' ? 'bg-gray-100 text-gray-700' : 'bg-red-100 text-red-700'

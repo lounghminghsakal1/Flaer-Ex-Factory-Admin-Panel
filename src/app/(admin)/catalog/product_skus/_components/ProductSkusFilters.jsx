@@ -97,14 +97,6 @@ export default function ProductSkusFilters({ draftFilters = {}, setDraftFilters 
 
         </div>
 
-        {/* RIGHT SIDE */}
-        <div>
-          <CreateNewButton
-            buttonTitle="Create Purchase Order"
-            onClick={() => router.push("/purchase_orders/create?createNew=true")}
-          />
-        </div>
-
       </div>
 
     </div>

@@ -152,7 +152,7 @@ export default function POSidebar({ currentPoId }) {
               <button
                 key={po.id}
                 type="button"
-                onClick={() => router.push(`/purchase_orders/${po.id}`)}
+                onClick={() => router.push(`/purchase_orders/${po.id}?${searchParams.toString()}`)}
                 className={`w-full text-left px-4 py-3 border-b border-gray-50 transition-colors hover:bg-indigo-50/60 ${isActive ? "bg-indigo-50" : ""}`}
               >
                 {/* Row 1: PO number + Status */}
