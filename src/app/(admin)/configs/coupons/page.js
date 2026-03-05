@@ -1,7 +1,7 @@
 export default function CouponsPage() {
-  return (
+  return(
     <div>
-      Coupons page
+      THis is coupons pabfe
     </div>
   );
 }

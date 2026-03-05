@@ -22,15 +22,12 @@ export default function CustomerDetailPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [cartData, setCartData] = useState(null);
-  const [loadingCart, setLoadingCart] = useState(true);
-
+  
   const custId = params?.custId ?? params?.id;
 
   const activeTab = searchParams.get("tab") || "info";
 
   const [customersData, setCustomersData] = useState([]);
-  const [appliedCoupons, setAppliedCoupons] = useState([]);
 
   const isOnline = useOnlineCheck();
 
@@ -59,26 +56,6 @@ export default function CustomerDetailPage() {
     }
   }
 
-  // ── Fetch cart ────
-  const fetchCart = async () => {
-    setLoadingCart(true);
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/carts/cart_summary?customer_id=${custId}`);
-      const json = await res.json();
-      if (!res.ok || json.status === "failure") throw new Error(json?.errors[0] ?? "Soemthing went wrong");
-      setCartData(json.data || null);
-      setAppliedCoupons(json?.data?.applied_coupons ?? []);
-    } catch (err) {
-      setCartData(null);
-      toast.error("Failed to fetch cart data " + err)
-    } finally {
-      setLoadingCart(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCart();
-  }, []);
 
   return (
     <div>
@@ -123,7 +100,7 @@ export default function CustomerDetailPage() {
               <CustomerInfoTab custId={custId} />
             )}
             {activeTab === "place-order" && (
-              <AddToCart customerId={custId} cartData={cartData} fetchCart={fetchCart} loadingCart={loadingCart} setCartData={setCartData} appliedCoupons={appliedCoupons} />
+              <AddToCart customerId={custId}  />
             )}
           </div>
         </main>

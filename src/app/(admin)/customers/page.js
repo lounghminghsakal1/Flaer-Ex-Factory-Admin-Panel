@@ -14,6 +14,7 @@ export default function CustomersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
+
   useEffect(() => {
     fetchCustomersData();
   },[]);

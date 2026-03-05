@@ -276,25 +276,25 @@ const SidebarLayout = ({ children }) => {
       href: '/customers',
     },
     {
-      id: 'settings',
-      label: 'Settings',
-      shortName: 'Settings',
+      id: 'configs',
+      label: 'Configs',
+      shortName: 'Configs',
       icon: Settings,
-      href: '/settings/taxes',
+      href: '/configs/taxes',
       hasSubmenu: true,
       submenuData: [
         {
           heading: 'Taxes',
           items: [
-            { label: 'Taxes', href: '/settings/taxes' },
-            { label: 'Create Tax', href: '/settings/taxes/form?createNew=true' },
+            { label: 'Taxes', href: '/configs/taxes' },
+            { label: 'Create Tax', href: '/configs/taxes/form?createNew=true' },
           ],
         },
         {
           heading: 'Coupons',
           items: [
-            { label: 'Coupons', href: '/settings/coupons' },
-            { label: 'Create Coupon', href: '/settings/coupons/form?createNew=true' },
+            { label: 'Coupons', href: '/configs/coupons' },
+            { label: 'Create Coupon', href: '/configs/coupons/form?createNew=true' },
           ],
         },
       ]

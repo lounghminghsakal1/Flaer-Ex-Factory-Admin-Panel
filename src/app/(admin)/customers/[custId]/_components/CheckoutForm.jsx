@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import CheckedOutPage from "./CheckedOutPage";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -22,28 +23,35 @@ const DELIVERY_TIMES = [
 ];
 
 // Accept onBack prop — called when user clicks "Back to Cart"
-export default function CheckoutForm({ cartId, onBack }) {
+export default function CheckoutForm({ cartData,customerId, onBack, fetchCart }) {
   const router = useRouter();
+  const cartId = cartData.id;
+
+  const [pocName, pocMobile] = cartData?.delivery_info?.poc_details ? cartData?.delivery_info?.poc_details.split(" - ") : ["", ""];
 
   const [form, setForm] = useState({
-    delivery_type: "",
-    handle_with_care: false,
-    poc_name: "",
-    poc_mobile: "",
-    preferred_delivery_time: "",
-    driver_name: "",
-    vehicle_number: "",
-    driver_mobile_number: "",
-    floor_number: "",
-    ground_floor_included: false,
-    permitted_by_owner: false,
+    delivery_type: cartData.delivery_type ?? "",
+    handle_with_care: cartData?.handle_with_care ?? false,
+    poc_name: pocName ?? "",
+    poc_mobile: pocMobile ?? "",
+    preferred_delivery_time: cartData?.delivery_info?.prefered_delivery_time ?? "",
+    driver_name: cartData?.deliverer_details?.driver_name ?? "",
+    vehicle_number: cartData?.deliverer_details?.vehicle_number ?? "",
+    driver_mobile_number: cartData?.deliverer_details?.driver_mobile_number ?? "",
+    floor_number: cartData?.info_for_labour?.floor_number ?? "",
+    ground_floor_included: cartData?.info_for_labour?.ground_floor_included ?? false,
+    permitted_by_owner: cartData?.info_for_labour?.permitted_by_owner ?? false,
   });
 
   const [loading, setLoading] = useState(false);
 
-  const needsDriverInfo =
-    form.delivery_type === "ex_factory_vehicle" ||
-    form.delivery_type === "own_vehicle";
+  // const needsDriverInfo =
+  //   form.delivery_type === "ex_factory_vehicle" ||
+  //   form.delivery_type === "own_vehicle";
+
+  const needsDriverInfo = true;
+  const [isCheckedOut, setIsCheckedOut] = useState(cartData?.status === "checkout");
+  const [checkedOutCartData, setCheckedOutCartData]= useState(null);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -92,11 +100,11 @@ export default function CheckoutForm({ cartId, onBack }) {
   };
 
   const handleSubmit = async () => {
-    const validationError = validate();
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
+    // const validationError = validate();
+    // if (validationError) {
+    //   toast.error(validationError);
+    //   return;
+    // }
     setLoading(true);
     try {
       const res = await fetch(
@@ -110,6 +118,8 @@ export default function CheckoutForm({ cartId, onBack }) {
       const json = await res.json();
       if (!res.ok || json.status === "failure")
         throw new Error(json?.errors?.[0] ?? `Request failed with status ${res.status}`);
+      setCheckedOutCartData(json?.data ?? null);
+      setIsCheckedOut(true);
       toast.success("Checkout successful!");
     } catch (err) {
       toast.error("Checkout failed: " + err.message);
@@ -127,6 +137,8 @@ export default function CheckoutForm({ cartId, onBack }) {
       router.back();
     }
   };
+
+  if (isCheckedOut) return <CheckedOutPage cartData={checkedOutCartData} onBack={onBack} customerId={customerId} />
 
   return (
     <div className="w-full mx-auto py-4">
@@ -151,7 +163,7 @@ export default function CheckoutForm({ cartId, onBack }) {
         <SectionHeader title="Delivery Details" />
         <div className="px-4 py-4 grid grid-cols-2 gap-4 border-b border-gray-100">
 
-          <Field label="Delivery Type" required>
+          <Field label="Delivery Type" >
             <select
               value={form.delivery_type}
               onChange={(e) => handleChange("delivery_type", e.target.value)}
@@ -164,7 +176,7 @@ export default function CheckoutForm({ cartId, onBack }) {
             </select>
           </Field>
 
-          <Field label="Preferred Delivery Time" required>
+          <Field label="Preferred Delivery Time" >
             <select
               value={form.preferred_delivery_time}
               onChange={(e) => handleChange("preferred_delivery_time", e.target.value)}
@@ -177,7 +189,7 @@ export default function CheckoutForm({ cartId, onBack }) {
             </select>
           </Field>
 
-          <Field label="Point of Contact — Name">
+          <Field label="Point/Person of Contact — Name">
             <input
               type="text"
               value={form.poc_name}
@@ -187,11 +199,11 @@ export default function CheckoutForm({ cartId, onBack }) {
             />
           </Field>
 
-          <Field label="Point of Contact — Mobile">
+          <Field label="Point/Person of Contact — Mobile">
             <input
               type="tel"
               value={form.poc_mobile}
-              onChange={(e) => handleChange("poc_mobile", e.target.value.replace(/\D/, "").slice(0, 10))}
+              onChange={(e) => handleChange("poc_mobile", e.target.value.replace(/\D/g, "").slice(0, 10))}
               placeholder="10-digit mobile number"
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
             />
@@ -213,7 +225,7 @@ export default function CheckoutForm({ cartId, onBack }) {
             <SectionHeader title="Vehicle & Driver Details" />
             <div className="px-4 py-4 grid grid-cols-2 gap-4 border-b border-gray-100">
 
-              <Field label="Driver Name" required>
+              <Field label="Driver Name" >
                 <input
                   type="text"
                   value={form.driver_name}
@@ -223,7 +235,7 @@ export default function CheckoutForm({ cartId, onBack }) {
                 />
               </Field>
 
-              <Field label="Vehicle Number" required>
+              <Field label="Vehicle Number" >
                 <input
                   type="text"
                   value={form.vehicle_number}
@@ -233,7 +245,7 @@ export default function CheckoutForm({ cartId, onBack }) {
                 />
               </Field>
 
-              <Field label="Driver Mobile Number" required>
+              <Field label="Driver Mobile Number" >
                 <input
                   type="tel"
                   value={form.driver_mobile_number}
@@ -290,14 +302,17 @@ export default function CheckoutForm({ cartId, onBack }) {
             Back to Cart
           </button> */}
 
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex items-center gap-2 bg-primary hover:opacity-80 active:bg-blue-950 disabled:bg-blue-300 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 px-6 rounded-md transition-colors cursor-pointer"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Processing..." : "Checkout"}
-          </button>
+          {cartData.status === "active" && (
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex items-center gap-2 bg-primary hover:opacity-80 active:bg-blue-950 disabled:bg-blue-300 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 px-6 rounded-md transition-colors cursor-pointer"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? "Processing..." : "Confirm Checkout"}
+            </button>
+          )}
+
         </div>
 
       </div>

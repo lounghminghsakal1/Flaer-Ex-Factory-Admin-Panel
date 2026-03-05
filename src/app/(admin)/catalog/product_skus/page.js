@@ -5,6 +5,8 @@ import ListingPageHeader from "../../../../../components/shared/ListingPageHeade
 import ProductSkusFilters from "./_components/ProductSkusFilters";
 import ProductSkusListingPage from "./_components/ProductSkusLitingPage";
 import { toast } from "react-toastify";
+import { useSearchParams, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function ProductSkusPage() {
 
@@ -13,15 +15,37 @@ export default function ProductSkusPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathName = usePathname();
+  const starts_with = searchParams.get("starts_with") ?? "";
+  const status = searchParams.get("status") ?? "";
+  const page = Number(searchParams.get("page")) ?? 1;
 
   useEffect(() => {
-    fetchProductSkusData(currentPage);
-  },[currentPage]);
+    fetchProductSkusData();
+  },[searchParams]);
+  
+  const updateFilters = (filter) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(filter).forEach(([key, value]) => {
+      if (!value) params.delete(key);
+      else params.set(key, value);
+    })
+    router.push(`${pathName}?${params.toString()}`);
+  }
 
-  const fetchProductSkusData = async (page = 1) => {
+  const handlePageChange = (page) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page);
+    router.push(`${pathName}?${params.toString()}`);
+  }
+
+ 
+  const fetchProductSkusData = async () => {
     try {
       setLoading(true);
-      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/product_skus?page=${page}`;
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/product_skus?${searchParams.toString()}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Network error (${response.status})`);
       const result = await response.json();
@@ -37,12 +61,11 @@ export default function ProductSkusPage() {
     }
   }
 
-
   return (
     <div>
       <ListingPageHeader title="Product SKUs" />
-      <ProductSkusFilters />
-      <ProductSkusListingPage productSkusData={productSkusdata} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} />
+      <ProductSkusFilters start_with={starts_with} status={status} onApply={(filters) => updateFilters({...filters, page: 1})} onClear={() => router.push(`${pathName}`)} />
+      <ProductSkusListingPage productSkusData={productSkusdata} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} handlePageChange={handlePageChange}  />
     </div>
   );
 }

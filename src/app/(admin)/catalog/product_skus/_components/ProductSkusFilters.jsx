@@ -1,18 +1,22 @@
 "use client";
 
-import CreateNewButton from "../../../../../../components/shared/CreateNewButton";
-import { useRouter } from "next/navigation";
 import { FilterX, SearchIcon, Check } from "lucide-react";
-import { useEffect, } from "react";
+import { useEffect, useState } from "react";
 
-export default function ProductSkusFilters({ draftFilters = {}, setDraftFilters = null, onApply = null, isDirty = null, onClear = null, hasActiveFilters = null }) {
-  const router = useRouter();
+export default function ProductSkusFilters({ startss_with, status, onApply, onClear }) {
+
+  const [starts_with, setStarts_with] = useState(startss_with ?? "");
+  const [filterStatus, setFilterStatus] = useState(status ?? "");
 
   useEffect(() => {
-    if (draftFilters.by_purchase_order === "") {
-      onApply();
-    }
-  }, [draftFilters.by_purchase_order]);
+    setStarts_with(startss_with);
+    setFilterStatus(status);
+  }, [startss_with, status]);
+
+  useEffect(() => {
+    if (starts_with !== "") return;
+    onApply({ starts_with, status: filterStatus });
+  }, [starts_with]);
 
   return (
     <div className="w-full mx-auto my-4">
@@ -29,25 +33,16 @@ export default function ProductSkusFilters({ draftFilters = {}, setDraftFilters 
               type="text"
               placeholder="Search by purchase order..."
               className="border border-gray-300 text-gray-700 text-sm px-2 py-3 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500 transition"
-              value={draftFilters.by_purchase_order || ""}
-              onChange={(e) => {
-                const value = e.target.value.toUpperCase();
-
-                setDraftFilters(prev => ({
-                  ...prev,
-                  by_purchase_order: value
-                }));
-              }}
+              value={starts_with ?? ""}
+              onChange={(e) => setStarts_with(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onApply();
-                }
+                if (e.key === "Enter") onApply({ starts_with, status: filterStatus });
               }}
             />
 
             <span
               className="h-8 px-2 py-3 bg-primary flex items-center border border-gray-300 border-l-0 rounded-r cursor-pointer hover:scale-105 transition"
-              onClick={() => { if (draftFilters.by_purchase_order.trim() === "") { return; }; onApply() }}
+              onClick={() => { onApply({ starts_with, status: filterStatus }) }}
             >
               <SearchIcon size={16} color="white" />
             </span>
@@ -56,27 +51,19 @@ export default function ProductSkusFilters({ draftFilters = {}, setDraftFilters 
           {/* STATUS */}
           <select
             className="border border-gray-300 text-sm px-2 h-8 rounded focus:outline-none focus:border-gray-500 transition"
-            value={draftFilters.by_status}
-            onChange={(e) =>
-              setDraftFilters(prev => ({
-                ...prev,
-                by_status: e.target.value
-              }))
-            }
+            value={filterStatus ?? ""}
+            onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option value="">All Status</option>
-            <option value="created">Created</option>
-            <option value="waiting_for_approval">Waiting For Approval</option>
-            <option value="approved">Approved</option>
-            <option value="completed">Completed</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="active">Active</option>
+            <option value="inactive">In active</option>
+            <option value="deleted">Deleted</option>
           </select>
 
           {/* APPLY */}
-          {isDirty && (
+          {(starts_with || filterStatus) && (
             <button
-              onClick={onApply}
+              onClick={() => onApply({ starts_with, status: filterStatus })}
               className="flex items-center text-sm gap-1 h-8 px-3 border border-primary text-primary rounded hover:scale-105 transition cursor-pointer"
             >
               <Check size={16} />
@@ -84,16 +71,20 @@ export default function ProductSkusFilters({ draftFilters = {}, setDraftFilters 
             </button>
           )}
 
+
+
           {/* CLEAR */}
-          {hasActiveFilters && (
+          {(starts_with || filterStatus) && (
             <button
-              onClick={onClear}
+              onClick={() => { onClear(); setStarts_with("") }}
               className="flex text-sm items-center gap-1 h-8 px-3 border border-gray-700 text-gray-700 rounded hover:scale-105 transition cursor-pointer"
             >
               <FilterX size={16} />
               Clear Filters
             </button>
           )}
+
+
 
         </div>
 

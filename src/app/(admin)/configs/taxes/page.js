@@ -1,7 +1,7 @@
 export default function TaxesPage() {
-  return(
+  return (
     <div>
-      Taxes page
+      THis is taxes page
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import DataTable from "../../../../../../components/shared/DataTable";
 
-export default function ProductSkusListingPage({ productSkusData, currentPage, setCurrentPage, totalPages }) {
+export default function ProductSkusListingPage({ productSkusData, currentPage, handlePageChange, totalPages }) {
   const columns = [
     {
       key: "sku_name",
@@ -61,7 +61,7 @@ export default function ProductSkusListingPage({ productSkusData, currentPage, s
       rowKey="id"
       currentPage={currentPage}
       totalPages={totalPages}
-      onPageChange={setCurrentPage}
+      onPageChange={handlePageChange}
       getDetailsLink={(row) =>
         `/catalog/product_skus/${row.id}`
       }

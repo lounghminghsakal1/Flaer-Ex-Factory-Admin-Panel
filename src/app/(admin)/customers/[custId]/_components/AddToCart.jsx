@@ -15,7 +15,7 @@ import {
   CheckCircle2,
   X,
 } from "lucide-react";
-import ConfirmModal, { useConfirmModal } from "../../../../../../components/shared/ConfirmModal";
+import { useConfirmModal } from "../../../../../../components/shared/ConfirmModal";
 import CheckoutForm from "./CheckoutForm";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -62,7 +62,6 @@ function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
       const filtered = all.filter(
         (s) => !excluded.includes(s.id) || s.id === selectedSku?.id
       );
-      console.log(excludedSkuIds);
       const reordered = selectedSku
         ? [...filtered.filter((s) => s.id === selectedSku.id), ...filtered.filter((s) => s.id !== selectedSku.id)]
         : filtered;
@@ -157,7 +156,7 @@ const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
 
 // ─── Main Component ───────
-export default function AddToCart({ customerId = 2, fetchCart, cartData, setCartData, loadingCart, appliedCoupons }) {
+export default function AddToCart({ customerId = 2, }) {
 
   const [newItems, setNewItems] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -168,8 +167,15 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
   const [clearingCart, setClearingCart] = useState(false);
   const { confirmModal, askConfirm } = useConfirmModal();
   const [canProceedToCheckout, setCanProceedToCheckout] = useState(false);
-
+  const [isRemovingCoupon, setIsRemovingCoupon] = useState(false);
   const [allSkus, setAllSkus] = useState([]);
+
+
+  const [cartData, setCartData] = useState(null);
+  const [loadingCart, setLoadingCart] = useState(true);
+  const [cartStatus, setCartStatus] = useState(null);
+
+  const [appliedCoupons, setAppliedCoupons] = useState([]);
 
 
   useEffect(() => {
@@ -183,6 +189,27 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
     fetchSkus();
   }, []);
 
+  // ── Fetch cart ────
+  const fetchCart = async () => {
+    setLoadingCart(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/carts/cart_summary?customer_id=${customerId}`);
+      const json = await res.json();
+      if (!res.ok || json.status === "failure") throw new Error(json?.errors[0] ?? "Soemthing went wrong");
+      setCartData(json.data || null);
+      setCartStatus(json?.data?.status || null);
+      setAppliedCoupons(json?.data?.applied_coupons ?? []);
+    } catch (err) {
+      setCartData(null);
+      toast.error("Failed to fetch cart data " + err)
+    } finally {
+      setLoadingCart(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCart();
+  }, []);
 
 
   // ── Derived state ──────────────────────────────────────────────────────────
@@ -318,7 +345,6 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
       return;
     }
     const method = existingLineItems.length !== 0 ? "PUT" : "POST";
-    console.log(existingLineItems);
     const updateCartLineItems = [...filledNewItems.map((item) => ({ product_sku_id: item.sku.id, quantity: Number(item.quantity) })), ...existingLineItems.map((item, index) => ({ id: existingLineItems[index].id, product_sku_id: item.product_sku.id, quantity: Number(item.quantity) }))];
     const payload = method === "POST" ?
       {
@@ -379,19 +405,19 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
     }
   }
 
-  const [isRemovingCoupon, setIsRemovingCoupon] = useState(false);
   const handleRemoveCoupon = async () => {
     try {
       setIsRemovingCoupon(true);
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/carts/${cartData.id}/remove_coupon`;
-      const response = await fetch(url, { method:"POST", headers:{ "Content-Type": "application/json"  }, body: JSON.stringify({code: appliedCoupons[0]?.code}) });
+      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: appliedCoupons[0]?.code }) });
       const result = await response.json();
       if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       await fetchCart(); //refresh
+      setCoupon("");
       toast.success("Coupon removed successfully");
-    } catch(err) {
+    } catch (err) {
       console.log(err);
-      toast.error("Failed to remove coupon "+err.message);
+      toast.error("Failed to remove coupon " + err.message);
     } finally {
       setIsRemovingCoupon(false);
     }
@@ -410,7 +436,7 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
     "SELLING PRICE",
     "DISCOUNT AMOUNT",
     "FINAL AMOUNT",
-    "DEL",
+    ...(cartStatus === "active" ? ["DEL"] : []),
   ];
 
   const skuOptions = allSkus
@@ -421,8 +447,10 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
     }));
 
   if (canProceedToCheckout) return <CheckoutForm
-    cartId={cartData.id}
-    onBack={() => setCanProceedToCheckout(false)}
+    cartData={cartData}
+    customerId={customerId}
+    onBack={() => {setCanProceedToCheckout(false); fetchCart()}}
+    fetchCart={fetchCart}
   />
 
   // ── Render ───────────────
@@ -439,13 +467,19 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
 
           {/* ── Card Header ─────────────────────────────────────────────────── */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="text-base font-bold text-blue-900">Cart Line Items</h2>
-            <button
-              onClick={handleClearCart}
-              className="text-sm text-gray-600 border border-gray-200 rounded-lg px-4 py-1.5 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all font-medium"
-            >
-              {clearingCart ? "Clearing cart..." : "Clear Cart"}
-            </button>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-blue-900">Cart Line Items</h2>
+              {cartStatus && (<span className={`px-2 py-1 rounded-full text-xs uppercase ${cartStatus === "active" ? "bg-yellow-500 text-gray-100" : "bg-green-600 text-gray-100"}`}>{cartStatus}</span>)}
+            </div>
+            {cartStatus !== "checkout" && (
+              <button
+                onClick={handleClearCart}
+                className="text-sm text-gray-600 border border-gray-200 rounded-lg px-4 py-1.5 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all font-medium"
+              >
+                {clearingCart ? "Clearing cart..." : "Clear Cart"}
+              </button>
+            )}
+
           </div>
 
           {/* ── Table ───────────────────────────────────────────────────────── */}
@@ -482,8 +516,8 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
                           {item.sku_name || item.product_sku?.sku_name || "—"}
                         </td>
                         {/* SKU CODE */}
-                        <td className="px-3 py-3 w-[70px]">
-                          <span className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
+                        <td className="py-3 w-[50px]" title={item?.product_sku?.sku_code ?? ""}>
+                          <span className="text-xs text-gray-500 truncate cursor-help font-mono bg-gray-50 px-2 py-0.5 rounded">
                             {item.sku_code || item.product_sku?.sku_code || "—"}
                           </span>
                         </td>
@@ -493,6 +527,7 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
                             type="number"
                             min={1}
                             value={item.quantity}
+                            disabled={cartStatus === "checkout"}
                             onChange={(e) => handleExistingQtyChange(idx, e.target.value)}
                             className="w-20 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
                             onWheel={(e) => e.target.blur()}
@@ -525,14 +560,17 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
                             : "—"}
                         </td>
                         {/* DELETE */}
-                        <td className="px-3 py-3">
-                          <button
-                            onClick={() => handleDeleteExisting(idx)}
-                            className="p-1.5 text-gray-400 cursor-pointer hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
+                        {(cartStatus === "active" || cartStatus === null) && (
+                          <td className="px-3 py-3">
+                            <button
+                              onClick={() => handleDeleteExisting(idx)}
+                              className="p-1.5 text-gray-400 cursor-pointer hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
+
                       </tr>
                     ))}
 
@@ -548,9 +586,9 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
                           />
                         </td>
                         {/* SKU CODE */}
-                        <td className="px-3 py-3 w-[70px]">
+                        <td className="py-3 w-[70px]" title={item?.product_sku?.sku_code ?? ""}>
                           {item.sku ? (
-                            <span className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
+                            <span className="text-xs truncate text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
                               {item.sku.sku_code}
                             </span>
                           ) : (
@@ -563,7 +601,7 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
                             type="number"
                             min={1}
                             value={item.quantity}
-                            disabled={!item.sku}
+                            disabled={!item.sku || cartStatus === "checkout"}
                             onChange={(e) => handleNewItemQtyChange(item._id, e.target.value)}
                             placeholder="Qty"
                             className="w-20 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all"
@@ -597,14 +635,16 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
                             : <span className="text-gray-300 font-normal">—</span>}
                         </td>
                         {/* DELETE */}
-                        <td className="px-3 py-3">
-                          <button
-                            onClick={() => handleDeleteNewItem(item._id)}
-                            className="p-1.5 text-gray-400 cursor-pointer hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
+                        {(cartStatus === "active" || cartStatus === null) && (
+                          <td className="px-3 py-3">
+                            <button
+                              onClick={() => handleDeleteNewItem(item._id)}
+                              className="p-1.5 text-gray-400 cursor-pointer hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
 
@@ -624,114 +664,113 @@ export default function AddToCart({ customerId = 2, fetchCart, cartData, setCart
           </div>
 
           {/* ── Add another Item ─────────────────────────────────────────────── */}
-          <div className="px-5 py-3 border-t border-gray-100">
-            <button
-              onClick={handleAddAnotherItem}
-              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 cursor-pointer font-semibold transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add another Item
-            </button>
-          </div>
+          {(cartStatus === "active" || cartStatus === null) && (
+            <div className="px-5 py-3 border-t border-gray-100">
+              <button
+                onClick={handleAddAnotherItem}
+                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 cursor-pointer font-semibold transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add another Item
+              </button>
+            </div>
+          )}
+
 
           {/* ── Coupon + Actions row ─────────────────────────────────────────── */}
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end flex-wrap gap-2">
-            {/* Coupon input */}
-            {showSummary && appliedCoupons.length === 0 && (
-              <div className="flex items-center gap-2">
-                <div className="relative flex items-center">
-                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={coupon}
-                    onChange={(e) => setCoupon(e.target.value)}
-                    placeholder="Enter coupon code"
-                    maxLength={30}
-                    className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-52"
-                  />
-                </div>
-                <button
-                  disabled={coupon.length < 4}
-                  onClick={handleApplyCoupon}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-primary hover:opacity-80 text-white disabled:bg-blue-300"
-                >
-                  {couponApplying ? "Applying coupon..." : "Apply Coupon"}
-                </button>
-              </div>
-            )}
-
-            {appliedCoupons.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
-                {/* Card Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
-                  <div className="flex items-center gap-2">
-                    <Tag className="w-3.5 h-3.5 text-primary" />
-                    <h2 className="text-sm font-semibold text-gray-700">Applied Coupon</h2>
-                    <span className="text-xs font-mono font-bold text-primary bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
-                      {appliedCoupons[0].code}
-                    </span>
+          {(cartStatus === "active" || cartStatus === null) && (
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end flex-wrap gap-2">
+              {/* Coupon input */}
+              {showSummary && appliedCoupons.length === 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex items-center">
+                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={coupon}
+                      onChange={(e) => setCoupon(e.target.value)}
+                      placeholder="Enter coupon code"
+                      maxLength={30}
+                      className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-52"
+                    />
                   </div>
                   <button
-                    title="Remove coupon"
-                    onClick={handleRemoveCoupon}
-                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                  > 
-                  {isRemovingCoupon ? <Loader2 size={16} /> : <X size={16} /> }
+                    disabled={coupon.length < 4}
+                    onClick={handleApplyCoupon}
+                    className="px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-primary hover:opacity-80 text-white disabled:bg-blue-300"
+                  >
+                    {couponApplying ? "Applying coupon..." : "Apply Coupon"}
                   </button>
                 </div>
+              )}
 
-                {/* Card Body */}
-                <div className="px-4 py-3 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Coupon Type</p>
-                    <p className="text-sm font-medium text-gray-700 capitalize">{appliedCoupons[0].coupon_type}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Status</p>
-                    <span
-                      className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full capitalize
-          ${appliedCoupons[0].status?.toLowerCase() === "applied"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-500"
-                        }`}
+              {appliedCoupons.length > 0 && showSummary && (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-3.5 h-3.5 text-primary" />
+                      <h2 className="text-sm font-semibold text-gray-700">Applied Coupon</h2>
+                      <span className="text-xs font-mono font-bold text-primary bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
+                        {appliedCoupons[0].code}
+                      </span>
+                    </div>
+                    <button
+                      title="Remove coupon"
+                      onClick={handleRemoveCoupon}
+                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
                     >
-                      {appliedCoupons[0].status}
-                    </span>
+                      {isRemovingCoupon ? <Loader2 size={16} /> : <X size={16} />}
+                    </button>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Discount {appliedCoupons[0]?.discount_type === "percentage" ? "%" : "value"}</p>
-                    <p className="text-sm font-medium text-gray-700">{appliedCoupons[0].discount_value} {appliedCoupons[0]?.discount_type === "percentage" ? "%" : ""}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Discount Amount</p>
-                    <p className="text-sm font-medium text-gray-700">{fmt(appliedCoupons[0].discount_amount)}</p>
+
+                  {/* Card Body */}
+                  <div className="px-4 py-3 grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Coupon Type</p>
+                      <p className="text-sm font-medium text-gray-700 capitalize">{appliedCoupons[0].coupon_type}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Status</p>
+                      <span
+                        className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full capitalize
+          ${appliedCoupons[0].status?.toLowerCase() === "applied"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-500"
+                          }`}
+                      >
+                        {appliedCoupons[0].status}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Discount {appliedCoupons[0]?.discount_type === "percentage" ? "%" : "value"}</p>
+                      <p className="text-sm font-medium text-gray-700">{appliedCoupons[0].discount_value} {appliedCoupons[0]?.discount_type === "percentage" ? "%" : ""}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Discount Amount</p>
+                      <p className="text-sm font-medium text-gray-700">{fmt(appliedCoupons[0].discount_amount)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Add Items to Cart button */}
-            {!showSummary && (
-              <button
-                onClick={handleAddToCart}
-                disabled={saving}
-                className="flex items-center gap-2 bg-primary hover:opacity-80 active:bg-blue-950 disabled:bg-blue-300 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 px-6 hover:scale-103 cursor-pointer rounded-md transition-colors"
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ShoppingCart className="w-4 h-4" />
-                )}
-                {saving ? "Saving..." : "Add Items to Cart"}
-              </button>
-            )}
-          </div>
-
-          <div className="text-right">
-            <input type="text"
-
-            />
-          </div>
+              {/* Add Items to Cart button */}
+              {!showSummary && (
+                <button
+                  onClick={handleAddToCart}
+                  disabled={saving}
+                  className="flex items-center gap-2 bg-primary hover:opacity-80 active:bg-blue-950 disabled:bg-blue-300 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 px-6 hover:scale-103 cursor-pointer rounded-md transition-colors"
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ShoppingCart className="w-4 h-4" />
+                  )}
+                  {saving ? "Saving..." : "Add Items to Cart"}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* ── Order Summary (only when not editing) ───────────────────────── */}
           {showSummary && (
