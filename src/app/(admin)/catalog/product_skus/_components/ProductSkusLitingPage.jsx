@@ -15,10 +15,14 @@ export default function ProductSkusListingPage({ productSkusData, currentPage, h
       label: "UOM",
     },
     {
-      key: "unit_price",
-      label: "Unit Price",
+      key: "mrp",
+      label: "MRP",
       render: (value) =>
         value ? `₹${Number(value).toLocaleString("en-IN")}` : "—",
+    },
+    {
+      key: "selling_price",
+      label: "Selling Price"
     },
     {
       key: "status",
@@ -35,22 +39,6 @@ export default function ProductSkusListingPage({ productSkusData, currentPage, h
           {value}
         </span>
       ),
-    },
-    {
-      key: "sku_media",
-      label: "Image",
-      render: (_, row) => {
-        const img = row.sku_media?.[0]?.media_url;
-        return img ? (
-          <img
-            src={img}
-            alt="sku"
-            className="w-10 h-10 object-cover rounded"
-          />
-        ) : (
-          "—"
-        );
-      },
     },
   ];
 

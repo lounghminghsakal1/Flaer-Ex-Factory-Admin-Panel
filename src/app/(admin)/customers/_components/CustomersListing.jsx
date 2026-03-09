@@ -21,7 +21,7 @@ export default function CustomersListing({ customersData, currentPage, totalPage
     {
       key: "status",
       label: "Status",
-      render: (value) => (<span className={`px-2 py-1 rounded-md text-xs ${value === "active" ? "text-green-600 bg-green-100" : "text-gray-600 bg-gray-100"}`}>{value}</span>)
+      render: (value) => (<span className={`inline-flex px-2.5 py-1 uppercase rounded-full text-[10px] font-semibold ${value === "active" ? "text-green-700 bg-green-100" : "text-gray-700 bg-gray-100"}`}>{value}</span>)
     }
   ];
   

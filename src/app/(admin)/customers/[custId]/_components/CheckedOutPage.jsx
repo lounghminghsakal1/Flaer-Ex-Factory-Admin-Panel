@@ -1,9 +1,13 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "react-toastify";
 
 export default function CheckedOutPage({ cartData, customerId, onBack = null }) {
   const cartLineItems = cartData?.cart_line_items ?? [];
   const router = useRouter();
+
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const handleBack = () => {
     if (onBack) {
@@ -27,6 +31,23 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
     "DISCOUNT AMOUNT",
     "FINAL AMOUNT",
   ];
+
+  const handlePlaceOrder = async () => {
+    try {
+      setIsPlacingOrder(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/orders?cart_id=${cartData.id}`;
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" } });
+      const result = await res.json();
+      if (!res.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
+      toast.success("Order placed successfully");
+      router.push(`/orders`);
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to place order, " + err.message);
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  }
 
   return (
     <div className="w-full mx-auto py-4">
@@ -96,7 +117,7 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
                     </td>
                     {/* SKU CODE */}
                     <td className="px-3 py-3 w-[70px]">
-                      <span className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
+                      <span className="text-xs truncate text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
                         {lineItem?.product_sku?.sku_code || "—"}
                       </span>
                     </td>
@@ -172,8 +193,14 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
             </div>
           </div>
         </div>
-
+        <div className="flex justify-end mb-6 mx-6">
+          <button onClick={handlePlaceOrder} className="w-72 flex items-center justify-center gap-2 bg-primary hover:opacity-80 cursor-pointer active:bg-blue-950 text-white text-sm font-semibold py-3 px-6 rounded-xl transition-colors">
+            {isPlacingOrder ? "Placing order..." : "Place Order"}
+            <CheckCircle2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
     </div>
   );
 }

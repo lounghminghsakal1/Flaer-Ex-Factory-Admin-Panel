@@ -12,11 +12,13 @@ import {
   ArrowRight,
   Tag,
   Ticket,
-  CheckCircle2,
+  Package,
+  Sparkles,
   X,
 } from "lucide-react";
 import { useConfirmModal } from "../../../../../../components/shared/ConfirmModal";
 import CheckoutForm from "./CheckoutForm";
+import { LooseQtyPopup } from "./LooseQtyPopup";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -80,12 +82,12 @@ function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
   };
 
   return (
-    <div className="relative w-[90%]" ref={dropdownRef}>
+    <div className="relative w-full" ref={dropdownRef}>
       {/* Trigger */}
       <button
         type="button"
         onClick={() => setIsOpen((p) => !p)}
-        className={`w-full min-h-9 px-3 py-1.5 flex items-start justify-between gap-2 text-sm bg-white border rounded-md transition-colors
+        className={`w-full min-h-9 px-3 py-1.5 flex items-start justify-between gap-2 text-xs bg-white border rounded-md transition-colors
     ${isOpen ? "border-blue-500 ring-1 ring-blue-500" : "border-gray-300 hover:border-gray-400"}
     ${selectedSku ? "text-gray-900" : "text-gray-400"}`}
       >
@@ -174,9 +176,9 @@ export default function AddToCart({ customerId = 2, }) {
   const [cartData, setCartData] = useState(null);
   const [loadingCart, setLoadingCart] = useState(true);
   const [cartStatus, setCartStatus] = useState(null);
-
   const [appliedCoupons, setAppliedCoupons] = useState([]);
-
+  const [isLooseSkuPopupOpen, setIsLooseSkuPopupOpen] = useState(false);
+  const [loosePopupTarget, setLoosePopupTarget] = useState(null);
 
   useEffect(() => {
     const fetchSkus = async () => {
@@ -233,15 +235,87 @@ export default function AddToCart({ customerId = 2, }) {
   //   });
   // };
 
+  const handleLooseConfirm = (newBundleQty, newLooseQty) => {
+    if (loosePopupTarget?.mode === "existing") {
+      const idx = loosePopupTarget.idx;
+      setCartData((prev) => {
+        const items = [...(prev?.cart_line_items || [])];
+        const item = items[idx];
+        const looseSellingUnitPrice = parseFloat(
+          item.loose_item?.selling_unit_price ?? item.loose_item?.selling_price ?? 0
+        );
+        const newLooseFinalAmount = newLooseQty * looseSellingUnitPrice;
+        items[idx] = {
+          ...item,
+          quantity: newBundleQty,
+          loose_item: item.loose_item
+            ? { ...item.loose_item, quantity: newLooseQty, final_amount: newLooseQty > 0 ? newLooseFinalAmount : 0 }
+            : newLooseQty > 0
+              ? { quantity: newLooseQty, product_sku: null, final_amount: newLooseFinalAmount }
+              : null,
+        };
+        return { ...prev, cart_line_items: items };
+      });
+      setIsEditing(true);
+
+    } else if (loosePopupTarget?.mode === "standalone-loose") {
+      // User edited a standalone loose row via popup.
+      // newBundleQty: if user set bundle qty in popup (they may have),
+      //               this will be used as-is by the payload builder.
+      // newLooseQty:  the loose portion (shown in the loose input in popup).
+      // We store both back on the line item so the payload builder can use them.
+      const idx = loosePopupTarget.idx;
+      setCartData((prev) => {
+        const items = [...(prev?.cart_line_items || [])];
+        const item = items[idx];
+        items[idx] = {
+          ...item,
+          // quantity on a standalone loose line item = total loose qty the user set
+          // We store _bundleQty as a helper for the payload builder
+          quantity: newLooseQty,
+          _bundleQty: newBundleQty, // extra field — payload builder will use this
+        };
+        return { ...prev, cart_line_items: items };
+      });
+      setIsEditing(true);
+
+    } else {
+      // new item
+      setNewItems((prev) =>
+        prev.map((it) =>
+          it._id === loosePopupTarget?.item?._id
+            ? { ...it, quantity: newBundleQty, _looseQty: newLooseQty }
+            : it
+        )
+      );
+    }
+  };
+
   const handleExistingQtyChange = (idx, val) => {
     setIsEditing(true);
-    setCartData(prev => {
+    setCartData((prev) => {
       const items = [...(prev?.cart_line_items || [])];
-      items[idx] = { ...items[idx], quantity: val, final_amount: items[idx].selling_price * val };
+      const item = items[idx];
+
+      const bundleFactor = Number(item.product_sku?.bundle_factor ?? 1);
+      const bundleSellingUnit = parseFloat(item.selling_unit_price ?? 0);
+      const looseQty = Number(item.loose_item?.quantity) || 0;
+      const looseSellingUnit = parseFloat(
+        item.loose_item?.selling_unit_price ?? item.loose_item?.selling_price ?? 0
+      );
+
+      const bundleFinal = val * bundleFactor * bundleSellingUnit;
+      const looseFinal = looseQty * looseSellingUnit;
+      const combinedFinal = bundleFinal + looseFinal;
+
+      items[idx] = {
+        ...item,
+        quantity: val,
+        final_amount: item.line_item_type === "bundle" ? parseFloat(item.selling_price ?? 0) * val : parseFloat(item.selling_price ?? 0) * val, // combinedFinal
+      };
       return { ...prev, cart_line_items: items };
     });
-
-  }
+  };
 
   const handleDeleteExisting = (idx) => {
     setIsEditing(true);
@@ -305,78 +379,241 @@ export default function AddToCart({ customerId = 2, }) {
   };
 
   const getNewItemFinalAmount = (item) => {
-    if (!item.sku || !item.quantity || isNaN(item.quantity) || Number(item.quantity) <= 0)
-      return null;
+    if (!item.sku) return null;
+
+    if (item.sku.is_bundle_sku) {
+      const bundleQty = Number(item.quantity) || 0;
+      const looseQty = Number(item._looseQty) || 0;
+      if (bundleQty === 0 && looseQty === 0) return null;
+
+      const bundleFinal = bundleQty * Number(item.sku.bundle_factor) * parseFloat(item.sku.selling_unit_price ?? 0);
+      const looseFinal = looseQty * parseFloat(item.sku.loose_sku?.selling_unit_price ?? 0);
+      //return bundleFinal + looseFinal;
+      return parseFloat(item.sku.selling_price) * Number(item.quantity);
+    }
+
+    if (!item.quantity || Number(item.quantity) <= 0) return null;
     return parseFloat(item.sku.selling_price) * Number(item.quantity);
   };
 
   const handleAddToCart = async () => {
-    const filledNewItems = newItems.filter((i) => i.sku || i.quantity);
+    const filledNewItems = newItems.filter((i) => {
+      if (!i.sku) return false;
 
+      if (i.sku.is_bundle_sku) {
+        const bundleQty = Number(i.quantity) || 0;
+        const looseQty = Number(i._looseQty) || 0;
+        return bundleQty > 0 || looseQty > 0;
+      }
+
+      return Number(i.quantity) > 0;
+    });
+
+    // ── Validation for new items ───────────────────────────────────────────────
     for (const item of filledNewItems) {
       if (!item.sku) {
         toast.error("Please select a SKU for all new line items.");
         return;
       }
-      if (!item.quantity || Number(item.quantity) <= 0) {
-        toast.error("Please enter a valid quantity (> 0) for all new line items.");
-        return;
+      if (item.sku.is_bundle_sku) {
+        const totalQty =
+          (Number(item.quantity) || 0) * Number(item.sku.bundle_factor) +
+          (Number(item._looseQty) || 0);
+        if (totalQty <= 0) {
+          toast.error(`Please enter a bundle qty or loose qty for "${item.sku.sku_name}".`);
+          return;
+        }
+      } else {
+        if (!item.quantity || Number(item.quantity) <= 0) {
+          toast.error("Please enter a valid quantity (> 0) for all new line items.");
+          return;
+        }
       }
     }
 
-    const cartLineItems = [
-      ...existingLineItems.map((li) => ({
-        product_sku_id: li.product_sku_id,
-        quantity: Number(li.quantity),
-      })),
-      ...filledNewItems.map((item) => ({
-        product_sku_id: item.sku.id,
+    if (newItems.some((item) => !item.sku && !item.quantity)) {
+      toast.error("Please fill all fields for all rows");
+      return;
+    }
+
+    // ── Validation for existing bundle items — catch 0 bundle + 0 loose ──────
+    const isNestedLoose = (li) =>
+      li.line_item_type === "loose" &&
+      li.meta?.bundle_line_item_id !== null &&
+      li.meta?.bundle_line_item_id !== undefined;
+
+    for (const item of existingLineItems.filter((li) => !isNestedLoose(li))) {
+      if (item.line_item_type === "bundle") {
+        const bundleCount = Number(item.quantity) || 0;
+        const looseItemQty = Number(item.loose_item?.quantity) || 0;
+        const totalQty = bundleCount * Number(item.product_sku?.bundle_factor ?? 1) + looseItemQty;
+        if (totalQty === 0) {
+          const name = item.product_sku?.sku_name || `Item #${item.id}`;
+          toast.error(`Total quantity can't be zero for "${name}". Please enter a bundle or loose qty, or remove the item.`);
+          return;
+        }
+
+      } else if (item.line_item_type === "loose" && item.bundle_sku != null) {
+        // standalone-loose row: bundle qty lives in _bundleQty, loose qty in item.quantity
+        const looseQty = Number(item.quantity) || 0;
+        const bundleQty = Number(item._bundleQty) || 0;
+        const totalQty = bundleQty * Number(item.bundle_sku?.bundle_factor ?? 1) + looseQty;
+        if (totalQty === 0) {
+          const name = item.bundle_sku?.sku_name || item.product_sku?.sku_name || `Item #${item.id}`;
+          toast.error(`Total quantity can't be zero for "${name}". Please enter a bundle or loose qty, or remove the item.`);
+          return;
+        }
+
+      } else {
+        if (!item.quantity || Number(item.quantity) <= 0) {
+          const name = item.product_sku?.sku_name || `Item #${item.id}`;
+          toast.error(`Quantity can't be zero for "${name}".`);
+          return;
+        }
+      }
+    }
+
+    // ── Payload builders ──────────────────────────────────────────────────────
+    const buildNewItem = (item) => {
+      if (!item.sku.is_bundle_sku) {
+        return { product_sku_id: item.sku.id, quantity: Number(item.quantity) };
+      }
+
+      const bundleQty = Number(item.quantity) || 0;
+      const looseQty = Number(item._looseQty) || 0;
+
+      if (bundleQty > 0) {
+        return {
+          product_sku_id: item.sku.id,
+          quantity: bundleQty * Number(item.sku.bundle_factor) + looseQty,
+        };
+      }
+
+      // loose-only new item — loose_sku sits directly on the sku object
+      const looseSkuId = item.sku.loose_sku?.id;
+      if (!looseSkuId) {
+        toast.error(
+          `No loose SKU found for "${item.sku.sku_name}". Cannot add loose-only.`
+        );
+        return null;
+      }
+
+      return { product_sku_id: looseSkuId, quantity: looseQty };
+    };
+
+    const buildExistingItem = (item) => {
+      if (item.line_item_type === "bundle") {
+        const bundleCount = Number(item.quantity) || 0;
+        const looseItemQty = Number(item.loose_item?.quantity) || 0;
+        const bf = Number(item.product_sku?.bundle_factor ?? 1);
+
+        if (bundleCount > 0) {
+          return {
+            id: item.id,  // bundle line item already exists, safe to send id
+            product_sku_id: item.product_sku.id,
+            quantity: bundleCount * bf + looseItemQty,
+          };
+        }
+
+        // bundle zeroed out — loose only
+        const looseSkuId =
+          item.loose_sku?.id ??
+          item.loose_item?.product_sku?.id ??
+          item.loose_item?.product_sku_id;
+
+        if (!looseSkuId) {
+          toast.error(`No loose SKU found for "${item.product_sku?.sku_name ?? "this item"}". Cannot save loose-only quantity.`);
+          return null;
+        }
+
+        return {
+          id: item.loose_item?.id ?? undefined,
+          product_sku_id: looseSkuId,
+          quantity: looseItemQty,
+        };
+      }
+
+      if (item.line_item_type === "loose") {
+        const looseQty = Number(item.quantity) || 0;
+        const bundleQty = Number(item._bundleQty) || 0;
+        const bf = Number(item.bundle_sku?.bundle_factor ?? item.product_sku?.bundle_factor ?? 1);
+
+        if (bundleQty > 0) {
+          const bundleSkuId = item.bundle_sku?.id ?? item.product_sku?.id;
+          return {
+            // Don't send id here — we're creating a NEW bundle line item
+            // The existing id belongs to the loose line item, not a bundle
+            product_sku_id: bundleSkuId,
+            quantity: bundleQty * bf + looseQty,
+          };
+        }
+
+        // pure loose — updating the existing loose line item
+        return {
+          id: item.id,  //  safe — we're updating the same loose line item
+          product_sku_id: item.product_sku?.id,
+          quantity: looseQty,
+        };
+      }
+
+      // plain SKU
+      return {
+        id: item.id,
+        product_sku_id: item.product_sku?.id,
         quantity: Number(item.quantity),
-      })),
-    ];
+      };
+    };
+
+    const existingPayloadItems = existingLineItems
+      .filter((li) => !isNestedLoose(li))
+      .map(buildExistingItem)
+      .filter(Boolean);
+
+    const newPayloadItems = filledNewItems.map(buildNewItem).filter(Boolean);
+
+    // bail out early if any item failed to resolve
+    if (
+      existingPayloadItems.length !== existingLineItems.filter((li) => !isNestedLoose(li)).length ||
+      newPayloadItems.length !== filledNewItems.length
+    ) {
+      setSaving(false);
+      return; // toast already shown inside the builder
+    }
+
+    const cartLineItems = [...existingPayloadItems, ...newPayloadItems];
+    const updateCartLineItems = [...newPayloadItems, ...existingPayloadItems];
 
     if (cartLineItems.length === 0) {
       toast.error("Please add at least one item.");
       return;
     }
+    const method = existingLineItems.length > 0 ? "PUT" : "POST";
 
-    if (newItems.some((item) => !item.sku && !item.quantity)) {
-      toast.error("Please fill all fields all rows");
-      return;
-    }
-    const method = existingLineItems.length !== 0 ? "PUT" : "POST";
-    const updateCartLineItems = [...filledNewItems.map((item) => ({ product_sku_id: item.sku.id, quantity: Number(item.quantity) })), ...existingLineItems.map((item, index) => ({ id: existingLineItems[index].id, product_sku_id: item.product_sku.id, quantity: Number(item.quantity) }))];
-    const payload = method === "POST" ?
-      {
-        cart: {
-          customer_id: customerId,
-          source_type: "admin",
-          cart_line_items: cartLineItems,
-        },
-      } :
-      {
-        cart: {
-          customer_id: customerId,
-          source_type: "admin",
-          cart_line_items: updateCartLineItems
-        }
-      }
+    const payload =
+      method === "POST"
+        ? { cart: { customer_id: customerId, source_type: "admin", cart_line_items: cartLineItems } }
+        : { cart: { customer_id: customerId, source_type: "admin", cart_line_items: updateCartLineItems } };
+
     setSaving(true);
     try {
-      const url = method === "POST" ? `${BASE_URL}/admin/api/v1/sales/carts` : `${BASE_URL}/admin/api/v1/sales/carts/${cartData.id}`;
+      const url =
+        method === "POST"
+          ? `${BASE_URL}/admin/api/v1/sales/carts`
+          : `${BASE_URL}/admin/api/v1/sales/carts/${cartData.id}`;
       const res = await fetch(url, {
-        method: method,
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok || json.status === "failure" || json?.errors[0]) throw new Error(json?.errors[0] ?? "Failed to save cart");
+      if (!res.ok || json.status === "failure" || json?.errors?.[0])
+        throw new Error(json?.errors?.[0] ?? "Failed to save cart");
       toast.success("Cart updated successfully!");
       setNewItems([]);
       setIsEditing(false);
       await fetchCart();
     } catch (err) {
-      toast.error("Failed to save cat " + err.message);
+      toast.error("Failed to save cart: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -395,6 +632,7 @@ export default function AddToCart({ customerId = 2, }) {
       const result = await response.json();
       if (!response.ok || result.status === "failure") throw new Error(result?.errors?.[0] ?? "Something went wrong");
       toast.success("Coupon applied successfully");
+      setCoupon("");
       setCouponApplied(true);
       await fetchCart(); //refresh
     } catch (err) {
@@ -449,7 +687,7 @@ export default function AddToCart({ customerId = 2, }) {
   if (canProceedToCheckout) return <CheckoutForm
     cartData={cartData}
     customerId={customerId}
-    onBack={() => {setCanProceedToCheckout(false); fetchCart()}}
+    onBack={() => { setCanProceedToCheckout(false); fetchCart() }}
     fetchCart={fetchCart}
   />
 
@@ -479,7 +717,6 @@ export default function AddToCart({ customerId = 2, }) {
                 {clearingCart ? "Clearing cart..." : "Clear Cart"}
               </button>
             )}
-
           </div>
 
           {/* ── Table ───────────────────────────────────────────────────────── */}
@@ -509,86 +746,174 @@ export default function AddToCart({ customerId = 2, }) {
                 ) : (
                   <>
                     {/* ── Existing items from backend ───────────────────────── */}
-                    {existingLineItems.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-gray-50/60 transition-colors" style={{ overflow: "visible" }}>
-                        {/* SKU NAME */}
-                        <td className="px-3 py-3 text-sm font-medium text-gray-800 w-[220px] min-w-[220px] max-w-[220px] ">
-                          {item.sku_name || item.product_sku?.sku_name || "—"}
-                        </td>
-                        {/* SKU CODE */}
-                        <td className="py-3 w-[50px]" title={item?.product_sku?.sku_code ?? ""}>
-                          <span className="text-xs text-gray-500 truncate cursor-help font-mono bg-gray-50 px-2 py-0.5 rounded">
-                            {item.sku_code || item.product_sku?.sku_code || "—"}
-                          </span>
-                        </td>
-                        {/* QUANTITY */}
-                        <td className="px-3 py-3 w-[50px]">
-                          <input
-                            type="number"
-                            min={1}
-                            value={item.quantity}
-                            disabled={cartStatus === "checkout"}
-                            onChange={(e) => handleExistingQtyChange(idx, e.target.value)}
-                            className="w-20 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
-                            onWheel={(e) => e.target.blur()}
-                          />
-                        </td>
-                        {/* MRP */}
-                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                          {fmt(item.mrp)}
-                        </td>
-                        {/* UNit price */}
-                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                          {fmt(item.unit_price)}
-                        </td>
-                        {/* SELLING UNit price */}
-                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                          {fmt(item.selling_unit_price)}
-                        </td>
-                        {/* SELLING PRICE */}
-                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                          {fmt(item.selling_price)}
-                        </td>
-                        {/* DISCOUNT AMOUNT */}
-                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                          {fmt(item.discount_amount)}
-                        </td>
-                        {/* FINAL AMOUNT */}
-                        <td className="px-3 py-3 text-sm font-semibold text-gray-800 w-[110px]">
-                          {item.final_amount != null && !isNaN(item.final_amount)
-                            ? fmt(item.final_amount)
-                            : "—"}
-                        </td>
-                        {/* DELETE */}
-                        {(cartStatus === "active" || cartStatus === null) && (
-                          <td className="px-3 py-3">
-                            <button
-                              onClick={() => handleDeleteExisting(idx)}
-                              className="p-1.5 text-gray-400 cursor-pointer hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        )}
 
-                      </tr>
-                    ))}
+                    {existingLineItems
+                      .filter((item) => !(item.line_item_type === "loose" && item?.meta?.bundle_line_item_id !== null)) // loose rows are nested in bundle rows
+                      .map((item, idx) => {
+                        const isBundle = item.line_item_type === "bundle";
+                        const isStandaloneLosseWithBundleSku =
+                          item.line_item_type === "loose" &&
+                          (item.meta?.bundle_line_item_id == null) &&
+                          item.bundle_sku != null;
+                        const bundleFactor = item.product_sku?.bundle_factor ?? 1;
+                        const looseQty = item.loose_item?.quantity ?? 0;
+                        // Show total units in the input (bundle count × factor)
+                        const displayQty = isBundle ? item.quantity * bundleFactor : item.quantity;
+
+                        return (
+                          <tr key={item.id || idx} className="hover:bg-gray-50/60 transition-colors" style={{ overflow: "visible" }}>
+                            {/* SKU NAME */}
+                            <td className="px-3 py-3 text-sm font-medium text-gray-800 w-[220px] min-w-[220px] max-w-[220px]">
+                              <div className="flex flex-col gap-1">
+                                <span>{item.line_item_type === "loose" ? item?.bundle_sku?.sku_name : item.sku_name || item.product_sku?.sku_name || "—"}</span>
+                                {(item.line_item_type === "bundle" || item.line_item_type === "loose") && (
+                                  <span className="inline-flex items-center gap-1 w-fit px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                    <Package className="w-2.5 h-2.5" />
+                                    Bundle ×{item.product_sku?.bundle_factor}
+                                  </span>
+                                )}
+                                {/* {item.line_item_type === "loose" && (
+                                  <span className="inline-flex items-center gap-1 w-fit px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                                    <Sparkles className="w-2.5 h-2.5" />
+                                    Loose
+                                  </span>
+                                )} */}
+                              </div>
+                            </td>
+
+
+                            {/* SKU CODE */}
+                            <td className="py-3 w-[50px]" title={item?.product_sku?.sku_code ?? ""}>
+                              <span className="text-xs text-gray-500 truncate cursor-help font-mono bg-gray-50 px-2 py-0.5 rounded">
+                                {item.line_item_type === "loose" ? item?.bundle_sku?.sku_code : item.sku_code || item.product_sku?.sku_code || "—"}
+                              </span>
+                            </td>
+                            {/* QUANTITY */}
+                            <td className="px-3 py-3 w-[140px]">
+                              {(isBundle || isStandaloneLosseWithBundleSku) ? (
+                                <div className="flex flex-col gap-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    // For standalone loose rows: _bundleQty holds the bundle count
+                                    value={isBundle ? item.quantity : (item._bundleQty ?? 0)}
+                                    disabled={cartStatus === "checkout"}
+                                    onChange={(e) => {
+                                      if (isBundle) {
+                                        handleExistingQtyChange(idx, Number(e.target.value) || 0);
+                                      } else {
+                                        // update _bundleQty for standalone loose row
+                                        setIsEditing(true);
+                                        setCartData((prev) => {
+                                          const items = [...(prev?.cart_line_items || [])];
+                                          items[idx] = { ...items[idx], _bundleQty: Number(e.target.value) || 0 };
+                                          return { ...prev, cart_line_items: items };
+                                        });
+                                      }
+                                    }}
+                                    className="w-20 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-primary transition-all"
+                                    onWheel={(e) => e.target.blur()}
+                                  />
+                                  {/* loose info line */}
+                                  {(() => {
+                                    const displayBundleQty = isBundle ? item.quantity : (item._bundleQty ?? 0);
+                                    const displayLooseQty = isBundle
+                                      ? (item.loose_item?.quantity ?? 0)
+                                      : Number(item.quantity); // for standalone loose, quantity IS the loose qty
+                                    const total = displayBundleQty * bundleFactor + displayLooseQty;
+                                    return displayLooseQty > 0 ? (
+                                      <span className="text-[10px] text-slate-500">
+                                        +{displayLooseQty} loose&nbsp;|&nbsp;
+                                        <span className="text-primary font-medium">Total: {total}</span>
+                                      </span>
+                                    ) : null;
+                                  })()}
+                                  {cartStatus !== "checkout" && (
+                                    <span
+                                      className="text-[11px] cursor-pointer text-primary hover:underline w-fit"
+                                      onClick={() => {
+                                        setLoosePopupTarget({
+                                          mode: isBundle ? "existing" : "standalone-loose",
+                                          item,
+                                          idx,
+                                        });
+                                        setIsLooseSkuPopupOpen(true);
+                                      }}
+                                    >
+                                      {(() => {
+                                        const looseCount = isBundle
+                                          ? (item.loose_item?.quantity ?? 0)
+                                          : Number(item.quantity);
+                                        return looseCount > 0 ? "✏ Edit loose sku" : "+ Add loose sku";
+                                      })()}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                // plain SKU 
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={item.quantity}
+                                  disabled={cartStatus === "checkout"}
+                                  onChange={(e) => handleExistingQtyChange(idx, Number(e.target.value) || 0)}
+                                  className="w-20 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-primary transition-all"
+                                  onWheel={(e) => e.target.blur()}
+                                />
+                              )}
+                            </td>
+
+                            {/* MRP */}
+                            <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">{item.line_item_type === "loose" ? fmt(item.bundle_sku.mrp) : fmt(item.mrp)}</td>
+                            {/* UNIT PRICE */}
+                            <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">{item.line_item_type === "loose" ? fmt(item.bundle_sku.unit_price) : fmt(item.unit_price)}</td>
+                            {/* SELLING UNIT PRICE */}
+                            <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">{item.line_item_type === "loose" ? fmt(item.bundle_sku.selling_unit_price) : fmt(item.selling_unit_price)}</td>
+                            {/* SELLING PRICE */}
+                            <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">{item.line_item_type === "loose" ? fmt(item.bundle_sku.selling_price) : fmt(item.selling_price)}</td>
+                            {/* DISCOUNT AMOUNT */}
+                            <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">{item.line_item_type === "loose" ? fmt(item.bundle_sku.discount_amount) : fmt(item.discount_amount)}</td>
+                            {/* FINAL AMOUNT */}
+                            <td className="px-3 py-3 text-sm font-semibold text-gray-800 w-[110px]">
+                              {item.line_item_type === "loose" ? Number(item.bundle_sku.selling_price * (item._bundleQty ?? 0)).toFixed(2) : item.final_amount != null && !isNaN(item.final_amount) ? fmt(item.final_amount) : "—"}
+                            </td>
+                            {/* DELETE */}
+                            {(cartStatus === "active" || cartStatus === null) && (
+                              <td className="px-3 py-3">
+                                <button
+                                  onClick={() => handleDeleteExisting(idx)}
+                                  className="p-1.5 text-gray-400 cursor-pointer hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    }
 
                     {/* ── New items being composed ──────────────────────────── */}
                     {newItems.map((item) => (
                       <tr key={item._id} className="bg-blue-50/20" style={{ overflow: "visible" }}>
                         {/* SKU NAME — dropdown */}
-                        <td className="px-3 py-3 w-[250px]">
+                        <td className="px-3 py-3 w-[280px]">
                           <SkuSearchDropdown
                             selectedSku={item.sku}
                             onSelect={(sku) => handleNewItemSkuSelect(item._id, sku)}
                             excludedSkuIds={allSelectedSkuIds.filter((id) => id !== item.sku?.id)}
                           />
+                          {item?.sku?.is_bundle_sku && (
+                            <span className="inline-flex items-center gap-1 w-fit px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                              <Package className="w-2.5 h-2.5" />
+                              Bundle ×{item?.sku?.bundle_factor}
+                            </span>
+                          )}
                         </td>
                         {/* SKU CODE */}
-                        <td className="py-3 w-[70px]" title={item?.product_sku?.sku_code ?? ""}>
+                        <td className="py-3 w-[60px]" title={item?.product_sku?.sku_code ?? ""}>
                           {item.sku ? (
-                            <span className="text-xs truncate text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
+                            <span className="text-[11px] truncate text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
                               {item.sku.sku_code}
                             </span>
                           ) : (
@@ -596,17 +921,57 @@ export default function AddToCart({ customerId = 2, }) {
                           )}
                         </td>
                         {/* QUANTITY */}
-                        <td className="px-3 py-3 w-[50px]">
-                          <input
-                            type="number"
-                            min={1}
-                            value={item.quantity}
-                            disabled={!item.sku || cartStatus === "checkout"}
-                            onChange={(e) => handleNewItemQtyChange(item._id, e.target.value)}
-                            placeholder="Qty"
-                            className="w-20 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all"
-                            onWheel={(e) => e.target.blur()}
-                          />
+                        <td className="px-0.1 py-3 w-3">
+                          {item?.sku?.is_bundle_sku ? (
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                value={item.quantity}
+                                disabled={!item.sku || cartStatus === "checkout"}
+                                onChange={(e) => handleNewItemQtyChange(item._id, e.target.value)}
+                                placeholder="0"
+                                className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all"
+                                onWheel={(e) => e.target.blur()}
+                              />
+                              {console.log(item._looseQty)}
+                              {!item._looseQty && item.quantity > 0 && (
+                                <span className="text-[10px] font-medium">
+                                  Total: {Number(item.quantity) * item.sku.bundle_factor}
+                                </span>)}
+
+                              {item._looseQty > 0 && (
+                                <span className="text-[10px] text-slate-500">
+                                  +{item._looseQty} loose&nbsp;|&nbsp;
+                                  <span className="font-semibold">
+                                    Total: {Number(item.quantity) * item.sku.bundle_factor + item._looseQty}
+                                  </span>
+                                </span>
+                              )}
+                              {cartStatus !== "checkout" && (
+                                <span
+                                  className="text-[12px] cursor-pointer text-primary hover:underline w-fit"
+                                  onClick={() => {
+                                    setLoosePopupTarget({ mode: "new", item });
+                                    setIsLooseSkuPopupOpen(true);
+                                  }}
+                                >
+                                  {item._looseQty > 0 ? "Edit loose sku" : "Add loose sku"}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <input
+                              type="number"
+                              min={1}
+                              value={item.quantity}
+                              disabled={!item.sku || cartStatus === "checkout"}
+                              onChange={(e) => handleNewItemQtyChange(item._id, e.target.value)}
+                              placeholder="Qty"
+                              className="w-20 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all"
+                              onWheel={(e) => e.target.blur()}
+                            />
+                          )}
                         </td>
                         {/* MRP */}
                         <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
@@ -814,6 +1179,15 @@ export default function AddToCart({ customerId = 2, }) {
           )}
 
         </div>
+
+        {isLooseSkuPopupOpen && loosePopupTarget && (
+          <LooseQtyPopup
+            mode={loosePopupTarget.mode}
+            item={loosePopupTarget.item}
+            onClose={() => setIsLooseSkuPopupOpen(false)}
+            onConfirm={handleLooseConfirm}
+          />
+        )}
       </div>
     </>
   );

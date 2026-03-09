@@ -1612,7 +1612,7 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
               className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              Cancel 
             </button>
             <button
               type="submit"

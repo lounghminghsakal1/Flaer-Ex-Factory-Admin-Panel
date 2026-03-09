@@ -160,7 +160,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
             cgst: parseFloat(formDataPopup.cgst),
             sgst: parseFloat(formDataPopup.sgst),
             igst: formDataPopup.igst,
-            percentage: formDataPopup.percentage
+            tax_percentage: formDataPopup.percentage
           }),
         }
       );

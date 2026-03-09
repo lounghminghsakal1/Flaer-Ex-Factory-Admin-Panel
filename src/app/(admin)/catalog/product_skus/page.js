@@ -47,9 +47,8 @@ export default function ProductSkusPage() {
       setLoading(true);
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/product_skus?${searchParams.toString()}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`Network error (${response.status})`);
       const result = await response.json();
-      if (result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
+      if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       setProductSkusData(result.data);
       setCurrentPage(result.meta.current_page);
       setTotalPages(result.meta.total_pages);

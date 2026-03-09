@@ -11,7 +11,8 @@ import {
   Store,
   Users,
   ShoppingBagIcon,
-  Settings
+  Settings,
+  LucideShoppingBasket
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -274,6 +275,13 @@ const SidebarLayout = ({ children }) => {
       shortName: 'Customers',
       icon: Users,
       href: '/customers',
+    },
+    {
+      id: 'orders',
+      label: 'Orders',
+      shortName: 'Orders',
+      icon: LucideShoppingBasket,
+      href: '/orders',
     },
     {
       id: 'configs',

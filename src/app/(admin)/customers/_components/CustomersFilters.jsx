@@ -55,7 +55,7 @@ export default function CustomersFilters({ draftFilters = {}, setDraftFilters = 
 
             <input
               type="text"
-              placeholder="Search by purchase order..."
+              placeholder="Search by customer name..."
               className="border border-gray-300 text-gray-700 text-sm px-2 py-3 h-8 w-48 rounded-l placeholder-gray-400 focus:outline-none focus:border-gray-500 transition"
               value={draftFilters.by_purchase_order || ""}
               onChange={(e) => {
@@ -145,21 +145,6 @@ export default function CustomersFilters({ draftFilters = {}, setDraftFilters = 
               </>
             )}
           </div>
-
-          {/* <select
-            className="border border-gray-300 text-sm px-2 h-8 rounded focus:outline-none focus:border-gray-500 transition"
-            value={draftFilters.by_vendor}
-            onChange={(e) =>
-              setDraftFilters(prev => ({
-                ...prev,
-                by_vendor: e.target.value
-              }))
-            }
-          >
-            <option value="">All vendors</option>
-            {vendorsOptions.map((vendor, index) => (<option key={vendor.id}>{vendor.name}</option>))}
-          </select> */}
-
 
           {/* STATUS */}
           <select

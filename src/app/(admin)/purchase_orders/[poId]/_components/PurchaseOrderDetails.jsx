@@ -127,9 +127,8 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
       setCancelling(true);
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}/cancel`;
       const response = await fetch(url, { method:"PATCH", headers: { "Content-Type": "application/json" } });
-      //if (!response.ok) throw new Error(`Network error (${response.status})`);
       const result = await response.json();
-      if (result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
+      if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       toast.success("PO cancelled successfully");
     } catch (err) {
       console.log(err);
