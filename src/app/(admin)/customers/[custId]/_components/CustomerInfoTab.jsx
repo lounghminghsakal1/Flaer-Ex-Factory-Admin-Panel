@@ -54,7 +54,6 @@ export default function CustomerInfoTab({ custId }) {
       const response = await fetch(url);
       const result = await response.json();
       if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
-      console.log(result?.data);
       setcustomerData(result?.data);
     } catch(err) {
       console.log(err);

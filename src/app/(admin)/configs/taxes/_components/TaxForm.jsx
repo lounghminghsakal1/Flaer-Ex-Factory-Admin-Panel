@@ -24,8 +24,8 @@ const EMPTY_ERRORS = {
 
 const inputBase = "w-full px-3 py-2 text-sm border rounded-md outline-none transition-all";
 const inputActive = "border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-white";
-const inputReadonly = "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed";
-const inputDisabled = "border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed";
+const inputReadonly = "border-gray-200 bg-gray-50 text-gray-500 ";
+const inputDisabled = "border-gray-200 bg-gray-50 text-gray-600 ";
 const inputError = (errors, field) => errors[field] ? "border-red-400 focus:border-red-400 focus:ring-red-100" : "";
 
 function Field({ label, required, error, children }) {
@@ -140,7 +140,7 @@ export default function TaxForm({ taxData = null, taxId = null }) {
       if (taxId) setIsEditing(false);
       router.back();
     } catch (err) {
-      toast.error(err.message || "Failed to save tax type");
+      toast.error(taxId ? "Failed to update tax" : "Failed to create tax" + err.message || "Failed to save tax type");
     } finally {
       setIsSubmitting(false);
     }
@@ -201,7 +201,7 @@ export default function TaxForm({ taxData = null, taxId = null }) {
                   <input
                     type="number"
                     min={0}
-                    step={0.01}
+                    step={0.1}
                     value={taxForm.cgst}
                     onChange={(e) => updateField("cgst", e.target.value)}
                     onWheel={(e) => e.target.blur()}
@@ -214,7 +214,7 @@ export default function TaxForm({ taxData = null, taxId = null }) {
                   <input
                     type="number"
                     min={0}
-                    step={0.01}
+                    step={0.1}
                     value={taxForm.sgst}
                     onChange={(e) => updateField("sgst", e.target.value)}
                     onWheel={(e) => e.target.blur()}

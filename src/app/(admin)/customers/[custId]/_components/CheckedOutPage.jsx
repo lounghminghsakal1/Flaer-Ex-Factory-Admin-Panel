@@ -1,6 +1,6 @@
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 
 export default function CheckedOutPage({ cartData, customerId, onBack = null }) {
@@ -48,6 +48,8 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
       setIsPlacingOrder(false);
     }
   }
+
+  console.log(cartLineItems);
 
   return (
     <div className="w-full mx-auto py-4">
@@ -110,46 +112,92 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
                 </tr>
               ) : (
                 cartLineItems.map((lineItem, index) => (
-                  <tr key={lineItem.id || index} className="hover:bg-gray-50/60 transition-colors">
-                    {/* SKU NAME */}
-                    <td className="px-3 py-3 text-sm font-medium text-gray-800 w-[220px] min-w-[220px] max-w-[220px]">
-                      {lineItem?.product_sku?.sku_name || "—"}
-                    </td>
-                    {/* SKU CODE */}
-                    <td className="px-3 py-3 w-[70px]">
-                      <span className="text-xs truncate text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
-                        {lineItem?.product_sku?.sku_code || "—"}
-                      </span>
-                    </td>
-                    {/* QUANTITY */}
-                    <td className="px-3 py-3 text-sm text-gray-700 w-[50px]">
-                      {lineItem?.quantity ?? "—"}
-                    </td>
-                    {/* MRP */}
-                    <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                      {fmt(lineItem?.product_sku?.mrp)}
-                    </td>
-                    {/* UNIT PRICE */}
-                    <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                      {fmt(lineItem?.unit_price)}
-                    </td>
-                    {/* SELLING UNIT PRICE */}
-                    <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                      {fmt(lineItem?.selling_unit_price)}
-                    </td>
-                    {/* SELLING PRICE */}
-                    <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                      {fmt(lineItem?.selling_price)}
-                    </td>
-                    {/* DISCOUNT AMOUNT */}
-                    <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
-                      {fmt(lineItem?.discount_amount)}
-                    </td>
-                    {/* FINAL AMOUNT */}
-                    <td className="px-3 py-3 text-sm font-semibold text-gray-800 w-[110px]">
-                      {fmt(lineItem?.final_amount)}
-                    </td>
-                  </tr>
+                  <React.Fragment key={lineItem.id || index}>
+                    <tr className="hover:bg-gray-50/60 transition-colors">
+                      {/* SKU NAME */}
+                      <td className="px-3 py-3 text-sm font-medium text-gray-800 w-[220px] min-w-[220px] max-w-[220px]">
+                        {lineItem?.product_sku?.sku_name || "—"}
+                      </td>
+                      {/* SKU CODE */}
+                      <td className="px-3 py-3 w-[70px]">
+                        <span className="text-xs truncate text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
+                          {lineItem?.product_sku?.sku_code || "—"}
+                        </span>
+                      </td>
+                      {/* QUANTITY */}
+                      <td className="px-3 py-3 text-sm text-gray-700 w-[50px]">
+                        {lineItem?.quantity ?? "—"}
+                      </td>
+                      {/* MRP */}
+                      <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                        {fmt(lineItem?.product_sku?.mrp)}
+                      </td>
+                      {/* UNIT PRICE */}
+                      <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                        {fmt(lineItem?.unit_price)}
+                      </td>
+                      {/* SELLING UNIT PRICE */}
+                      <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                        {fmt(lineItem?.selling_unit_price)}
+                      </td>
+                      {/* SELLING PRICE */}
+                      <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                        {fmt(lineItem?.selling_price)}
+                      </td>
+                      {/* DISCOUNT AMOUNT */}
+                      <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                        {fmt(lineItem?.discount_amount)}
+                      </td>
+                      {/* FINAL AMOUNT */}
+                      <td className="px-3 py-3 text-sm font-semibold text-gray-800 w-[110px]">
+                        {fmt(lineItem?.final_amount)}
+                      </td>
+                    </tr>
+
+                    {lineItem.line_item_type === "bundle" && (
+                      <tr className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-3 py-3 text-sm font-medium text-gray-800 w-[220px] min-w-[220px] max-w-[220px]">
+                          {lineItem?.loose_item?.product_sku?.sku_name || "—"}
+                        </td>
+                        {/* SKU CODE */}
+                        <td className="px-3 py-3 w-[70px]">
+                          <span className="text-xs truncate text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded">
+                            {lineItem?.loose_item?.product_sku?.sku_code || "—"}
+                          </span>
+                        </td>
+                        {/* QUANTITY */}
+                        <td className="px-3 py-3 text-sm text-gray-700 w-[50px]">
+                          {lineItem?.loose_item?.quantity ?? "—"}
+                        </td>
+                        {/* MRP */}
+                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                          {fmt(lineItem?.loose_item?.product_sku?.mrp)}
+                        </td>
+                        {/* UNIT PRICE */}
+                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                          {fmt(lineItem?.loose_item?.unit_price)}
+                        </td>
+                        {/* SELLING UNIT PRICE */}
+                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                          {fmt(lineItem?.loose_item?.selling_unit_price)}
+                        </td>
+                        {/* SELLING PRICE */}
+                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                          {fmt(lineItem?.loose_item?.selling_price)}
+                        </td>
+                        {/* DISCOUNT AMOUNT */}
+                        <td className="px-3 py-3 text-sm text-gray-700 w-[90px]">
+                          {fmt(lineItem?.loose_item?.discount_amount)}
+                        </td>
+                        {/* FINAL AMOUNT */}
+                        <td className="px-3 py-3 text-sm font-semibold text-gray-800 w-[110px]">
+                          {fmt(lineItem?.loose_item?.final_amount)}
+                        </td>
+                      </tr>
+                    )}
+
+                  </React.Fragment>
+
                 ))
               )}
             </tbody>

@@ -136,8 +136,8 @@ function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
     ${isSelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100 text-gray-800"}`}
                   >
                     <span className="font-medium break-words whitespace-normal leading-snug">{sku.sku_name}</span>
-                    <span className={`text-xs flex-shrink-0 mt-0.5 ${isSelected ? "text-blue-400" : "text-gray-400"}`}>
-                      ₹{parseFloat(sku.mrp).toLocaleString()}
+                    <span className={`text-[7px] flex-shrink-0 mt-0.5 ${isSelected ? "text-blue-400" : "text-gray-400"}`}>
+                      {sku.sku_code}
                     </span>
                   </button>
                 );
@@ -212,7 +212,6 @@ export default function AddToCart({ customerId = 2, }) {
   useEffect(() => {
     fetchCart();
   }, []);
-
 
   // ── Derived state ──────────────────────────────────────────────────────────
   const existingLineItems = cartData?.cart_line_items || [];
@@ -409,7 +408,7 @@ export default function AddToCart({ customerId = 2, }) {
       return Number(i.quantity) > 0;
     });
 
-    // ── Validation for new items ───────────────────────────────────────────────
+    // ── Validation for new items ─
     for (const item of filledNewItems) {
       if (!item.sku) {
         toast.error("Please select a SKU for all new line items.");
@@ -674,7 +673,7 @@ export default function AddToCart({ customerId = 2, }) {
     "SELLING PRICE",
     "DISCOUNT AMOUNT",
     "FINAL AMOUNT",
-    ...(cartStatus === "active" ? ["DEL"] : []),
+    ...((cartStatus === "active" || cartStatus === null) ? ["DEL"] : []),
   ];
 
   const skuOptions = allSkus
@@ -709,7 +708,7 @@ export default function AddToCart({ customerId = 2, }) {
               <h2 className="text-base font-bold text-blue-900">Cart Line Items</h2>
               {cartStatus && (<span className={`px-2 py-1 rounded-full text-xs uppercase ${cartStatus === "active" ? "bg-yellow-500 text-gray-100" : "bg-green-600 text-gray-100"}`}>{cartStatus}</span>)}
             </div>
-            {cartStatus !== "checkout" && (
+            {cartStatus !== "checkout" && cartData?.id && (
               <button
                 onClick={handleClearCart}
                 className="text-sm text-gray-600 border border-gray-200 rounded-lg px-4 py-1.5 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all font-medium"
@@ -719,7 +718,7 @@ export default function AddToCart({ customerId = 2, }) {
             )}
           </div>
 
-          {/* ── Table ───────────────────────────────────────────────────────── */}
+          {/* ── Table ───── */}
           <div className="overflow-x-auto" style={{ overflow: "visible" }}>
             <table className="w-full" style={{ overflow: "visible" }}>
               <thead>
@@ -934,7 +933,6 @@ export default function AddToCart({ customerId = 2, }) {
                                 className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all"
                                 onWheel={(e) => e.target.blur()}
                               />
-                              {console.log(item._looseQty)}
                               {!item._looseQty && item.quantity > 0 && (
                                 <span className="text-[10px] font-medium">
                                   Total: {Number(item.quantity) * item.sku.bundle_factor}
@@ -1070,52 +1068,27 @@ export default function AddToCart({ customerId = 2, }) {
               )}
 
               {appliedCoupons.length > 0 && showSummary && (
-                <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-3.5 h-3.5 text-primary" />
-                      <h2 className="text-sm font-semibold text-gray-700">Applied Coupon</h2>
-                      <span className="text-xs font-mono font-bold text-primary bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
-                        {appliedCoupons[0].code}
-                      </span>
-                    </div>
-                    <button
-                      title="Remove coupon"
-                      onClick={handleRemoveCoupon}
-                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                    >
-                      {isRemovingCoupon ? <Loader2 size={16} /> : <X size={16} />}
-                    </button>
+                <div className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-blue-100 bg-blue-50">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-mono font-bold text-primary bg-white border border-blue-100 px-2 py-0.5 rounded">
+                      {appliedCoupons[0].code}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {appliedCoupons[0]?.discount_type === "percentage"
+                        ? `${appliedCoupons[0].discount_value}% off`
+                        : `${fmt(appliedCoupons[0].discount_value)} off`}
+                    </span>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-xs font-semibold text-green-600">{fmt(appliedCoupons[0].discount_amount)} saved</span>
                   </div>
-
-                  {/* Card Body */}
-                  <div className="px-4 py-3 grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Coupon Type</p>
-                      <p className="text-sm font-medium text-gray-700 capitalize">{appliedCoupons[0].coupon_type}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Status</p>
-                      <span
-                        className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full capitalize
-          ${appliedCoupons[0].status?.toLowerCase() === "applied"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-500"
-                          }`}
-                      >
-                        {appliedCoupons[0].status}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Discount {appliedCoupons[0]?.discount_type === "percentage" ? "%" : "value"}</p>
-                      <p className="text-sm font-medium text-gray-700">{appliedCoupons[0].discount_value} {appliedCoupons[0]?.discount_type === "percentage" ? "%" : ""}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Discount Amount</p>
-                      <p className="text-sm font-medium text-gray-700">{fmt(appliedCoupons[0].discount_amount)}</p>
-                    </div>
-                  </div>
+                  <button
+                    title="Remove coupon"
+                    onClick={handleRemoveCoupon}
+                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                  >
+                    {isRemovingCoupon ? <Loader2 size={14} /> : <X size={14} />}
+                  </button>
                 </div>
               )}
 
