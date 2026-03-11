@@ -132,11 +132,11 @@ function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
                     key={sku.id}
                     type="button"
                     onMouseDown={() => handleSelect(sku)}
-                    className={`w-full px-3 py-2 text-left text-xs flex items-start justify-between gap-2 transition-colors
+                    className={`w-full px-3 py-2 text-left text-xs flex flex-col items-start justify-between transition-colors
     ${isSelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100 text-gray-800"}`}
                   >
                     <span className="font-medium break-words whitespace-normal leading-snug">{sku.sku_name}</span>
-                    <span className={`text-[7px] flex-shrink-0 mt-0.5 ${isSelected ? "text-blue-400" : "text-gray-400"}`}>
+                    <span className={`text-[9px] flex-shrink-0 ${isSelected ? "text-blue-400" : "text-gray-400"}`}>
                       {sku.sku_code}
                     </span>
                   </button>
@@ -762,7 +762,7 @@ export default function AddToCart({ customerId = 2, }) {
                         return (
                           <tr key={item.id || idx} className="hover:bg-gray-50/60 transition-colors" style={{ overflow: "visible" }}>
                             {/* SKU NAME */}
-                            <td className="px-3 py-3 text-sm font-medium text-gray-800 w-[220px] min-w-[220px] max-w-[220px]">
+                            <td className="px-2 py-3 text-xs font-medium text-gray-800 w-[220px] min-w-[220px] max-w-[220px]">
                               <div className="flex flex-col gap-1">
                                 <span>{item.line_item_type === "loose" ? item?.bundle_sku?.sku_name : item.sku_name || item.product_sku?.sku_name || "—"}</span>
                                 {(item.line_item_type === "bundle" || item.line_item_type === "loose") && (

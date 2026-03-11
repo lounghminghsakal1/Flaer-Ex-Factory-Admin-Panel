@@ -152,7 +152,7 @@ const pathName = usePathname();
 
   const pushIdToUrl = (id) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.append("id", id);
+    params.set("shipment-id", id);
     router.push(`${pathName}?${params.toString()}`);
   }
 
@@ -182,7 +182,7 @@ const pathName = usePathname();
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
               {["Shipment No.", "Shipment Type", "Final Amt.", "Invoice Link", "Status"].map((col) => (
-                <th key={col} className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                <th key={col} className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wide whitespace-nowrap">
                   {col}
                 </th>
               ))}
@@ -190,7 +190,7 @@ const pathName = usePathname();
           </thead>
           <tbody className="divide-y divide-gray-50">
             {filtered.map((s) => (
-              <tr key={s.id} onClick={() => {onSelectShipment(s.id); pushIdToUrl(s.id)}} className="hover:bg-gray-50/70 transition-colors cursor-pointer">
+              <tr key={s.id} onClick={() => {onSelectShipment(s.id); pushIdToUrl(s.id)}} className="hover:bg-gray-100 transition-colors cursor-pointer">
                 <td className="px-4 py-3 font-medium text-gray-800">{s.shipment_number ?? s.id ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-700">{formatLabel(s.shipment_type)}</td>
                 <td className="px-4 py-3 text-gray-700 tabular-nums">{fmt(s.aggregates?.final_amount)}</td>
@@ -212,9 +212,7 @@ const pathName = usePathname();
   );
 }
 
-// ─────────────────────────────────────────────
 // 2. Create Forward Shipment
-// ─────────────────────────────────────────────
 function CreateForwardShipment({ orderId, onBack, onSuccess }) {
   const [nodes, setNodes]               = useState([]);
   const [selectedNode, setSelectedNode] = useState("");
@@ -321,11 +319,11 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <button
           onClick={onBack}
-          className="flex items-center justify-center w-7 h-7 rounded-full border-2 border-primary text-primary hover:bg-primary/5 transition-colors"
+          className="flex items-center justify-center w-7 h-7 rounded-full border-2 border-primary text-primary hover:bg-primary/5 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
         </button>
-        <h2 className="text-sm font-bold text-primary">Forward Shipment</h2>
+        <h2 className="text-sm font-bold text-primary ">Forward Shipment</h2>
         <button
           onClick={handleCreate}
           disabled={submitting}
@@ -475,7 +473,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                       <td className="px-3 py-2.5">
                         <button
                           onClick={() => removeRow(row.id)}
-                          className="text-gray-300 hover:text-red-400 transition-colors"
+                          className="text-gray-300 hover:text-red-700 transition-colors cursor-pointer "
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -490,7 +488,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                     <td colSpan={8} className="px-3 py-2.5">
                       <button
                         onClick={addRow}
-                        className="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:underline"
+                        className="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:underline cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Add another Item
@@ -507,9 +505,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// 3. Create Drop Shipment (placeholder)
-// ─────────────────────────────────────────────
+// 3. Create Drop Shipment
 function CreateDropShipment({ onBack }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -530,9 +526,7 @@ function CreateDropShipment({ onBack }) {
   );
 }
 
-// ─────────────────────────────────────────────
 // Helpers
-// ─────────────────────────────────────────────
 function StatusBadge({ status }) {
   const map = {
     created:    "bg-blue-100 text-blue-700",

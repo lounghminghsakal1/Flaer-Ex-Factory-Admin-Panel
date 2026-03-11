@@ -157,9 +157,8 @@ export default function OrderDetailsPage() {
             <p className="text-xs font-bold text-gray-700 mb-3">Customer</p>
             <div className="flex flex-col gap-2">
               <SidebarRow label="Name"      value={orderData?.customer?.name ?? "—"} />
-              <SidebarRow label="Member ID" value={orderData?.customer?.member_id ?? "—"} />
+              <SidebarRow label="Customer ID" value={orderData?.customer?.member_id ?? "—"} />
               <SidebarRow label="GSTIN"     value={orderData?.customer?.gstin || "—"} />
-              <SidebarRow label="Site Type" value={orderData?.customer?.site_type ?? "—"} />
             </div>
           </div>
 

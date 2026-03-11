@@ -130,6 +130,7 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
       const result = await response.json();
       if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       toast.success("PO cancelled successfully");
+      await onRefresh();
     } catch (err) {
       console.log(err);
       toast.error("Failed to cancel PO "+err.message);
@@ -297,7 +298,7 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
 
   return (
     // White card — the scrollable area in page.js scrolls this entire card
-    <div className="bg-white rounded-xl p-5 space-y-4">
+    <div className="bg-white rounded-xl p-5 space-y-4" onClick={() => setMenuOpen(false)}>
 
       {/* ── Row 1: PO number + badge + action buttons ── */}
       <div className="flex items-center justify-between">
@@ -360,7 +361,7 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
 
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
-                  {canCancel && (
+                  {(canCancel && !editing)&& (
                     <div
                       role="button"
                       onClick={(e) => {
