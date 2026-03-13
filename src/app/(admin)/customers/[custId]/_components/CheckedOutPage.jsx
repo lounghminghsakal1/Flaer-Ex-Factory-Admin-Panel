@@ -49,8 +49,6 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
     }
   }
 
-  console.log(cartLineItems);
-
   return (
     <div className="w-full mx-auto py-4">
       {/* ── Page Title row ── */}

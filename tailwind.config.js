@@ -28,24 +28,11 @@ export default {
         xxxs: '.50rem',
       },
 
-      colors: {
-        primary: "#1d4ed8",
-        secondary: "#2563eb",
-        textPrimary: "#1d4ed8",
-        textSecondary: "#2563eb",
-        textMuted: "#64748b",
-        heading: "#0f172a",
-        background: "#f8fafc",
-        card: "#ffffff",
-        border: "#e2e8f0",
-        success: "#22c55e",
-        danger: "#ef4444",
-        warning: "#f59e0b",
-      },
       width: {
         tabMax: '1440px',
         desktopMax: '1670px',
       },
+      
       margin: {
         desktop: 'px-[5vw]',
       },

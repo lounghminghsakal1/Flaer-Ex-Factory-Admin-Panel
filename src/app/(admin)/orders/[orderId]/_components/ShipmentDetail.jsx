@@ -12,9 +12,13 @@ import {
   Dices,
   SendIcon,
   EditIcon,
-  Eye
+  Eye,
+  Edit2,
+  RotateCcwSquare
 } from "lucide-react";
 import { toast } from "react-toastify";
+import ShipmentTrackerBar from "./ShipmentTrackerBar";
+import ReturnShipment from "./ReturnShipment";
 
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
@@ -25,22 +29,52 @@ const fmtDate = (d) => {
 };
 
 const TRACKER_STEPS = [
-  { step: 1, label: "Created", topLabel: "Created" },
-  { step: 2, label: "Packed", topLabel: null },
-  { step: 3, label: "Invoiced", topLabel: "Invoiced" },
-  { step: 4, label: "Dispatched", topLabel: null },
-  { step: 5, label: "Delivered", topLabel: "Delivered" },
+  { step: 1, label: "Created", position: "top" },
+  { step: 2, label: "Assign Allocation", position: "bottom" },
+  { step: 3, label: "Packed", position: "top" },
+  { step: 4, label: "Invoiced", position: "bottom" },
+  { step: 5, label: "Dispatched", position: "top" },
+  { step: 6, label: "Delivered", position: "bottom" },
 ];
 
 const STATUS_STEP_MAP = {
   created: 1,
-  packed: 2,
-  invoiced: 3,
-  dispatched: 4,
-  delivered: 5,
+  packed: 3,
+  invoiced: 4,
+  dispatched: 5,
+  delivered: 6,
+};
+
+
+const getCurrentStep = (shipment) => {
+  const statusStep = STATUS_STEP_MAP[shipment?.status] ?? 1;
+  if (statusStep === 1 && shipment?.fully_allocated) return 2;
+  return statusStep;
 };
 
 const SELECTION_TYPES = ["fifo", "lifo", "fefo", "manual"];
+
+// ── Return status set — statuses where the forward shipment tracker is irrelevant ──
+const RETURN_STATUSES = new Set([
+  "return_initiated",
+  "return_processing",
+  "return_received",
+  "return_completed",
+]);
+
+const fetchShipmentFromOutside = async (shipmentID) => {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentID}`);
+    const json = await res.json();
+    if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load shipment");
+    const data = json.data;
+    setShipment(data);
+  } catch (err) {
+    toast.error(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
 export default function ShipmentDetail({ shipmentId, onBack }) {
   const [shipment, setShipment] = useState(null);
@@ -67,11 +101,14 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   const [sendingToGetInvoice, setSendingToGetInvoice] = useState(false);
   const [sendingToDispatch, setSendingToDispatch] = useState(false);
   const [delivering, setDelivering] = useState(false);
+  // Controls whether the ReturnShipment panel is expanded below the main content
+  const [showReturnPanel, setShowReturnPanel] = useState(false);
+  const [expandedChildId, setExpandedChildId] = useState(null);
 
-  const fetchShipment = async (preserveSelectionTypes = false) => {
+  const fetchShipment = async (preserveSelectionTypes = false, shipmentID = shipmentId) => {
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentID}`);
       const json = await res.json();
       if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load shipment");
       const data = json.data;
@@ -93,6 +130,13 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   };
 
   useEffect(() => { fetchShipment(); }, [shipmentId]);
+
+  useEffect(() => {
+    if (shipment?.child_shipments?.length) {
+      const latest = [...shipment.child_shipments].sort((a, b) => b.id - a.id)[0];
+      setExpandedChildId(latest.id);
+    }
+  }, [shipment?.id]);
 
   const enterEdit = async () => {
     try {
@@ -121,6 +165,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   const handleUpdate = async () => {
     setUpdating(true);
     try {
+      if (editRows.length === 0) throw new Error("Add atleast one line item");
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -219,12 +264,11 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
       toast.success("Shipment proceeded to packing");
       await fetchShipment();
     } catch (err) {
-      console.log(err);
-      toast.error("Failed to proceed shipment to packing ", err.message);
+      toast.error("Failed to proceed shipment to packing " + err.message);
     } finally {
       setPacking(false);
     }
-  }
+  };
 
   const handleProceedToInvoice = async () => {
     try {
@@ -236,12 +280,11 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
       toast.success("Shipment proceeded for invoice");
       await fetchShipment();
     } catch (err) {
-      console.log(err);
       toast.error("Failed to proceed shipment to invoice " + err.message);
     } finally {
       setSendingToGetInvoice(false);
     }
-  }
+  };
 
   const handleProceedToDispatch = async () => {
     try {
@@ -253,12 +296,11 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
       toast.success("Shipment marked as dispatched successfully");
       await fetchShipment();
     } catch (err) {
-      console.log(err);
       toast.error("Failed to mark shipment as dispatched " + err.message);
     } finally {
       setSendingToDispatch(false);
     }
-  }
+  };
 
   const handleDelivering = async () => {
     try {
@@ -270,18 +312,26 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
       toast.success("Shipment marked as delivered successfully");
       await fetchShipment();
     } catch (err) {
-      console.log(err);
       toast.error("Failed to mark shipment as delivered " + err.message);
     } finally {
       setDelivering(false);
     }
-  }
+  };
 
-  const currentStep = STATUS_STEP_MAP[shipment?.status] ?? 1;
-  const progressPercent = ((currentStep - 1) / (TRACKER_STEPS.length - 1)) * 100;
+  const canDoReturnShipment = () => {
+    if (shipment) {
+      const hasUnfinished = shipment?.child_shipments.some(childShipment => childShipment.status === "return_initiated");
+      if (hasUnfinished) return false;
+      return true;
+    }
+  }
 
   const lineItems = shipment?.line_items ?? [];
   const agg = shipment?.aggregates ?? {};
+
+  // ── Derived flags ────────────────────────────────────────────────────────────
+  // True when this shipment IS the return shipment (opened directly, not via the "Return Shipment" button)
+  const isReturnShipment = shipment && RETURN_STATUSES.has(shipment.status);
 
   if (loading) {
     return (
@@ -294,6 +344,41 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
 
   if (!shipment) return null;
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // CASE A: This shipment IS a return shipment (status is one of the return statuses).
+  // We skip the normal forward shipment UI entirely and render only the return view
+  // with the 4-step return tracker.
+  // ════════════════════════════════════════════════════════════════════════════
+  if (isReturnShipment) {
+    return (
+      <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
+        {/* Back button bar */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100">
+            <button
+              onClick={onBack}
+              className="flex items-center justify-center w-7 h-7 rounded-full border-2 border-primary text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+            <h2 className="flex-1 text-sm font-bold text-primary capitalize">
+              Return Shipment
+            </h2>
+          </div>
+        </div>
+
+        {/* ReturnShipment component handles its own 4-step tracker + line items */}
+        <ReturnShipment
+          shipment={null}
+          return_shipment_id={shipment.id}
+          onCancel={onBack}
+          onSuccess={() => fetchShipment()}
+        />
+      </div>
+    );
+  }
+
+  // CASE B: Normal forward shipment. Show full detail with optional return panel
   return (
     <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
 
@@ -310,90 +395,16 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
             {shipment.shipment_type?.replace(/_/g, " ")}
           </h2>
         </div>
-        {/* <div className="flex items-center gap-2">
-            {!editMode && (
-              <button
-                onClick={enterEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:opacity-80 text-white text-xs font-semibold transition-colors cursor-pointer"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Edit
-              </button>
-            )}
-          </div> */}
 
-        {/* Shipment Tracker */}
-        <div className="px-2 py-2 bg-white rounded-xl mx-4 my-2 border border-gray-100">
-          <p className="text-sm font-bold text-gray-800 mb-8">Shipment Tracker</p>
-
-          <div className="relative flex items-center justify-between px-2">
-            {/* Gray background line */}
-            <div
-              className="absolute top-1/2 -translate-y-1/2 h-px bg-gray-200 z-0"
-              style={{ left: "28px", right: "28px" }}
-            />
-            {/* Primary colored progress line */}
-            <div
-              className="absolute top-1/2 -translate-y-1/2 h-px bg-primary z-0 transition-all duration-500"
-              style={{
-                left: "28px",
-                width: (() => {
-                  const currentStep = STATUS_STEP_MAP[shipment?.status] ?? 1;
-                  if (currentStep <= 1) return "0px";
-                  const pct = ((currentStep - 1) / (TRACKER_STEPS.length - 1)) * 100;
-                  return `calc(${pct}% - 14px)`;
-                })(),
-              }}
-            />
-
-            {TRACKER_STEPS.map((s) => {
-              const currentStep = STATUS_STEP_MAP[shipment?.status] ?? 1;
-              const done = s.step < currentStep;
-              const active = s.step === currentStep;
-              const topLabel = s.step % 2 === 1 ? s.label : null;
-              const bottomLabel = s.step % 2 === 0 ? s.label : null;
-
-              return (
-                <div key={s.step} className="relative z-10 flex flex-col items-center gap-2">
-                  {/* Top label */}
-                  {topLabel ? (<span className={`text-xs font-semibold text-gray-700 mb-1 ${topLabel ? "visible" : "invisible"}`}>
-                    {topLabel}
-                  </span>) : (<span className={`text-xs font-semibold p-2 text-gray-700 mb-1 ${topLabel ? "visible" : "invisible"}`}>
-
-                  </span>)}
-
-
-                  {/* Circle */}
-                  <div
-                    className={`w-7 h-7 p-1 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-all
-              ${done || active
-                        ? "bg-primary border-primary text-white"
-                        : "bg-white border-gray-300 text-gray-400"
-                      }`}
-                  >
-                    {done ? <Check className="w-5 h-5" /> : s.step}
-                  </div>
-
-                  {/* Bottom label */}
-                  {bottomLabel ? (<span className={`text-xs font-semibold text-gray-700 mt-1 ${bottomLabel ? "visible" : "invisible"}`}>
-                    {bottomLabel}
-                  </span>) : (<span className={`text-xs font-semibold p-2 text-gray-700 mt-1 ${bottomLabel ? "visible" : "invisible"}`}>
-                  </span>)}
-
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
+        <ShipmentTrackerBar currShipment={shipment} />
       </div>
 
       {/* ── Line Items ── */}
       <div className="relative bg-white rounded-xl border border-gray-100 shadow-sm">
 
-        {shipment?.status === "created" && (
+        {/* Options kebab menu — only for statuses that have actions */}
+        {(shipment?.status === "created" || shipment?.status === "delivered") && (
           <div className="absolute top-3 right-3">
-            {/* Icon */}
             <div
               className="cursor-pointer p-1 rounded-md hover:bg-gray-100"
               onClick={(e) => {
@@ -404,39 +415,57 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
               <MoreVertical size={16} />
             </div>
 
-            {/* Dropdown */}
             {openOptions && (
               <div
-                className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden"
+                className="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-white rounded-md shadow-lg border border-gray-100 p-1 overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Edit */}
-                {(!editMode && shipment?.status === "created") && (
+                {/* Edit — only for created */}
+                {!editMode && shipment?.status === "created" && (
                   <div
                     role="button"
                     onClick={() => {
                       setOpenOptions(false);
                       enterEdit();
                     }}
-                    className="flex items-center gap-2.5 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="flex items-center gap-2.5 px-2.5 rounded-md py-2 border-b border-gray-200 text-xs text-gray-700 hover:bg-blue-100 cursor-pointer transition-colors"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-3 h-3" />
                     Edit Shipment
                   </div>
                 )}
 
-                {/* Cancel */}
+                {/* Cancel — only for created */}
                 {shipment?.status === "created" && (
                   <div
                     role="button"
                     onClick={() => {
                       setOpenOptions(false);
-                      enterEdit();
+                      // TODO: hook up actual cancel API
                     }}
-                    className="flex items-center gap-2.5 px-2 py-1 text-xs text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
+                    className="flex items-center gap-2.5 px-2.5 rounded-md py-2 text-xs text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                     {isCancelling ? "Cancelling..." : "Cancel Shipment"}
+                  </div>
+                )}
+
+                {/* Return Shipment — only for delivered */}
+                {shipment?.status === "delivered" && (
+                  <div
+                    role="button"
+                    onClick={() => {
+                      if (!canDoReturnShipment()) {
+                        toast.error("Finish existing return shipments first ");
+                        return;
+                      };
+                      setOpenOptions(false);
+                      setShowReturnPanel((prev) => !prev);
+                    }}
+                    className="flex items-center gap-2.5 px-2.5 rounded-md py-2 text-xs text-cyan-700 hover:bg-cyan-50 cursor-pointer transition-colors"
+                  >
+                    <RotateCcwSquare className="w-3.5 h-3.5" />
+                    {showReturnPanel ? "Hide Return Panel" : "Return Shipment"}
                   </div>
                 )}
               </div>
@@ -444,12 +473,13 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           </div>
         )}
 
+        {/* href={shipment?.shipment_packing_slip} target="_blank" rel="noopener noreferrer" className="flex gap-1 text-primary font-semibold text-xs" */}
         {/* Meta grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-t border-gray-100 divide-x divide-gray-100">
           <MetaCell label="Shipment Number" value={<span className="font-bold text-gray-800">{shipment.shipment_number}</span>} />
           <MetaCell label="Status" value={<StatusBadge status={shipment.status} />} />
-          <MetaCell label="Shipment packing slip" value={<a href="https://flaerhomes.com/" target="_blank" rel="noopener noreferrer" className="flex gap-1 text-primary font-semibold text-xs"><ExternalLink size={14} /> Download</a>} />
-          <MetaCell label="Invoice" value={<span className="flex flex-col gap-1"><span>{shipment.invoices?.length ? shipment.invoices[0].invoice_number : "—"}</span>{shipment?.invoices[0]?.invoice_url && (<a href={shipment?.invoices[0]?.invoice_url} target="_blank" rel="noopener noreferrer" className="flex gap-1 text-primary font-semibold text-xs"><ExternalLink size={14} />  Download</a>)}</span>} />
+          <MetaCell label="Shipment packing slip" value={<span className="gap-1">{shipment?.shipment_packing_slip ? (<a href={shipment?.shipment_packing_slip} target="_blank" rel="noopener noreferrer" className="flex gap-1 text-primary font-semibold text-xs"><ExternalLink size={14} /> Download</a>) : (<p>—</p>)}</span>} />
+          <MetaCell label="Invoice" value={<span className="flex flex-col gap-1"><span>{shipment.invoices?.length ? shipment.invoices[0].invoice_number : "—"}</span>{shipment?.invoices?.[0]?.invoice_url && (<a href={shipment?.invoices[0]?.invoice_url} target="_blank" rel="noopener noreferrer" className="flex gap-1 text-primary font-semibold text-xs"><ExternalLink size={14} /> Download</a>)}</span>} />
           <MetaCell label="Node" value={<span className="font-semibold text-gray-800">{shipment.node?.name ?? "—"}</span>} />
           <MetaCell label="Mark Dispatch Details" value={shipment.dispatched_at ? fmtDate(shipment.dispatched_at) : "—"} />
           <MetaCell label="Mark Delivered Details" value={shipment.delivered_at ? fmtDate(shipment.delivered_at) : "—"} />
@@ -478,7 +508,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                 <button
                   onClick={handleAssignAllocations}
                   disabled={assigning}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary hover:opacity-80 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {assigning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BaggageClaimIcon className="w-3.5 h-3.5" />}
                   Assign Allocations
@@ -487,7 +517,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                 <button
                   onClick={handleProceedToPacking}
                   disabled={packing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-amber-700 hover:opacity-80 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {packing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PackageCheckIcon className="w-3.5 h-3.5" />}
                   Proceed to packing
@@ -496,7 +526,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                 <button
                   onClick={handleProceedToInvoice}
                   disabled={sendingToGetInvoice}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-purple-700 hover:opacity-80 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {sendingToGetInvoice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FormIcon className="w-3.5 h-3.5" />}
                   Get Invoice
@@ -505,7 +535,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                 <button
                   onClick={handleProceedToDispatch}
                   disabled={sendingToDispatch}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-sky-700 hover:opacity-80 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {sendingToDispatch ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Dices className="w-3.5 h-3.5" />}
                   Mark as Dispatched
@@ -514,7 +544,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                 <button
                   onClick={handleDelivering}
                   disabled={delivering}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-green-700 hover:opacity-80 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {delivering ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SendIcon className="w-3.5 h-3.5" />}
                   Mark as Delivered
@@ -524,7 +554,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-xs" style={{ tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: editMode ? "22%" : "24%" }} />
@@ -606,6 +636,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                                 : r));
                             }
                           }}
+                          onWheel={(e) => e.target.blur()}
                           className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center"
                         />
                       ) : (
@@ -646,17 +677,17 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                           <div className="flex flex-col gap-0.5">
                             {trackingType === "batch" && (
                               <button onClick={() => setBatchModal(li)} className="inline-flex items-center gap-1 text-[10px] text-primary font-semibold hover:underline cursor-pointer">
-                                {(shipment?.fully_allocated && shipment?.status === "created") ? <><EditIcon className="w-3 h-3" /> View/Edit Batches</> : shipment?.status !== "created" ? <><Eye className="w-3 h-3" /> View Batches</> : <><Plus className="w-3 h-3" />Add Batch</>}
+                                {(shipment?.fully_allocated && shipment?.status === "created") ? <><EditIcon className="w-3 h-3" /> View/Edit Batches</> : shipment?.status !== "created" ? <><Eye className="w-3 h-3" /> View Batches</> : <>{hasBatches ? <span className="flex gap-1"><Edit2 className="w-2.5 h-2.5" />Edit Batches</span> : <span className="flex gap-1"><Plus className="w-2.5 h-2.5" />Add Batch</span>} </>}
                               </button>
                             )}
                             {trackingType === "serial" && (
                               <button onClick={() => setSerialModal(li)} className="inline-flex items-center gap-1 text-[10px] text-primary font-semibold hover:underline cursor-pointer">
-                                <Plus className="w-3 h-3" />{hasSerials ? "Edit Serials" : shipment?.fully_allocated ? "View serial" : "Add Serial"}
+                                {(shipment?.fully_allocated && shipment?.status === "created") ? <><EditIcon className="w-3 h-3" /> View/Edit Serials</> : shipment?.status !== "created" ? <><Eye className="w-3 h-3" /> View Serials</> : <>{hasSerials ? <span className="flex gap-1"><Edit2 className="w-2.5 h-2.5" />Edit Serials</span> : <span className="flex gap-1"><Plus className="w-2.5 h-2.5" />Add Serials</span>} </>}
                               </button>
                             )}
                             {trackingType === "untracked" && (
                               <button onClick={() => setUntrackedModal(li)} className="inline-flex items-center gap-1 text-[10px] text-primary font-semibold hover:underline cursor-pointer">
-                                <Plus className="w-3 h-3" />{hasUntracked ? "Edit Untracked" : shipment?.fully_allocated ? "View untracked" : "Add Untracked"}
+                                {(shipment?.fully_allocated && shipment?.status === "created") ? <><EditIcon className="w-3 h-3" /> View/Edit Untracked</> : shipment?.status !== "created" ? <><Eye className="w-3 h-3" /> View Untracked</> : <>{hasUntracked ? <span className="flex gap-1"><Edit2 className="w-2.5 h-2.5" />Edit Untracked</span> : <span className="flex gap-1"><Plus className="w-2.5 h-2.5" />Add Untracked</span>} </>}
                               </button>
                             )}
                           </div>
@@ -715,6 +746,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                             ? { ...r, quantity: isNaN(v) || v < 1 ? "" : v }
                             : r));
                         }}
+                        onWheel={(e) => e.target.blur()}
                         className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center"
                       />
                     </td>
@@ -771,82 +803,97 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         </div>
       </div>
 
+      {/* ── Child Shipments Accordion ── */}
+      {(shipment?.child_shipments ?? []).length > 0 && (
+        <ChildShipmentsAccordion
+          childShipments={shipment.child_shipments}
+          expandedChildId={expandedChildId}
+          onToggle={(id) => setExpandedChildId((prev) => (prev === id ? null : id))}
+          parentShipment={shipment}
+        />
+      )}
+
+      {/* ── Return Shipment Panel (shown inline below when triggered from delivered shipment) ── */}
+      {showReturnPanel && (
+        <ReturnShipment
+          shipment={shipment}
+          return_shipment_id={null}
+          onCancel={() => setShowReturnPanel(false)}
+          onSuccess={() => {
+            fetchShipment(shipment.id);
+            // Keep panel open so user can see the return_completed state
+          }}
+          setShowReturnPanel={setShowReturnPanel}
+        />
+      )}
+
       {/* ── Change Selection Type Panel ── */}
-      {
-        changeTypePanel && (
-          <ChangeSelectionTypePanel
-            lineItem={changeTypePanel}
-            currentType={selectionTypes[changeTypePanel.id] ?? "fifo"}
-            onClose={() => setChangeTypePanel(null)}
-            onSave={handleSelectionTypeSave}
-          />
-        )
-      }
+      {changeTypePanel && (
+        <ChangeSelectionTypePanel
+          lineItem={changeTypePanel}
+          currentType={selectionTypes[changeTypePanel.id] ?? "fifo"}
+          onClose={() => setChangeTypePanel(null)}
+          onSave={handleSelectionTypeSave}
+        />
+      )}
 
       {/* ── Batch Modal ── */}
-      {
-        batchModal && (
-          <BatchEntryModal
-            isOpen={!!batchModal}
-            onClose={() => setBatchModal(null)}
-            shipmentId={shipmentId}
-            lineItem={batchModal}
-            totalQty={batchModal.quantity}
-            savedData={manualBatches[batchModal.id] ?? []}
-            onSave={(rows) => {
-              setManualBatches((prev) => ({ ...prev, [batchModal.id]: rows }));
-              setBatchModal(null);
-            }}
-            shipment={shipment}
-          />
-        )
-      }
+      {batchModal && (
+        <BatchEntryModal
+          isOpen={!!batchModal}
+          onClose={() => setBatchModal(null)}
+          shipmentId={shipmentId}
+          lineItem={batchModal}
+          totalQty={batchModal.quantity}
+          savedData={manualBatches[batchModal.id] ?? []}
+          onSave={(rows) => {
+            setManualBatches((prev) => ({ ...prev, [batchModal.id]: rows }));
+            setBatchModal(null);
+          }}
+          shipment={shipment}
+        />
+      )}
 
       {/* ── Serial Modal ── */}
-      {
-        serialModal && (
-          <SerialEntryModal
-            isOpen={!!serialModal}
-            onClose={() => setSerialModal(null)}
-            shipmentId={shipmentId}
-            lineItem={serialModal}
-            totalQty={serialModal.quantity}
-            savedData={manualSerials[serialModal.id] ?? []}
-            onSave={(serials) => {
-              setManualSerials((prev) => ({ ...prev, [serialModal.id]: serials }));
-              setSerialModal(null);
-            }}
-            shipment={shipment}
-          />
-        )
-      }
+      {serialModal && (
+        <SerialEntryModal
+          isOpen={!!serialModal}
+          onClose={() => setSerialModal(null)}
+          shipmentId={shipmentId}
+          lineItem={serialModal}
+          totalQty={serialModal.quantity}
+          savedData={manualSerials[serialModal.id] ?? []}
+          onSave={(serials) => {
+            setManualSerials((prev) => ({ ...prev, [serialModal.id]: serials }));
+            setSerialModal(null);
+          }}
+          shipment={shipment}
+        />
+      )}
 
       {/* ── Untracked Modal ── */}
-      {
-        untrackedModal && (
-          <UntrackedEntryModal
-            isOpen={!!untrackedModal}
-            onClose={() => setUntrackedModal(null)}
-            shipmentId={shipmentId}
-            lineItem={untrackedModal}
-            totalQty={untrackedModal.quantity}
-            savedData={manualUntracked[untrackedModal.id] ?? []}
-            onSave={(rows) => {
-              setManualUntracked((prev) => ({ ...prev, [untrackedModal.id]: rows }));
-              setUntrackedModal(null);
-            }}
-            shipment={shipment}
-          />
-        )
-      }
+      {untrackedModal && (
+        <UntrackedEntryModal
+          isOpen={!!untrackedModal}
+          onClose={() => setUntrackedModal(null)}
+          shipmentId={shipmentId}
+          lineItem={untrackedModal}
+          totalQty={untrackedModal.quantity}
+          savedData={manualUntracked[untrackedModal.id] ?? []}
+          onSave={(rows) => {
+            setManualUntracked((prev) => ({ ...prev, [untrackedModal.id]: rows }));
+            setUntrackedModal(null);
+          }}
+          shipment={shipment}
+        />
+      )}
 
       {/* ── Unassigned Popup ── */}
-      {
-        unassignedPopup && (
-          <UnassignedPopup items={unassignedPopup} onClose={() => setUnassignedPopup(null)} />
-        )
-      }
-    </div >
+      {unassignedPopup && (
+        <UnassignedPopup items={unassignedPopup} onClose={() => setUnassignedPopup(null)} />
+      )}
+
+    </div>
   );
 }
 
@@ -924,22 +971,16 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
   const [availableBatches, setAvailableBatches] = useState([]);
   const [fetchingBatches, setFetchingBatches] = useState(false);
 
-  // Each row: { id, batch_code, quantity, availableQty }
   const [rows, setRows] = useState([]);
   const [viewMode, setViewMode] = useState(shipment?.status !== "created");
   const [currentLineItemData, setCurrentLineItemData] = useState(null);
 
-  // Fetch available batches from API
   useEffect(() => {
     if (!isOpen) return;
 
-    // If we have savedData, open in view mode
     if (savedData?.length) {
       setRows(savedData.map((r) => ({ ...r, id: Math.random(), availableQty: null })));
       setViewMode(true);
-    } else {
-      // setRows([{ id: Date.now(), batch_code: "", quantity: "", availableQty: null }]);
-      // setViewMode(false);
     }
 
     setCurrentLineItemData(shipment?.line_items?.find(item => item.product_sku.sku_name === lineItem?.product_sku?.sku_name));
@@ -952,6 +993,9 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
         const json = await res.json();
         if (json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load batches");
         setAvailableBatches(json.data ?? []);
+        if (!savedData?.length && json.data?.length) {
+          setRows([{ id: Date.now(), batch_code: "", quantity: "", availableQty: null }]);
+        }
       } catch (err) {
         toast.error(err.message);
       } finally {
@@ -962,10 +1006,21 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
   }, [isOpen]);
 
   useEffect(() => {
-    if (currentLineItemData === null) return;
-    setRows(currentLineItemData?.meta?.allocated_batches.map(batch => ({ id: Date.now() + Math.random(), batch_code: batch?.batch_code, quantity: Number(batch?.quantity), availableQty: null })));
-    setViewMode(true);
-  }, [currentLineItemData]);
+    if (savedData?.length) return;
+
+    if (Object.keys(currentLineItemData?.meta || {}).length > 0) {
+      setRows(
+        currentLineItemData?.meta?.allocated_batches?.map((batch) => ({
+          id: Date.now() + Math.random(),
+          batch_code: batch?.batch_code,
+          quantity: Number(batch?.quantity),
+          availableQty: null,
+        })) || []
+      );
+
+      setViewMode(true);
+    }
+  }, [currentLineItemData, savedData]);
 
   const selectedBatchCodes = rows.map((r) => r.batch_code).filter(Boolean);
 
@@ -1008,14 +1063,13 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
 
   if (!isOpen) return null;
 
-  // ── View Mode (already saved) ──
   if (viewMode) {
     return (
       <ModalOverlay onClose={onClose}>
         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-base font-bold text-gray-800">Assigned Batches</h2>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-700 transition-colors cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1065,7 +1119,6 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
     );
   }
 
-  // ── Edit / Add Mode ──
   return (
     <ModalOverlay onClose={onClose}>
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl">
@@ -1091,50 +1144,58 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {rows.map((r, i) => {
-                  const otherSelected = selectedBatchCodes.filter((c) => c !== r.batch_code);
-                  const dropdownOptions = availableBatches.filter((b) => !otherSelected.includes(b.batch_code));
-                  const selectedBatch = availableBatches.find((b) => b.batch_code === r.batch_code);
+                {rows.length === 0 ? (
+                  <tr>
+                    <td className="text-center h-20" colSpan={4}>
+                      <p className="font-bold text-gray-700">NO BATCHES FOUND</p>
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r, i) => {
+                    const otherSelected = selectedBatchCodes.filter((c) => c !== r.batch_code);
+                    const dropdownOptions = availableBatches.filter((b) => !otherSelected.includes(b.batch_code));
+                    const selectedBatch = availableBatches.find((b) => b.batch_code === r.batch_code);
 
-                  return (
-                    <tr key={r.id} className="align-top">
-                      <td className="px-3 py-3 text-gray-400">{i + 1}</td>
-                      <td className="px-3 py-3">
-                        <BatchDropdown
-                          options={dropdownOptions}
-                          value={r.batch_code}
-                          onChange={(code) => handleBatchSelect(r.id, code)}
-                          placeholder="Select batch…"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <input
-                          type="number" min={1}
-                          max={r.availableQty ?? undefined}
-                          value={r.quantity}
-                          disabled={!r.batch_code}
-                          onChange={(e) => handleQtyChange(r.id, e.target.value)}
-                          placeholder="Qty"
-                          className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-300"
-                        />
-                        {selectedBatch && (
-                          <p className="mt-1 text-[10px] text-emerald-600 font-medium">
-                            Available: {selectedBatch.available_quantity}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 pt-3.5">
-                        <button onClick={() => removeRow(r.id)} className="text-gray-300 hover:text-red-400 transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={r.id} className="align-top">
+                        <td className="px-3 py-3 text-gray-400">{i + 1}</td>
+                        <td className="px-3 py-3">
+                          <BatchDropdown
+                            options={dropdownOptions}
+                            value={r.batch_code}
+                            onChange={(code) => handleBatchSelect(r.id, code)}
+                            placeholder="Select batch…"
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            type="number" min={1}
+                            max={r.availableQty ?? undefined}
+                            value={r.quantity}
+                            disabled={!r.batch_code}
+                            onChange={(e) => handleQtyChange(r.id, e.target.value)}
+                            placeholder="Qty"
+                            onWheel={(e) => e.target.blur()}
+                            className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-300"
+                          />
+                          {selectedBatch && (
+                            <p className="mt-1 text-[10px] text-emerald-600 font-medium">
+                              Available: {selectedBatch.available_quantity}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 pt-3.5">
+                          <button onClick={() => removeRow(r.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
 
-            {/* Add Batch button — only if unused batches remain */}
             {availableBatches.length > selectedBatchCodes.filter(Boolean).length && (
               <button onClick={addRow} className="mt-2 inline-flex items-center gap-1 text-xs text-primary font-semibold hover:underline cursor-pointer">
                 <Plus className="w-3.5 h-3.5" />Add Batch
@@ -1160,7 +1221,7 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
   );
 }
 
-// ── Batch Dropdown (custom, shows code + available qty) ──────────────────────
+// ── Batch Dropdown ────────────────────────────────────────────────────────────
 function BatchDropdown({ options, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -1286,6 +1347,9 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
         const json = await res.json();
         if (json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load serials");
         setAvailableSerials(json.data?.map((s) => s.serial_number) ?? []);
+        if (!savedData?.length && json.data?.length) {
+          setSelectedSerials(new Set());
+        }
       } catch (err) {
         toast.error(err.message);
       } finally {
@@ -1296,10 +1360,12 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
   }, [isOpen]);
 
   useEffect(() => {
-    if (!currentLineItemData) return;
-    setSelectedSerials(new Set(currentLineItemData?.meta?.allocated_serials));
-    setViewMode(true);
-  }, [currentLineItemData]);
+    if (savedData.length) return;
+    if (Object.keys(currentLineItemData?.meta || {}).length > 0) {
+      setSelectedSerials(new Set(currentLineItemData?.meta?.allocated_serials));
+      setViewMode(true);
+    }
+  }, [currentLineItemData, savedData]);
 
   const filteredSerials = availableSerials.filter((s) =>
     s.toLowerCase().includes(searchQuery.toLowerCase())
@@ -1329,14 +1395,13 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
 
   if (!isOpen) return null;
 
-  // ── View Mode ──
   if (viewMode) {
     return (
       <ModalOverlay onClose={onClose}>
         <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
             <h2 className="text-base font-bold text-gray-900">Assigned Serials</h2>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-700 transition-colors cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1375,18 +1440,16 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
     );
   }
 
-  // ── Select Mode ──
   return (
     <ModalOverlay onClose={onClose}>
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <h2 className="text-base font-bold text-gray-900">Select Serial Numbers</h2>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-700 transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* SKU bar */}
         <div className="mx-6 mt-4 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SKU</span>
@@ -1398,7 +1461,6 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
           </div>
         </div>
 
-        {/* Counter + search */}
         <div className="px-6 pt-4 pb-2 shrink-0 flex flex-col gap-3">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-gray-700">Select Serials ({entered} / {total})</span>
@@ -1409,7 +1471,6 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
             </div>
           </div>
 
-          {/* Search */}
           <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-colors">
             <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
             <input
@@ -1423,7 +1484,6 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
           </div>
         </div>
 
-        {/* Serial list */}
         <div className="flex-1 min-h-0 px-6 pb-4 overflow-y-auto">
           {fetchingSerials ? (
             <div className="flex items-center justify-center gap-2 py-10">
@@ -1465,7 +1525,6 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex justify-center items-center gap-3 px-6 pb-5 pt-3 border-t border-gray-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
             Go Back
@@ -1496,7 +1555,6 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
   const [fetchingUntracked, setFetchingUntracked] = useState(false);
   const [currentLineItemData, setCurrentLineItemData] = useState(null);
 
-  // Each row: { id, untracked_number, quantity, availableQty }
   const [rows, setRows] = useState([]);
   const [viewMode, setViewMode] = useState(shipment?.status !== "created");
 
@@ -1510,7 +1568,7 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
       // setRows([{ id: Date.now(), untracked_number: "", quantity: "", availableQty: null }]);
       // setViewMode(false);
     }
-    setCurrentLineItemData(shipment?.line_items.find(item => item?.product_sku?.sku_name === lineItem?.product_sku?.sku_name))
+    setCurrentLineItemData(shipment?.line_items.find(item => item?.product_sku?.sku_name === lineItem?.product_sku?.sku_name));
 
     const fetchUntracked = async () => {
       if (viewMode) return;
@@ -1520,6 +1578,9 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
         const json = await res.json();
         if (json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load untracked");
         setAvailableUntracked(json.data ?? []);
+        if (!savedData?.length && json.data?.length) {
+          setRows([{ id: Date.now(), untracked_number: "", quantity: "", availableQty: null }]);
+        }
       } catch (err) {
         toast.error(err.message);
       } finally {
@@ -1529,12 +1590,13 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
     fetchUntracked();
   }, [isOpen]);
 
-
   useEffect(() => {
-    if (!currentLineItemData) return;
-    setRows(currentLineItemData?.meta?.allocated_untracked.map(untracked => ({ id: Date.now() + Math.random(), untracked_number: untracked?.untracked_number, quantity: untracked?.quantity, availableQty: null })));
-    setViewMode(true);
-  }, [currentLineItemData]);
+    if (savedData.length) return;
+    if (Object.keys(currentLineItemData?.meta || {}).length > 0) {
+      setRows(currentLineItemData?.meta?.allocated_untracked.map(untracked => ({ id: Date.now() + Math.random(), untracked_number: untracked?.untracked_number, quantity: untracked?.quantity, availableQty: null })));
+      setViewMode(true);
+    }
+  }, [currentLineItemData, savedData]);
 
   const selectedNumbers = rows.map((r) => r.untracked_number).filter(Boolean);
 
@@ -1577,14 +1639,13 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
 
   if (!isOpen) return null;
 
-  // ── View Mode ──
   if (viewMode) {
     return (
       <ModalOverlay onClose={onClose}>
         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-base font-bold text-gray-800">Assigned Untracked Numbers</h2>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-700 transition-colors cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1634,7 +1695,6 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
     );
   }
 
-  // ── Edit / Add Mode ──
   return (
     <ModalOverlay onClose={onClose}>
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl">
@@ -1660,46 +1720,55 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {rows.map((r, i) => {
-                  const otherSelected = selectedNumbers.filter((n) => n !== r.untracked_number);
-                  const dropdownOptions = availableUntracked.filter((u) => !otherSelected.includes(u.untracked_number));
-                  const selectedItem = availableUntracked.find((u) => u.untracked_number === r.untracked_number);
+                {rows.length === 0 ? (
+                  <tr>
+                    <td className="text-center h-20" colSpan={4}>
+                      <p className="font-bold text-gray-700">NO UNTRACKED FOUND</p>
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r, i) => {
+                    const otherSelected = selectedNumbers.filter((n) => n !== r.untracked_number);
+                    const dropdownOptions = availableUntracked.filter((u) => !otherSelected.includes(u.untracked_number));
+                    const selectedItem = availableUntracked.find((u) => u.untracked_number === r.untracked_number);
 
-                  return (
-                    <tr key={r.id} className="align-top">
-                      <td className="px-3 py-3 text-gray-400">{i + 1}</td>
-                      <td className="px-3 py-3">
-                        <UntrackedDropdown
-                          options={dropdownOptions}
-                          value={r.untracked_number}
-                          onChange={(num) => handleUntrackedSelect(r.id, num)}
-                          placeholder="Select untracked number…"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <input
-                          type="number" min={1}
-                          max={r.availableQty ?? undefined}
-                          value={r.quantity}
-                          disabled={!r.untracked_number}
-                          onChange={(e) => handleQtyChange(r.id, e.target.value)}
-                          placeholder="Qty"
-                          className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-300"
-                        />
-                        {selectedItem && (
-                          <p className="mt-1 text-[10px] text-emerald-600 font-medium">
-                            Available: {selectedItem.available_quantity}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 pt-3.5">
-                        <button onClick={() => removeRow(r.id)} className="text-gray-300 hover:text-red-400 transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={r.id} className="align-top">
+                        <td className="px-3 py-3 text-gray-400">{i + 1}</td>
+                        <td className="px-3 py-3">
+                          <UntrackedDropdown
+                            options={dropdownOptions}
+                            value={r.untracked_number}
+                            onChange={(num) => handleUntrackedSelect(r.id, num)}
+                            placeholder="Select untracked number…"
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            type="number" min={1}
+                            max={r.availableQty ?? undefined}
+                            value={r.quantity}
+                            disabled={!r.untracked_number}
+                            onChange={(e) => handleQtyChange(r.id, e.target.value)}
+                            placeholder="Qty"
+                            onWheel={(e) => e.target.blur()}
+                            className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-300"
+                          />
+                          {selectedItem && (
+                            <p className="mt-1 text-[10px] text-emerald-600 font-medium">
+                              Available: {selectedItem.available_quantity}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 pt-3.5">
+                          <button onClick={() => removeRow(r.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
 
@@ -1902,7 +1971,6 @@ function SkuSummaryBar({ skuName, label, value, entered }) {
   );
 }
 
-// ─── Small reusables ──────────────────────────────────────────────────────────
 function MetaCell({ label, value }) {
   return (
     <div className="flex flex-col gap-0.5 px-5 py-3">
@@ -1914,17 +1982,18 @@ function MetaCell({ label, value }) {
 
 function StatusBadge({ status }) {
   const map = {
-    created: "bg-blue-100 text-blue-700",
+    created: "bg-gray-100 text-gray-700",
     packed: "bg-amber-100 text-amber-700",
     invoiced: "bg-purple-100 text-purple-700",
-    dispatched: "bg-green-100 text-green-700",
-    delivered: "bg-emerald-100 text-emerald-700",
+    dispatched: "bg-indigo-100 text-indigo-700",
+    delivered: "bg-green-100 text-green-700",
     return_initiated: "bg-orange-100 text-orange-700",
-    cancelled: "bg-red-100 text-red-600",
-    return_completed: "bg-gray-100 text-gray-600",
+    return_processing: "bg-amber-100 text-amber-700",
+    return_received: "bg-blue-100 text-blue-700",
+    return_completed: "bg-green-100 text-green-700",
   };
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"}`}>
+    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"}`}>
       {status?.replace(/_/g, " ") ?? "—"}
     </span>
   );
@@ -2001,7 +2070,7 @@ function InlineDropdown({
               )}
             </div>
           </div>
-          <div className="max-h-52 overflow-y-auto py-1">
+          <div className="h-40 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <p className="px-3 py-3 text-xs text-gray-400 text-center">{emptyMessage}</p>
             ) : (
@@ -2024,6 +2093,96 @@ function InlineDropdown({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Child Shipments Accordion ────────────────────────────────────────────────
+function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, parentShipment }) {
+  // Sort: latest (highest id) first
+  const sorted = [...childShipments].sort((a, b) => b.id - a.id);
+
+  const STATUS_COLORS = {
+    return_initiated: "bg-orange-100 text-orange-700",
+    return_completed: "bg-emerald-100 text-emerald-700",
+  };
+
+  return (
+    <div className="flex flex-col gap-2 mt-4">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100">
+          <h3 className="text-sm font-bold text-primary">
+            Child Shipments
+            <span className="ml-2 text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+              {childShipments.length}
+            </span>
+          </h3>
+        </div>
+
+        <div className="divide-y divide-gray-100">
+          {sorted.map((child, idx) => {
+            const isOpen = expandedChildId === child.id;
+            const isLatest = idx === 0;
+
+            return (
+              <div key={child.id}>
+                {/* Accordion Header */}
+                <button
+                  onClick={() => onToggle(child.id)}
+                  className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50/60 transition-colors cursor-pointer text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${child.status === "return_completed" ? "bg-green-500" :
+                      child.status === "return_initiated" ? "bg-orange-400" :
+                        child.status === "return_processing" ? "bg-amber-400" :
+                          "bg-blue-400"
+                      }`} />
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-800">
+                          Shipment #{child.shipment_number}
+                        </span>
+                        {isLatest && (
+                          <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            Latest
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-400 capitalize">
+                        {child.shipment_type?.replace(/_/g, " ")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${STATUS_COLORS[child.status] ?? "bg-gray-100 text-gray-600"
+                      }`}>
+                      {child.status?.replace(/_/g, " ")}
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+                        }`}
+                    />
+                  </div>
+                </button>
+
+                {/* Accordion Body — only mount ReturnShipment when open */}
+                {isOpen && (
+                  <div className="border-t border-gray-100 mb-4">
+                    <ReturnShipment
+                      shipment={parentShipment}
+                      return_shipment_id={child.id}
+                      onCancel={() => onToggle(child.id)}
+                      onSuccess={() => { fetchShipment() }}
+                      fromChild={true}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

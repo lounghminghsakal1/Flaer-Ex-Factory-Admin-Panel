@@ -35,9 +35,9 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
   const UOM_OPTIONS = [
     { id: "sq_ft", name: "Sq ft" }, { id: "ml", name: "Ml" },
     { id: "l", name: "L" }, { id: "gm", name: "Gm" },
-    { id: "kg", name: "Kg" }, { id: "m", name: "Mm" },
+    { id: "kg", name: "Kg" }, { id: "mm", name: "Mm" },
     { id: "packet", name: "Packet" }, { id: "unit", name: "Unit" },
-    { id: "piece", name: "Piece" },
+    { id: "piece", name: "Piece" }, {id: "m", name: "Metere"}
   ];
 
   const STATUS_CONFIG = {

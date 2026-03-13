@@ -4,7 +4,7 @@ const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
 
 const statusStyles = {
-  placed:    "bg-green-100 text-green-700 border border-green-200",
+  placed: "bg-green-100 text-green-700 border border-green-200",
   // confirmed: "bg-green-100 text-green-700 border border-green-200",
   // cancelled: "bg-red-100 text-red-700 border border-red-200",
   // delivered: "bg-emerald-100 text-emerald-700 border border-emerald-200",
@@ -12,7 +12,7 @@ const statusStyles = {
 };
 
 const sourceStyles = {
-  admin:  "bg-purple-100 text-purple-700 border border-purple-200",
+  admin: "bg-purple-100 text-purple-700 border border-purple-200",
   // online: "bg-sky-100 text-sky-700 border border-sky-200",
 };
 
@@ -57,22 +57,13 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       ),
     },
     {
-      key: "delivery_type",
-      label: "Delivery Type",
-      render: (val) => (
-        val
-          ? <span className="text-xs text-gray-700 capitalize">{val}</span>
-          : <span className="text-xs text-gray-300">—</span>
-      ),
-    },
-    {
-      key: "placed_at",
-      label: "Placed At",
+      key: "confirmed_at",
+      label: "Confirmed At",
       render: (val) => {
         if (!val) return <span className="text-xs text-gray-300">—</span>;
         const d = new Date(val);
         return (
-          <div className="flex flex-col">
+          <div className="flex flex-col w-20">
             <span className="text-xs text-gray-700 font-medium">
               {d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
             </span>
@@ -104,12 +95,12 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       key: "tax_amount",
       label: "Tax",
       render: (_, row) => (
-        <div className="flex flex-col">
+        <div className="flex flex-col w-20">
           <span className="text-xs text-gray-700 tabular-nums">{fmt(row?.aggregates?.tax_amount)}</span>
           {parseFloat(row?.aggregates?.cgst_amount) > 0 && (
             <span className="flex flex-col text-[10px] text-gray-400">
-              <span>CGST {fmt(row?.aggregates?.cgst_amount)}</span> 
-              <span>SGST {fmt(row?.aggregates?.sgst_amount)}</span>
+              <span className="flex">CGST {fmt(row?.aggregates?.cgst_amount)}</span>
+              <span className="flex">SGST {fmt(row?.aggregates?.sgst_amount)}</span>
             </span>
           )}
         </div>
@@ -124,6 +115,53 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
         </span>
       ),
     },
+    {
+  key: "shipments",
+  label: "Shipments",
+  render: (_, row) => {
+    const shipments = row?.shipments || [];
+
+    const typePrefix = {
+      forward_shipment: "FS",
+      reverse_shipment: "RS",
+      drop_shipment: "DS",
+    };
+
+    const statusConfig = {
+      created: { label: "crtd" },
+      packed: { label: "pkd" },
+      invoiced: { label: "inv" },
+      dispatched: { label: "disp" },
+      delivered: { label: "dlvd" },
+      return_initiated: { label: "r.init" },
+      return_processing: { label: "r.proc" },
+      return_received: { label: "r.rcvd" },
+      return_completed: { label: "r.comp" },
+      cancelled: { label: "cncl" },
+    };
+
+    return (
+      <div className="flex flex-col gap-[3px]">
+        {shipments.map((s) => {
+          const sc = statusConfig[s.status] ?? { label: s.status };
+          return (
+            <div
+              key={s.id}
+              className="inline-flex items-center gap-1 w-fit"
+            >
+              <span className="text-[11px] font-medium text-gray-700">
+                {typePrefix[s.shipment_type]}-{s.shipment_number}
+              </span>
+              <span className="text-[11px] font-bold text-gray-500">
+                {sc.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  },
+}
   ];
 
   return (

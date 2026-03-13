@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import React from "react";
 import {
   Loader2, Layers, Sparkles, Tag, ChevronDown, ChevronUp,
+  ForwardIcon,
+  ShipIcon,
 } from "lucide-react";
 
 const fmt = (val) =>
@@ -75,20 +77,20 @@ export default function OrderDetails({ orderId, onTabChange }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onTabChange?.("shipments", "forward")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-green-600 hover:opacity-80 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
                 Create Forward Shipment
-                <span className="flex items-center justify-center w-4 h-4 rounded bg-green-800/40">
-                  <ArrowIcon />
+                <span className="flex items-center justify-center w-4 h-4 rounded ">
+                  <ForwardIcon />
                 </span>
               </button>
               <button
                 onClick={() => onTabChange?.("shipments", "drop")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary hover:opacity-80 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
                 Create Drop Shipment
-                <span className="flex items-center justify-center w-4 h-4 rounded bg-blue-700/50">
-                  <ArrowIcon />
+                <span className="flex items-center justify-center w-4 h-4 rounded ">
+                  <ShipIcon />
                 </span>
               </button>
             </div>
@@ -155,7 +157,7 @@ export default function OrderDetails({ orderId, onTabChange }) {
                               {hasAttrs && (
                                 <button
                                   onClick={() => toggleAttrs(li.id)}
-                                  className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline w-fit"
+                                  className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline w-fit cursor-pointer"
                                 >
                                   {attrsOpen ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
                                   {attrsOpen ? "Hide" : "Show"} attrs
@@ -210,8 +212,9 @@ export default function OrderDetails({ orderId, onTabChange }) {
                             <div className="flex flex-col gap-0.5">
                               <span className="text-xs text-gray-700 tabular-nums">{fmt(li.tax_amount)}</span>
                               {parseFloat(li.cgst_amount) > 0 && (
-                                <span className="text-[9px] text-gray-400 leading-tight">
-                                  C {fmt(li.cgst_amount)} / S {fmt(li.sgst_amount)}
+                                <span className="flex flex-col text-[9px] text-gray-400 leading-tight">
+                                  <span>CGST {fmt(li.cgst_amount)} </span> 
+                                  <span>SGST {fmt(li.sgst_amount)} </span>
                                 </span>
                               )}
                             </div>

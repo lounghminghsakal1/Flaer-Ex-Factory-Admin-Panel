@@ -117,7 +117,6 @@ export default function VendorForm() {
       const response = await submitVendor(form);
       toast.success("Vendor created successfully!");
       const vendorId = response.data.id;
-      console.log(response);
       setForm(initialState);
       if (vendorId) router.push(`/vendors/${vendorId}`);
       else console.log("Vendor id not found in backend response");

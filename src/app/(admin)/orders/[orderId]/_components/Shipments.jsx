@@ -327,7 +327,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
         <button
           onClick={handleCreate}
           disabled={submitting}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
         >
           {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           Create
@@ -425,7 +425,6 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                           </div>
                         )}
                       </td>
-
                       {/* Quantity — fixed width, ordered/remaining shown below input */}
                       <td className="px-3 py-2.5">
                         <div className="flex flex-col gap-1">
@@ -435,10 +434,17 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                             value={row.quantity}
                             onChange={(e) => {
                               const v = parseInt(e.target.value);
+                              const currentItem = dropdownOptions.find(option => option.oli_id === row.oli_id);
+                              if (v > parseInt(currentItem.remaining_quantity)) {
+                                toast.error(`Quantity(${v}) cannot be more than remaining quantity ${currentItem.remaining_quantity}`);
+                                // updateRow(row.id, "quantity", parseInt(currentItem.remaining_quantity));
+                                return;
+                              }
                               updateRow(row.id, "quantity", isNaN(v) || v < 1 ? "" : v);
                             }}
                             placeholder="Qty"
                             className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700"
+                            onWheel={(e) => e.target.blur()}
                           />
                           {item && (
                             <div className="flex flex-col text-[11px] text-gray-500 leading-snug px-0.5">
@@ -520,7 +526,7 @@ function CreateDropShipment({ onBack }) {
       </div>
       <div className="py-20 text-center text-xs text-gray-400 flex flex-col items-center gap-2">
         <Truck className="w-8 h-8 text-gray-200" />
-        Drop shipment creation coming soon.
+        Drop shipment creation 
       </div>
     </div>
   );
@@ -529,14 +535,16 @@ function CreateDropShipment({ onBack }) {
 // Helpers
 function StatusBadge({ status }) {
   const map = {
-    created:    "bg-blue-100 text-blue-700",
+    created:    "bg-gray-100 text-gray-700",
     packed:     "bg-amber-100 text-amber-700",
-    dispatched: "bg-green-100 text-green-700",
-    delivered:  "bg-emerald-100 text-emerald-700",
-    cancelled:  "bg-red-100 text-red-600",
+    invoiced: "bg-purple-100 text-purple-700",
+    dispatched: "bg-sky-100 text-sky-700",
+    delivered:  "bg-green-100 text-green-700",
+    return_initiated: "bg-orange-100 text-orange-700",
+    return_completed: "bg-emerald-100 text-emerald-700"
   };
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"}`}>
+    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"}`}>
       {status ?? "—"}
     </span>
   );

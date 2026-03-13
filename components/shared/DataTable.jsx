@@ -127,7 +127,7 @@ export default function DataTable({
                   <td className="px-5 py-3">
                     {getDetailsLink ? (
                       <Link href={getDetailsLink(row)}>
-                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white text-[12px] font-semibold rounded-lg transition-all shadow-sm hover:shadow-md hover:scale-[1.05] cursor-pointer">
+                        <button className="inline-flex items-center gap-2 px-2 py-1 bg-primary hover:bg-primary/80 text-white text-[11px] font-semibold rounded-md transition-all shadow-sm hover:shadow-md hover:scale-[1.05] cursor-pointer">
                           Details
                           <ExternalLink className="w-4 h-4" />
                         </button>
@@ -135,7 +135,7 @@ export default function DataTable({
                     ) : onActionClick ? (
                       <button
                         onClick={() => onActionClick(row)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white text-[12px] font-semibold rounded-lg transition-all shadow-sm hover:shadow-md hover:scale-[1.05] cursor-pointer"
+                        className="inline-flex items-center gap-2 px-2 py-1 bg-primary hover:bg-primary/80 text-white text-[11px] font-semibold rounded-md transition-all shadow-sm hover:shadow-md hover:scale-[1.05] cursor-pointer"
                       >
                         Edit
                         <SquarePen className="w-3 h-3" />

@@ -43,7 +43,6 @@ export default function CollectionDetailsPage() {
       const result = await response.json();
       if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
       setCollection(result?.data);
-      console.log(result);
       setProductsList(result?.data?.collection_items);
     } catch (err) {
       console.log(err);

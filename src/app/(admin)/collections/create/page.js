@@ -61,8 +61,6 @@ export default function CreateCollectionPage() {
       active: product.status === "active" || product.active === true
     }));
 
-    console.log(transformedItems);
-
     return {
       collection: {
         name: collection.name,
