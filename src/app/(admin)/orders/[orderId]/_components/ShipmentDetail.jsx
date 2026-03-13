@@ -19,6 +19,7 @@ import {
 import { toast } from "react-toastify";
 import ShipmentTrackerBar from "./ShipmentTrackerBar";
 import ReturnShipment from "./ReturnShipment";
+import ShipmentCancelModal from "./ShipmentCancelModal";
 
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
@@ -62,20 +63,6 @@ const RETURN_STATUSES = new Set([
   "return_completed",
 ]);
 
-const fetchShipmentFromOutside = async (shipmentID) => {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentID}`);
-    const json = await res.json();
-    if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load shipment");
-    const data = json.data;
-    setShipment(data);
-  } catch (err) {
-    toast.error(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
 export default function ShipmentDetail({ shipmentId, onBack }) {
   const [shipment, setShipment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +92,9 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   const [showReturnPanel, setShowReturnPanel] = useState(false);
   const [expandedChildId, setExpandedChildId] = useState(null);
 
+  const [cancelShipmentModalOpen, setCancelShipmentModalOpen] = useState(false);
+  const [rejection_reason, setRejection_reason] = useState("");
+
   const fetchShipment = async (preserveSelectionTypes = false, shipmentID = shipmentId) => {
     setLoading(true);
     try {
@@ -122,6 +112,20 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         });
         return next;
       });
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchShipmentForRefresh = async (shipmentID) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentID}`);
+      const json = await res.json();
+      if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load shipment");
+      const data = json.data;
+      setShipment(data);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -326,6 +330,23 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
     }
   }
 
+  const handleCancelShipment = async () => {
+    try {
+      setIsCancelling(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}/cancel?cancellation_reason=${rejection_reason}`;
+      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" } });
+      const result = await response.json();
+      if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
+      toast.success("Shipment cancelled successfully");
+      await fetchShipment();
+    } catch(err) {
+      console.log(err);
+      toast.error("Failed to cancel shipment "+err.message); 
+    } finally {
+      setIsCancelling(false);
+    }
+  }
+
   const lineItems = shipment?.line_items ?? [];
   const agg = shipment?.aggregates ?? {};
 
@@ -344,16 +365,13 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
 
   if (!shipment) return null;
 
-  // ════════════════════════════════════════════════════════════════════════════
   // CASE A: This shipment IS a return shipment (status is one of the return statuses).
   // We skip the normal forward shipment UI entirely and render only the return view
-  // with the 4-step return tracker.
-  // ════════════════════════════════════════════════════════════════════════════
   if (isReturnShipment) {
     return (
       <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
         {/* Back button bar */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+        {/* <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100">
             <button
               onClick={onBack}
@@ -365,7 +383,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
               Return Shipment
             </h2>
           </div>
-        </div>
+        </div> */}
 
         {/* ReturnShipment component handles its own 4-step tracker + line items */}
         <ReturnShipment
@@ -373,6 +391,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           return_shipment_id={shipment.id}
           onCancel={onBack}
           onSuccess={() => fetchShipment()}
+          backRoute={onBack}
         />
       </div>
     );
@@ -442,6 +461,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                     onClick={() => {
                       setOpenOptions(false);
                       // TODO: hook up actual cancel API
+                      setCancelShipmentModalOpen(prev => !prev);
                     }}
                     className="flex items-center gap-2.5 px-2.5 rounded-md py-2 text-xs text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
                   >
@@ -810,6 +830,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           expandedChildId={expandedChildId}
           onToggle={(id) => setExpandedChildId((prev) => (prev === id ? null : id))}
           parentShipment={shipment}
+          onRefresh = {() => fetchShipmentForRefresh(shipmentId)}
         />
       )}
 
@@ -820,10 +841,11 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           return_shipment_id={null}
           onCancel={() => setShowReturnPanel(false)}
           onSuccess={() => {
-            fetchShipment(shipment.id);
+            fetchShipmentForRefresh(shipmentId);
             // Keep panel open so user can see the return_completed state
           }}
           setShowReturnPanel={setShowReturnPanel}
+          fromChild={true}
         />
       )}
 
@@ -891,6 +913,10 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
       {/* ── Unassigned Popup ── */}
       {unassignedPopup && (
         <UnassignedPopup items={unassignedPopup} onClose={() => setUnassignedPopup(null)} />
+      )}
+
+      {cancelShipmentModalOpen && (
+        <ShipmentCancelModal isOpen={cancelShipmentModalOpen} onClose={() => setCancelShipmentModalOpen(false)} onCancel={handleCancelShipment} rejection_reason={rejection_reason} setRejection_reason={setRejection_reason} />
       )}
 
     </div>
@@ -1991,6 +2017,7 @@ function StatusBadge({ status }) {
     return_processing: "bg-amber-100 text-amber-700",
     return_received: "bg-blue-100 text-blue-700",
     return_completed: "bg-green-100 text-green-700",
+    cancelled: "bg-red-100 text-red-700"
   };
   return (
     <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"}`}>
@@ -2098,7 +2125,7 @@ function InlineDropdown({
 }
 
 // ─── Child Shipments Accordion ────────────────────────────────────────────────
-function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, parentShipment }) {
+function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, parentShipment, onRefresh }) {
   // Sort: latest (highest id) first
   const sorted = [...childShipments].sort((a, b) => b.id - a.id);
 
@@ -2129,7 +2156,7 @@ function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, pa
                 {/* Accordion Header */}
                 <button
                   onClick={() => onToggle(child.id)}
-                  className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50/60 transition-colors cursor-pointer text-left"
+                  className={`w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-100 ${isOpen ? "bg-gray-300" : ""} transition-colors cursor-pointer text-left`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full shrink-0 ${child.status === "return_completed" ? "bg-green-500" :
@@ -2173,7 +2200,7 @@ function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, pa
                       shipment={parentShipment}
                       return_shipment_id={child.id}
                       onCancel={() => onToggle(child.id)}
-                      onSuccess={() => { fetchShipment() }}
+                      onSuccess={() => { onRefresh() }}
                       fromChild={true}
                     />
                   </div>
@@ -2186,3 +2213,4 @@ function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, pa
     </div>
   );
 }
+

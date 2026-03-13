@@ -1,4 +1,5 @@
 import DataTable from "../../../../../components/shared/DataTable";
+import { useState } from "react";
 
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
@@ -116,52 +117,63 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       ),
     },
     {
-  key: "shipments",
-  label: "Shipments",
-  render: (_, row) => {
-    const shipments = row?.shipments || [];
+      key: "shipments",
+      label: "Shipments",
+      render: (_, row) => {
+        const shipments = row?.shipments || [];
+        const [expanded, setExpanded] = useState(false);
 
-    const typePrefix = {
-      forward_shipment: "FS",
-      reverse_shipment: "RS",
-      drop_shipment: "DS",
-    };
+        const typePrefix = {
+          forward_shipment: { shortName: "FS", color: "text-green-700", cancelledColor: "text-red-700" },
+          reverse_shipment: { shortName: "RS", color: "text-orange-700", cancelledColor: "text-red-700" },
+          drop_shipment: { shortName: "DS", color: "text-purple-700", cancelledColor: "text-red-700" },
+        };
 
-    const statusConfig = {
-      created: { label: "crtd" },
-      packed: { label: "pkd" },
-      invoiced: { label: "inv" },
-      dispatched: { label: "disp" },
-      delivered: { label: "dlvd" },
-      return_initiated: { label: "r.init" },
-      return_processing: { label: "r.proc" },
-      return_received: { label: "r.rcvd" },
-      return_completed: { label: "r.comp" },
-      cancelled: { label: "cncl" },
-    };
+        const statusConfig = {
+          created: { label: "created" },
+          packed: { label: "packed" },
+          invoiced: { label: "invoiced" },
+          dispatched: { label: "dispatched" },
+          delivered: { label: "delivered" },
+          return_initiated: { label: "r.initiated" },
+          return_completed: { label: "r.completed" },
+        };
 
-    return (
-      <div className="flex flex-col gap-[3px]">
-        {shipments.map((s) => {
-          const sc = statusConfig[s.status] ?? { label: s.status };
-          return (
-            <div
-              key={s.id}
-              className="inline-flex items-center gap-1 w-fit"
-            >
-              <span className="text-[11px] font-medium text-gray-700">
-                {typePrefix[s.shipment_type]}-{s.shipment_number}
-              </span>
-              <span className="text-[11px] font-bold text-gray-500">
-                {sc.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  },
-}
+        const LIMIT = 3;
+        const visible = expanded ? shipments : shipments.slice(0, LIMIT);
+        const hasMore = shipments.length > LIMIT;
+
+        if (shipments.length === 0) return <p>—</p>
+
+        return (
+          <div className="flex flex-col gap-[3px]">
+            {visible.map((s) => {
+              const sc = statusConfig[s.status] ?? { label: s.status };
+              const tp = typePrefix[s.shipment_type];
+              return (
+                <div key={s.id} className="inline-flex items-center gap-1 w-fit">
+                  <span className={`text-[11px] font-medium ${s.status === "cancelled" ? tp.cancelledColor : tp.color}`}>
+                    {tp.shortName}-{s.shipment_number}
+                  </span>
+                  <span className={`text-[11px] font-bold ${s.status === "cancelled" ? tp.cancelledColor : tp.color}`}>
+                    {sc.label}
+                  </span>
+                </div>
+              );
+            })}
+
+            {hasMore && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setExpanded((prev) => !prev); }}
+                className="text-[10px] text-primary hover:opacity-80 hover:underline font-medium w-fit mt-0.5 cursor-pointer"
+              >
+                {expanded ? "show less" : `+${shipments.length - LIMIT} more`}
+              </button>
+            )}
+          </div>
+        );
+      },
+    }
   ];
 
   return (

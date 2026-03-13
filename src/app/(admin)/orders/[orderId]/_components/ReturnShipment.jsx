@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState,useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   AlertCircle,
   Check,
@@ -15,6 +15,7 @@ import {
   RefreshCcw,
   ToggleLeft,
   ToggleRight,
+  ArrowLeft
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -28,7 +29,7 @@ const fmt = (val) =>
 //   return_shipment_id - if provided, skip step 1 and load return shipment directly
 //   onCancel           - cancel handler
 //   onSuccess          - called after complete return succeeds
-export default function ReturnShipment({ shipment, return_shipment_id, onCancel, onSuccess, fromChild = false, setShowReturnPanel = null }) {
+export default function ReturnShipment({ shipment, return_shipment_id, onCancel, onSuccess, fromChild = false, setShowReturnPanel = null, backRoute = null }) {
   // If return_shipment_id is passed in, we start at step 2 immediately
   const [step, setStep] = useState(return_shipment_id ? 2 : 1);
 
@@ -399,9 +400,25 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-        <h2 className="flex-1 text-sm font-bold text-primary">
-          Return Shipment
-        </h2>
+        <div className="flex items-center gap-2">
+          {!fromChild && (
+            <button
+              onClick={() => {
+                if (backRoute) {
+                  backRoute();
+                }
+              }}
+              className="flex items-center justify-center w-7 h-7 rounded-full border-2 border-primary text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          <h2 className="flex-1 text-sm font-bold text-primary">
+            Return Shipment
+          </h2>
+        </div>
+
         {/* Step indicator */}
         <div className="flex items-center gap-2">
           <div
@@ -424,7 +441,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         </div>
       </div>
 
-      {/* ════════════════ STEP 1 ════════════════ */}
+      {/*  STEP 1  */}
       {step === 1 && (
         <>
           {/* Return Reason */}
@@ -520,7 +537,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                           max={row.max_qty ?? undefined}
                           value={row.quantity ?? ""}
                           onChange={(e) => {
-                            updateLineItem(row.tempId, "quantity", e.target.value === "" ? ""  : parseInt(e.target.value))
+                            updateLineItem(row.tempId, "quantity", e.target.value === "" ? "" : parseInt(e.target.value))
                           }
                           }
                           onWheel={(e) => e.target.blur()}
@@ -605,7 +622,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         </>
       )}
 
-      {/* ════════════════ STEP 2 ════════════════ */}
+      {/* STEP 2  */}
       {step === 2 && (
         <>
           {loadingReturn ? (
@@ -889,10 +906,15 @@ function ToggleField({ label, value, onChange, readOnly = false }) {
     <div className="flex items-center gap-2.5">
       <button
         onClick={() => !readOnly && onChange?.(!value)}
-        className={`flex items-center justify-center rounded-full transition-colors ${readOnly ? "cursor-default opacity-70" : "cursor-pointer"
-          } ${value ? "text-primary" : "text-gray-300"}`}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${readOnly ? "cursor-default opacity-70" : "cursor-pointer"
+          } ${value ? "bg-green-500" : "bg-gray-300"}`}
+        role="switch"
+        aria-checked={value}
       >
-        {value ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
+        <span
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${value ? "translate-x-5" : "translate-x-0"
+            }`}
+        />
       </button>
       <span className={`text-xs font-semibold ${value ? "text-gray-800" : "text-gray-400"}`}>
         {label}
