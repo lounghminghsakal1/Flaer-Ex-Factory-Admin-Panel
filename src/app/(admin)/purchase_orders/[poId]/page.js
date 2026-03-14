@@ -20,6 +20,9 @@ export default function PurchaseOrderDetailsPage() {
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState("purchase_order");
+  const fromDropShipment = searchParams.get("fromDropShipment") ?? null;
+  const orderId = searchParams.get("return-order-id") ?? null;
+  const shipmentId = searchParams.get("return-shipment-id") ?? null;
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
@@ -30,7 +33,7 @@ export default function PurchaseOrderDetailsPage() {
 
   const handleTabChange = (key) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", key); // update tab but keep others
+    params.set("tab", key); 
     router.replace(`/purchase_orders/${poId}?${params.toString()}`);
   };
 
@@ -51,7 +54,7 @@ export default function PurchaseOrderDetailsPage() {
   useEffect(() => { fetchPO(); }, [fetchPO]);
 
   const showGRNTab = poData?.status === "approved" || poData?.status === "completed";
-  const showAmndTab = poData?.status === "approved" || poData?.status === "completed";
+  const showAmndTab = (poData?.status === "approved" || poData?.status === "completed") && fromDropShipment !== "true";
 
   const TABS = [
     { key: "purchase_order", label: "Purchase Order" },
@@ -74,11 +77,9 @@ export default function PurchaseOrderDetailsPage() {
 
         {/* Sidebar */}
         <POSidebar currentPoId={poId} />
-
-        {/* Right column: tabs bar (fixed) + scrollable content */}
+\
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-gray-50">
 
-          {/* Tabs — never scrolls, shrinks to its natural height */}
           <div className="shrink-0 bg-white border-b border-gray-200 px-6">
             <div className="flex gap-1 pt-4">
               {TABS.map((tab) => {
@@ -112,6 +113,8 @@ export default function PurchaseOrderDetailsPage() {
                 loading={loading}
                 poId={poId}
                 onRefresh={fetchPO}
+                orderId={orderId}
+                shipmentId={shipmentId}
               />
             ) : activeTab === "grn" ? (
               <div className="bg-white rounded-xl border border-gray-200 p-2">

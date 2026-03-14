@@ -22,7 +22,6 @@ const DELIVERY_TIMES = [
   { value: "night", label: "Night" },
 ];
 
-// Accept onBack prop — called when user clicks "Back to Cart"
 export default function CheckoutForm({ cartData,customerId, onBack, fetchCart }) {
   const router = useRouter();
   const cartId = cartData.id;
@@ -128,8 +127,6 @@ export default function CheckoutForm({ cartData,customerId, onBack, fetchCart })
     }
   };
 
-  // Prefer the onBack prop (preserves AddToCart state in memory).
-  // Fall back to router.back() only if onBack is not provided.
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -143,7 +140,7 @@ export default function CheckoutForm({ cartData,customerId, onBack, fetchCart })
   return (
     <div className="w-full mx-auto py-4">
 
-      {/* ── Page Title row ────────────────────────────────────────────── */}
+      {/*  Page Title row  */}
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={handleBack}
@@ -153,13 +150,12 @@ export default function CheckoutForm({ cartData,customerId, onBack, fetchCart })
           Back to Cart
         </button>
         <h1 className="text-xl font-bold text-blue-900 tracking-tight">Checkout</h1>
-        {/* spacer to keep title centred */}
         <div className="w-24" />
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
 
-        {/* ── Delivery Details ──────────────────────────────────────── */}
+        {/*  Delivery Details  */}
         <SectionHeader title="Delivery Details" />
         <div className="px-4 py-4 grid grid-cols-2 gap-4 border-b border-gray-100">
 
@@ -219,7 +215,7 @@ export default function CheckoutForm({ cartData,customerId, onBack, fetchCart })
 
         </div>
 
-        {/* ── Vehicle & Driver Details (conditional) ──────────────── */}
+        {/*  Vehicle and  Driver Details  */}
         {needsDriverInfo && (
           <>
             <SectionHeader title="Vehicle & Driver Details" />
@@ -261,7 +257,7 @@ export default function CheckoutForm({ cartData,customerId, onBack, fetchCart })
           </>
         )}
 
-        {/* ── Labour Instructions ───────────────────────────────── */}
+        {/*  Labour Instructions  */}
         <SectionHeader title="Labour Instructions" />
         <div className="px-4 py-4 grid grid-cols-2 gap-4 border-b border-gray-100">
 
@@ -292,7 +288,7 @@ export default function CheckoutForm({ cartData,customerId, onBack, fetchCart })
 
         </div>
 
-        {/* ── Footer ───────────────────────────────────────────── */}
+        {/*  Footer  */}
         <div className="px-8 py-5 flex items-center justify-end">
           {/* <button
             onClick={handleBack}
@@ -320,7 +316,6 @@ export default function CheckoutForm({ cartData,customerId, onBack, fetchCart })
   );
 }
 
-/* ── Sub-components ────────────────────────────────────────────────────────── */
 
 function SectionHeader({ title }) {
   return (

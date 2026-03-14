@@ -18,20 +18,17 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  //  Pagination from URL
   const [currentPage, setCurrentPage] = useState(
     Number(searchParams.get("page")) || 1
   );
 
   const [totalPages, setTotalPages] = useState(1);
 
-  //  Applied filters (API source of truth)
   const [appliedFilters, setAppliedFilters] = useState({
     starts_with: searchParams.get("starts_with") || "",
     status: searchParams.get("status") || ""
   });
 
-  //  Draft filters (UI editing)
   const [draftFilters, setDraftFilters] = useState(appliedFilters);
 
   useEffect(() => {

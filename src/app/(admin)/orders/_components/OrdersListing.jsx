@@ -6,15 +6,15 @@ const fmt = (val) =>
 
 const statusStyles = {
   placed: "bg-green-100 text-green-700 border border-green-200",
-  // confirmed: "bg-green-100 text-green-700 border border-green-200",
-  // cancelled: "bg-red-100 text-red-700 border border-red-200",
-  // delivered: "bg-emerald-100 text-emerald-700 border border-emerald-200",
-  // pending:   "bg-yellow-100 text-yellow-700 border border-yellow-200",
+  partially_delivered: "bg-amber-100 text-amber-700 border border-amber-200",
+  delivered: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  confirmed: "bg-blue-100 text-blue-700 border border-blue-200",
+  pending: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+  cancelled: "bg-red-100 text-red-700 border border-red-200",
 };
 
 const sourceStyles = {
-  admin: "bg-purple-100 text-purple-700 border border-purple-200",
-  // online: "bg-sky-100 text-sky-700 border border-sky-200",
+  admin: "bg-indigo-100 text-indigo-700 border border-indigo-200",
 };
 
 export default function OrdersListing({ ordersData, currentPage, totalPages }) {
@@ -153,7 +153,7 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
               return (
                 <div key={s.id} className="inline-flex items-center gap-1 w-fit">
                   <span className={`text-[11px] font-medium ${s.status === "cancelled" ? tp.cancelledColor : tp.color}`}>
-                    {tp.shortName}-{s.shipment_number}
+                    {tp.shortName}-{s.shipment_number.replace("EXP-S", "")}
                   </span>
                   <span className={`text-[11px] font-bold ${s.status === "cancelled" ? tp.cancelledColor : tp.color}`}>
                     {sc.label}

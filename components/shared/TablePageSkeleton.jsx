@@ -9,7 +9,7 @@ export default function TablePageSkeleton({
   return (
     <div className="px-2 py-4 space-y-4">
 
-      {/* Title + Action */}
+      {/* Title and Action */}
       <div className="flex items-center justify-center">
         <Skeleton width={180} height={28} />
       </div>

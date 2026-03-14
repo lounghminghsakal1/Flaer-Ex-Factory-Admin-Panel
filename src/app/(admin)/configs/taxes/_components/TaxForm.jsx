@@ -108,7 +108,6 @@ export default function TaxForm({ taxData = null, taxId = null }) {
   };
 
   const handleActionClick = async () => {
-    // Details page: just unlock fields, don't submit yet
     if (!isEditing) {
       setIsEditing(true);
       return;
@@ -159,7 +158,7 @@ export default function TaxForm({ taxData = null, taxId = null }) {
       <div className="p-6 w-[50%]">
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
-          {/* Section: Basic Info */}
+          {/* Basic Info */}
           <div className="px-5 py-4 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               <Tag size={12} className="text-primary" />
@@ -189,7 +188,7 @@ export default function TaxForm({ taxData = null, taxId = null }) {
             </div>
           </div>
 
-          {/* Section: Tax Rates */}
+          {/* Tax Rates */}
           <div className="px-5 py-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               <Percent size={12} className="text-primary" />
@@ -248,7 +247,7 @@ export default function TaxForm({ taxData = null, taxId = null }) {
                 </Field>
               </div>
 
-              {/* Summary pill */}
+              {/* Summary */}
               {(parseFloat(taxForm.cgst) > 0 || parseFloat(taxForm.sgst) > 0) && (
                 <div className="flex items-center gap-2 flex-wrap pt-1">
                   {[

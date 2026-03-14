@@ -8,21 +8,21 @@ const fmt = (val) =>
 /**
  * mode: "new" | "existing" | "standalone-loose"
  *
- * ── "existing" (bundle line item from cart_summary) ──────────────────────────
+ *  "existing" (bundle line item from cart_summary) 
  *   item = bundle cart_line_item
  *   item.product_sku.bundle_factor  → bundle factor
  *   item.loose_sku                  → loose SKU details (always present)
  *   item.loose_item?.quantity       → current loose qty (absent if none set yet)
  *   item.quantity                   → current bundle qty
  *
- * ── "new" (bundle SKU being added, not yet in cart) ──────────────────────────
+ *  "new" (bundle SKU being added, not yet in cart) 
  *   item = newItem { sku, quantity, _looseQty }
  *   item.sku.bundle_factor          → bundle factor
  *   item.sku.loose_sku              → loose SKU details
  *   item.quantity                   → current bundle qty
  *   item._looseQty                  → current loose qty
  *
- * ── "standalone-loose" (loose line item with no bundle parent) ───────────────
+ *  "standalone-loose" (loose line item with no bundle parent) 
  *   item = loose cart_line_item
  *   item.bundle_sku                 → parent bundle SKU details (bundle_factor lives here)
  *   item.product_sku                → this IS the loose SKU
@@ -34,21 +34,21 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
   const isStandaloneLose = mode === "standalone-loose";
   const isNew = mode === "new";
 
-  // ── Bundle SKU info ───────────────────────────────────────────────────────
+  //  Bundle SKU info 
   const bundleFactor = isExisting
     ? Number(item.product_sku?.bundle_factor)
     : isStandaloneLose
       ? Number(item.bundle_sku?.bundle_factor)
       : Number(item.sku?.bundle_factor);
 
-  // Header label — show bundle SKU name
+  // Header label 
   const skuName = isExisting
     ? (item.product_sku?.sku_name || "—")
     : isStandaloneLose
       ? (item.bundle_sku?.sku_name || "—")
       : (item.sku?.sku_name || "—");
 
-  // ── Loose SKU details ─────────────────────────────────────────────────────
+  //  Loose SKU details 
   // existing:         item.loose_sku (always present on bundle line item)
   // new:              item.sku.loose_sku
   // standalone-loose: item itself IS the loose line item, product_sku has the details
@@ -65,7 +65,7 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
       }
       : (item.sku?.loose_sku ?? null);
 
-  // ── Initial quantities ────────────────────────────────────────────────────
+  //  Initial quantities 
   // standalone-loose: bundle = 0, loose = item.quantity
   // existing:         bundle = item.quantity, loose = item.loose_item?.quantity
   // new:              bundle = item.quantity,  loose = item._looseQty
@@ -85,7 +85,7 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
     initialLooseQty > 0 ? String(initialLooseQty) : ""
   );
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  //  Derived 
   const liveBundleQty = Math.max(0, parseInt(bundleInput, 10) || 0);
   const liveLooseQty = Math.max(0, parseInt(looseInput, 10) || 0);
   const bundleUnits = liveBundleQty * bundleFactor;
@@ -99,7 +99,7 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
       ? liveLooseQty * parseFloat(looseSku.selling_unit_price)
       : null;
 
-  // ── Loose qty cap (only for bundle/new modes, not standalone-loose) ───────
+  //  Loose qty cap (only for bundle/new modes, not standalone-loose) 
   // For standalone-loose: user types any qty, backend does the bundle/loose split
   const handleLooseChange = (val) => {
     const num = parseInt(val, 10);
@@ -150,7 +150,7 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
         className="relative bg-white rounded-xl shadow-2xl overflow-hidden"
         style={{ width: "65%", animation: "lqFadeIn 0.16s ease-out" }}
       >
-        {/* ── Header ── */}
+        {/*  Header  */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <Box className="w-3.5 h-3.5 text-primary" />
@@ -170,7 +170,7 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
 
         <div className="px-4 py-3 space-y-3">
 
-          {/* ── Bundle qty + summary banner ── */}
+          {/*  Bundle qty and summary banner */}
           <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-center gap-6">
             {/* Bundle input */}
             <div className="flex items-center gap-2">
@@ -211,7 +211,7 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
             </div>
           </div>
 
-          {/* ── Loose SKU table ── */}
+          {/*  Loose SKU table  */}
           <div className="rounded-xl border border-blue-100 overflow-hidden">
             <table className="w-full">
               <thead>
@@ -248,7 +248,7 @@ export function LooseQtyPopup({ mode = "new", item, onClose, onConfirm }) {
                       <input
                         type="number"
                         min={0}
-                        // cap only applies for bundle/new modes
+  
                         max={bundleFactor - 1}
                         value={looseInput}
                         onChange={(e) => handleLooseChange(e.target.value)}

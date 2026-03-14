@@ -20,10 +20,8 @@ const CollectionForm = ({
 
   const [isFetching, setIsFetching] = useState(false);
 
-  // Determine if fields should be disabled
   const isFieldsDisabled = collectionId && !isEditing;
 
-  // Fetch collection data when collectionId is provided
   useEffect(() => {
     if (collection) {
       setFormData(prev => {
@@ -160,7 +158,7 @@ const CollectionForm = ({
           </div>
         </div>
 
-        {/* Row 2: Description + Collection Type */}
+        {/* Row 2: Description and Collection Type */}
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">

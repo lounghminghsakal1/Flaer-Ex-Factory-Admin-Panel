@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Dropdown – a reusable, portal-rendered dropdown component.
+ * Dropdown – reusable 
  *
  * Props:
  *   value         : string | null           – currently selected option value
  *   onChange      : (value: string) => void – called on selection
- *   options       : Array<{ value, label }> – list of options
+ *   options       : Array of objects like this -> [{ value, label }, {}, ...] – list of options
  *   placeholder   : string                  – placeholder when nothing selected
  *   hasError      : boolean                 – red border state
  *   disabled      : boolean
- *   className     : string                  – extra classes for the trigger button
+ *   className     : string          
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -34,7 +34,7 @@ export default function NormalDropdown({
 
   const selected = options.find((o) => o.value === value);
 
-  // ── Position menu via portal ───────────────────────────────────────────────
+  //  Position menu via portal 
   const positionMenu = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
@@ -73,7 +73,7 @@ export default function NormalDropdown({
 
   const closeMenu = () => setOpen(false);
 
-  // Auto-scroll to selected item when menu opens
+  // Auto scroll to selected item when menu opens
   useEffect(() => {
     if (open && selectedItemRef.current) {
       // slight delay to let the portal render first
@@ -83,7 +83,7 @@ export default function NormalDropdown({
     }
   }, [open]);
 
-  // Reposition on scroll / resize while open
+  // Reposition on scroll 
   useEffect(() => {
     if (!open) return;
     const reposition = () => positionMenu();
@@ -123,7 +123,7 @@ export default function NormalDropdown({
     closeMenu();
   };
 
-  // ── Trigger styles ─────────────────────────────────────────────────────────
+  // Trigger styles 
   const triggerCls = [
     "h-9 w-full flex items-center justify-between px-3 text-[13px] rounded-md border outline-none transition-all bg-white",
     disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
@@ -154,7 +154,7 @@ export default function NormalDropdown({
         </span>
       </button>
 
-      {/* Portal menu — renders into document.body, never clips */}
+      {/* Portal menu */}
       {open &&
         createPortal(
           <div

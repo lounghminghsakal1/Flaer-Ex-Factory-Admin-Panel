@@ -37,13 +37,12 @@ export default function SkuDropdown({
 
   const selected = options.find((o) => o.id === value);
 
-  // ── Position menu via portal ──────────────────────────────────────────
   const positionMenu = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    const menuH = 260; // max height of dropdown
+    const menuH = 260; 
     const width = rect.width;
 
     if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
@@ -124,7 +123,6 @@ export default function SkuDropdown({
     closeMenu();
   };
 
-  // ── Trigger button ────────────────────────────────────────────────────
   const triggerCls = [
     "h-9 w-full flex items-center justify-between px-3 text-[13px] rounded-md border outline-none transition-all bg-white",
     disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",

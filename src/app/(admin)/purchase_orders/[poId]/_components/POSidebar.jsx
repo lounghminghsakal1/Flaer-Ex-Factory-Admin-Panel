@@ -118,7 +118,7 @@ export default function POSidebar({ currentPoId }) {
           )}
         </div>
 
-        {/* Search + filter row */}
+        {/* Search and filter row */}
         <div className="relative" ref={filterRef}>
           <div className="flex items-center gap-1 border border-gray-200 rounded-md px-2 py-1.5 bg-gray-50">
             <Search size={13} className="text-gray-400 shrink-0" />
@@ -155,7 +155,7 @@ export default function POSidebar({ currentPoId }) {
                 onClick={() => router.push(`/purchase_orders/${po.id}?${searchParams.toString()}`)}
                 className={`w-full text-left px-4 py-3 border-b border-gray-50 transition-colors hover:bg-indigo-50/60 ${isActive ? "bg-indigo-50" : ""}`}
               >
-                {/* Row 1: PO number + Status */}
+                {/*  PO number and  Status */}
                 <div className="flex items-center justify-between gap-2">
                   <span
                     className="text-xs font-semibold truncate"
@@ -171,12 +171,12 @@ export default function POSidebar({ currentPoId }) {
                   </span>
                 </div>
 
-                {/* Row 2: Vendor name */}
+                {/*  Vendor name */}
                 <div className="mt-0.5 text-xs text-gray-500 truncate">
                   {po.vendor?.firm_name || "—"}
                 </div>
 
-                {/* Row 3: Amount + Delivery date */}
+                {/*  Amount and Delivery date */}
                 <div className="flex items-center justify-between gap-2 mt-1.5">
                   <span className="text-xs font-medium text-gray-700">
                     {formatAmount(po.final_amount)}

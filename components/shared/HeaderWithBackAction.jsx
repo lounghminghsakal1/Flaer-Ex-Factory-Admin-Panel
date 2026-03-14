@@ -29,7 +29,7 @@ export default function HeaderWithBackAction({
     <div className="w-full border-b border-gray-200 ">
       <div className="flex items-center justify-between px-6 py-3">
 
-        {/* LEFT */}
+        {/* LEFT SIDE */}
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}

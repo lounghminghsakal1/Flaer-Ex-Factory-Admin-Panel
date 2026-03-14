@@ -6,16 +6,6 @@ import { toast } from "react-toastify";
 
 const PRIMARY = "#4f46e5";
 
-/**
- * POLineItems
- * Props:
- *  - vendorId: number | null
- *  - rows: [{ id (optional=existing), skuOption, skuCode, unitPrice, totalUnits }]
- *  - onChange: fn(rows)
- *  - readOnly: bool — all fields locked, no add/delete
- *  - editMode: bool — units editable, sku/price locked, can add new rows, can delete rows
- *  (if neither readOnly nor editMode: full creation mode — all fields editable)
- */
 export default function POLineItems({ vendorId, rows, onChange, readOnly = false, editMode = false }) {
   const [skuOptions, setSkuOptions] = useState([]);
   const [loadingSkus, setLoadingSkus] = useState(false);
@@ -82,9 +72,6 @@ export default function POLineItems({ vendorId, rows, onChange, readOnly = false
   };
 
   const addDisabled = !vendorId;
-  // In editMode: existing rows' SKU is locked, only units editable; new rows fully editable
-  // In readOnly: everything locked
-  // In creation: everything editable
 
   const handleSearch = (query, options) => {
     if (!query?.trim()) {
@@ -115,13 +102,9 @@ export default function POLineItems({ vendorId, rows, onChange, readOnly = false
 
         {/* Rows */}
         {rows.map((row, index) => {
-          // existing row = has an id from API
           const isExistingRow = !!row.id;
-          // SKU dropdown locked if: readOnly, OR editMode with existing row
           const skuLocked = readOnly || (editMode && isExistingRow);
-          // Units locked if readOnly only
           const unitsLocked = readOnly;
-          // Can delete if not readOnly
           const canDelete = !readOnly;
 
           return (

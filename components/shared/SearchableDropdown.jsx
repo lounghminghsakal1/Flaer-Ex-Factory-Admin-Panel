@@ -4,18 +4,17 @@ import { ChevronDown, Search,Plus } from 'lucide-react';
 /**
  * Global Searchable Dropdown Component
  * 
- * @param {Object} props
- * @param {string} props.label - Label text for the dropdown
- * @param {string} props.placeholder - Placeholder text (default: "Select option")
- * @param {Array} props.options - Array of options [{id, name}] or [{value, label}]
- * @param {string|number} props.value - Selected value (id or value)
- * @param {Function} props.onChange - Callback when selection changes (value) => {}
- * @param {string} props.searchPlaceholder - Search input placeholder
- * @param {boolean} props.disabled - Disable the dropdown
- * @param {string} props.emptyMessage - Message when no options found
- * @param {boolean} props.required - Show required asterisk
- * @param {string} props.valueKey - Key to use for value (default: "id")
- * @param {string} props.labelKey - Key to use for label (default: "name")
+ * label - Label text for the dropdown
+ * placeholder - Placeholder text (default: "Select option")
+ * options - Array of options [{id, name}] or [{value, label}]
+ * props.value - Selected value (id or value)
+ * onChange - Callback when selection changes (value) => {}
+ * searchPlaceholder - Search input placeholder
+ * disabled - Disable the dropdown
+ * emptyMessage - Message when no options found
+ * required - Show required asterisk
+ * valueKey - Key to use for value (default: "id")
+ * labelKey - Key to use for label (default: "name")
  */
 const SearchableDropdown = ({
   label,
@@ -163,9 +162,7 @@ const SearchableDropdown = ({
 
 export default SearchableDropdown;
 
-// ============================================
 // USAGE EXAMPLES
-// ============================================
 
 // Example 1: Basic Usage with id/name
 /*
@@ -240,3 +237,13 @@ const trackingOptions = [
   onChange={(value) => setFormData(p => ({ ...p, tracking_type: value }))}
 />
 */
+
+
+
+
+
+
+
+
+
+

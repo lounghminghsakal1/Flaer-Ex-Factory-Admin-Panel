@@ -38,7 +38,6 @@ export default function EditSkuMappingModal({ vendorId, mapping, onClose, onSave
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
@@ -101,7 +100,7 @@ export default function EditSkuMappingModal({ vendorId, mapping, onClose, onSave
 
         {/* Body */}
         <div className="px-5 py-4 flex flex-col gap-4">
-          {/* SKU Name (read-only) */}
+          {/* SKU Name     */}
           <div className="flex flex-col gap-1">
             <label className="text-[13px] font-medium text-gray-700">SKU Name</label>
             <div className="h-9 px-3 flex items-center rounded-md bg-gray-50 border border-gray-100 text-[13px] text-gray-500 truncate">
@@ -144,7 +143,6 @@ export default function EditSkuMappingModal({ vendorId, mapping, onClose, onSave
                 }
               }}
 
-              // prevent scroll changing value
               onWheel={(e) => e.target.blur()}
             />
             {errors.vendor_unit_price && <p className="text-[11px] text-red-500">{errors.vendor_unit_price}</p>}

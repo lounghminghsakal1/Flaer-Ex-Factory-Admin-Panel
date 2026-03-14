@@ -6,7 +6,6 @@ import { toast } from "react-toastify";
 import SkuDropdown from "./SkuDropdown";
 import { createSkuMappings, getAllProductSkus } from "./skuMappingApi";
 
-// ─── Toggle ────────────────────────────────────────────────────────────────
 function Toggle({ value, onChange }) {
   return (
     <button
@@ -23,7 +22,6 @@ function Toggle({ value, onChange }) {
   );
 }
 
-// ─── Input class helper ────────────────────────────────────────────────────
 const inputCls = (hasError) =>
   `h-9 px-3 text-[13px] rounded-md border outline-none w-full transition-all
   placeholder:text-gray-300 text-gray-800 bg-white
@@ -32,7 +30,6 @@ const inputCls = (hasError) =>
     : "border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-50"
   }`;
 
-// ─── Empty row factory ─────────────────────────────────────────────────────
 const emptyRow = () => ({
   _id: Math.random().toString(36).slice(2),
   product_sku_id: null,
@@ -42,14 +39,12 @@ const emptyRow = () => ({
   errors: {},
 });
 
-// ─── Main Modal ────────────────────────────────────────────────────────────
 export default function MapSkuModal({ vendorId, onClose, onSaved }) {
   const [rows, setRows] = useState([emptyRow()]);
   const [allSkus, setAllSkus] = useState([]);
   const [loadingSkus, setLoadingSkus] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Load all product SKUs for dropdown — preserved from original
   useEffect(() => {
     getAllProductSkus(vendorId)
       .then(setAllSkus)
@@ -57,22 +52,18 @@ export default function MapSkuModal({ vendorId, onClose, onSaved }) {
       .finally(() => setLoadingSkus(false));
   }, []);
 
-  // Close on Escape — preserved from original
   useEffect(() => {
     const handler = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // Transform allSkus into the shape SkuDropdown expects: { id, name, subLabel? }
-  // Handles both id/name and _id/sku_name shapes from the API
   const skuOptions = allSkus.map((s) => ({
     id: s.id ?? s._id,
     name: s.name ?? s.sku_name,
     subLabel: s.code ?? s.sku_code ?? undefined,
   }));
 
-  // All already-selected SKU IDs (to exclude from sibling rows)
   const selectedSkuIds = rows.map((r) => r.product_sku_id).filter(Boolean);
 
   const updateRow = (id, field, value) =>
@@ -108,7 +99,6 @@ export default function MapSkuModal({ vendorId, onClose, onSaved }) {
     return valid;
   };
 
-  // Save handler — calls createSkuMappings, preserved from original
   const handleSave = async () => {
     if (!validateRows()) {
       toast.error("Please fix the errors in each row.");
@@ -140,7 +130,6 @@ export default function MapSkuModal({ vendorId, onClose, onSaved }) {
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
 
-      {/* Modal — max-w-4xl for wider SKU name column */}
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl mx-4 z-10 flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-blue-50 rounded-t-xl border-gray-100 flex-shrink-0">
@@ -158,7 +147,6 @@ export default function MapSkuModal({ vendorId, onClose, onSaved }) {
           </button>
         </div>
 
-        {/* Body — overflow-y-auto is fine; dropdown escapes via portal */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loadingSkus ? (
             <div className="flex items-center justify-center h-32 gap-2 text-gray-400">
@@ -182,7 +170,6 @@ export default function MapSkuModal({ vendorId, onClose, onSaved }) {
                   <div key={row._id} className="flex flex-col gap-0.5">
                     <div className="grid grid-cols-[minmax(180px,2.5fr)_1.4fr_1fr_auto_auto] gap-3 items-start">
 
-                      {/* SKU Dropdown — portal-rendered, never clips behind modal */}
                       <div className="flex flex-col gap-0.5">
                         <SkuDropdown
                           value={row.product_sku_id}
@@ -221,7 +208,6 @@ export default function MapSkuModal({ vendorId, onClose, onSaved }) {
                           onChange={(e) => {
                             const val = e.target.value;
 
-                            // allow only numbers + decimal
                             if (/^\d*\.?\d{0,2}$/.test(val)) {
                               updateRow(row._id, "vendor_unit_price", val);
                             }

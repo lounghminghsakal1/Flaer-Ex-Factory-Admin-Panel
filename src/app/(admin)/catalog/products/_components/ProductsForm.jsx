@@ -30,7 +30,6 @@ export default function ProductsForm() {
     }
   ]);
 
-  //  At the top of ProductsForm component
   const [productContents, setProductContents] = useState([
     { content_type: "", content_value: "" }
   ]);
@@ -152,7 +151,6 @@ export default function ProductsForm() {
     }
   }
 
-  //  UPLOAD MEDIA HELPER FUNCTION
   async function uploadMediaFiles(files, mediaFor = "product") {
     if (!files || files.length === 0) return [];
 
@@ -161,7 +159,6 @@ export default function ProductsForm() {
     for (const file of files) {
       try {
         const formData = new FormData();
-        //  Handle both File objects and objects with .file property
         const actualFile = file instanceof File ? file : file.file;
         if (!actualFile) continue;
 
@@ -277,7 +274,6 @@ export default function ProductsForm() {
         return `Product "${p.name}" must have at least one SKU`;
       }
 
-      // MASTER SKU VALIDATION (Exactly one master per product)
       const masterCount = p.product_skus.filter(sku => sku.master).length;
 
       if (masterCount !== 1) {
@@ -335,12 +331,10 @@ export default function ProductsForm() {
       }
     };
 
-    // Add product_properties if they exist
     if (properties && properties.length > 0) {
       payload.product.product_properties = properties
         .filter(p => p.name && p.value)
         .map(p => {
-          // EXISTING PROPERTY
           if (p.isExisting) {
             return {
               property_id: p.property_id,
@@ -348,7 +342,6 @@ export default function ProductsForm() {
               property_value: p.value
             };
           }
-          // NEW PROPERTY
           return {
             property_name: p.name,
             property_value: p.value
@@ -358,20 +351,17 @@ export default function ProductsForm() {
 
     }
 
-    // Add product_contents if they exist
     if (contents && contents.length > 0) {
       payload.product.product_contents = contents
         .filter(c => c.content_type && c.content_value)
         .map(c => {
           if (c.isExisting && c.id) {
-            // Existing content with ID
             return {
               id: c.id,
               content_type: c.content_type,
               content_value: c.content_value
             };
           } else {
-            // New content without ID
             return {
               content_type: c.content_type,
               content_value: c.content_value
@@ -380,11 +370,9 @@ export default function ProductsForm() {
         });
     }
 
-    // Add product_media if they exist
     if (productMedia && productMedia.length > 0) {
       payload.product.product_media = productMedia.map(m => {
         if (m.isNew) {
-          // New media without ID
           return {
             media_url: m.media_url,
             media_type: m.media_type || "image",
@@ -392,7 +380,6 @@ export default function ProductsForm() {
             sequence: m.sequence
           };
         } else {
-          // Existing media with ID
           return {
             id: m.id,
             media_url: m.media_url,
@@ -414,7 +401,6 @@ export default function ProductsForm() {
       return "Select tax type";
     }
 
-    // Validate properties
     if (properties && properties.length > 0) {
       for (let i = 0; i < properties.length; i++) {
         const prop = properties[i];
@@ -427,7 +413,6 @@ export default function ProductsForm() {
       }
     }
 
-    // Validate contents
     if (contents && contents.length > 0) {
       for (let i = 0; i < contents.length; i++) {
         const content = contents[i];
@@ -448,7 +433,6 @@ export default function ProductsForm() {
       setLoading(true);
 
       if (isCreateNew) {
-        // CREATE FLOW (existing logic)
         const validationError = validateBeforeSubmit(formData, products);
         if (validationError) {
           toast.error(validationError);
@@ -481,7 +465,7 @@ export default function ProductsForm() {
           }
         };
 
-        console.log("=== CREATE PAYLOAD ===");
+        console.log("CREATE PAYLOAD ");
         console.log(JSON.stringify(payload, null, 2));
 
         const response = await fetch(
@@ -537,7 +521,7 @@ export default function ProductsForm() {
           updateProductMedia
         );
 
-        console.log("=== UPDATE PAYLOAD ===");
+        console.log(" UPDATE PAYLOAD ");
         console.log(JSON.stringify(payload, null, 2));
 
         const response = await fetch(
@@ -769,10 +753,8 @@ function MainProductInformation({
     { id: 'piece', name: 'Piece' },
   ];
 
-  // Determine if fields should be disabled
   const fieldsDisabled = !isCreateNew && !isEditing;
 
-  // Quantity validation
   const minQty = Number(formData.min_order_quantity);
   const maxQty = Number(formData.max_order_quantity);
   const hasMinMaxError =
@@ -1065,13 +1047,10 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
   }
 
   const handleTaxCreated = (newTax) => {
-    // Refresh tax options after creating a new tax type
     fetchTaxOptions();
-    // Optionally set the newly created tax as selected
     setFormData(prev => ({ ...prev, tax_type_id: newTax.id }));
   };
 
-  // Determine if fields should be disabled
   const fieldsDisabled = !isCreateNew && !isEditing;
 
   return (
@@ -1218,7 +1197,6 @@ function ProductSettings({ formData, setFormData, isCreateNew, isEditing }) {
         <TaxSelector
           selectedTaxId={formData.tax_type_id}
           onTaxSelect={(tax) => {
-            // Optional: you can add any additional logic here if needed
             console.log('Selected tax:', tax);
           }}
           formData={formData}
@@ -1306,8 +1284,6 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
         className={`input ${disabled ? 'opacity-60  text-gray-900' : ''} placeholder:text-gray-300`}
         disabled={disabled}
         onWheel={(e) => e.target.blur()}
-
-        //  allow typing freely (string)
         onChange={(e) => {
           const raw = e.target.value;
 
@@ -1316,14 +1292,12 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
             return;
           }
 
-          // If min = 0 → allow 0+
           if (min === 0) {
             if (/^\d+$/.test(raw)) {
               onChange(raw);
             }
           }
 
-          // If min = 1 → allow 1+
           else {
             if (/^[1-9]\d*$/.test(raw)) {
               onChange(raw);
@@ -1331,7 +1305,6 @@ function NumberInput({ label, value, onChange, min = 1, disabled }) {
           }
         }}
 
-        // normalize ONLY on blur
         onBlur={(e) => {
           const num = Number(e.target.value);
 
@@ -1446,7 +1419,6 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
 
       const result = await response.json();
 
-      // Reset form
       setFormData({
         name: '',
         code: '',
@@ -1456,7 +1428,6 @@ function TaxTypePopup({ isOpen, onClose, onTaxCreated }) {
         percentage: 0
       });
 
-      // Notify parent component
       if (onTaxCreated) {
         onTaxCreated(result.data);
       }

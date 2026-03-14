@@ -22,7 +22,6 @@ import GrnFormModal from "./GrnFormModal";
 import GrnLineItems from "./GrnLineItems";
 import GrnPageSkeleton from "./GrnPageSkeleton";
 
-// ─── Stat Cards ───────────────────────────────────────────────────────────────
 function StatCard({ label, value, color = "gray" }) {
   return (
     <div className="flex flex-col gap-0.5 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
@@ -43,7 +42,6 @@ function QtyCard({ label, value, color = "gray" }) {
   );
 }
 
-// ─── Single GRN Accordion ─────────────────────────────────────────────────────
 function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh }) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [lineItems, setLineItems] = useState(null); // null = not yet loaded
@@ -72,7 +70,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
   }, [menuOpen]);
 
   const canCancel = grn.status === "created" || grn.status === "qc_pending";
-  const hasMenuItems = canCancel; // extend here as you add more options
+  const hasMenuItems = canCancel; 
 
   const formatDate = (str) => {
     if (!str) return "--";
@@ -80,9 +78,8 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
     return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   };
 
-  // Fetch GRN detail (with line_items) once when accordion opens
   useEffect(() => {
-    if (!isOpen || lineItems !== null) return; // only fetch once
+    if (!isOpen || lineItems !== null) return; 
     setLoadingDetail(true);
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grn.id}`
@@ -109,10 +106,8 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
     onRefresh();
   };
 
-  // Called from GrnLineItems after a successful save — re-fetch detail
   const handleLineItemsSaved = () => {
-    setLineItems(null); // reset so next open re-fetches
-    // Immediately re-fetch since accordion is still open
+    setLineItems(null); 
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grn.id}`
     )
@@ -128,7 +123,7 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
         console.log(err);
         toast.error("Failed to save GRN line items "+ err.message);
       });
-    onRefresh(); // refresh the list-level data (totals etc.)
+    onRefresh(); 
   };
 
   const handleCompleteGrn = async () => {
@@ -465,7 +460,6 @@ function GrnAccordion({ grn, index, isOpen, onToggle, poId, vendorId, onRefresh 
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function GoodsReceiveNote({ poId, vendorId }) {
   const [grns, setGrns] = useState([]);
   const [loading, setLoading] = useState(true);

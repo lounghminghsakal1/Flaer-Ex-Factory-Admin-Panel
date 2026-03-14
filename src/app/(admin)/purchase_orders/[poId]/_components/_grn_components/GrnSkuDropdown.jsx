@@ -2,11 +2,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronDown, Search } from "lucide-react";
 
-/**
- * GrnSkuDropdown
- * Uses position:fixed for the dropdown panel so it is never clipped
- * by ancestor overflow:hidden (e.g. inside a table).
- */
 export default function GrnSkuDropdown({
   options = [],
   value,
@@ -26,7 +21,6 @@ export default function GrnSkuDropdown({
     o.product_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Position the fixed panel under (or above) the trigger
   const positionPanel = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
@@ -45,7 +39,6 @@ export default function GrnSkuDropdown({
     });
   }, []);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -61,7 +54,6 @@ export default function GrnSkuDropdown({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Re-position on scroll / resize while open
   useEffect(() => {
     if (!open) return;
     const update = () => positionPanel();
@@ -73,7 +65,6 @@ export default function GrnSkuDropdown({
     };
   }, [open, positionPanel]);
 
-  // Focus search input when panel opens
   useEffect(() => {
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);

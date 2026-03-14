@@ -81,7 +81,6 @@ export default function CollectionDetailsPage() {
 
         toast.success("Collection updated successfully");
 
-        //setCollection(editedCollection); // update real data
         setIsEditing(false);
 
       } catch (err) {

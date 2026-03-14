@@ -19,27 +19,18 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
 
-// ── Main Component ────────────────────────────────────────────────────────────
-// Props:
-//   shipment           - original forward shipment object
-//   return_shipment_id - if provided, skip step 1 and load return shipment directly
-//   onCancel           - cancel handler
-//   onSuccess          - called after complete return succeeds
 export default function ReturnShipment({ shipment, return_shipment_id, onCancel, onSuccess, fromChild = false, setShowReturnPanel = null, backRoute = null }) {
-  // If return_shipment_id is passed in, we start at step 2 immediately
+
   const [step, setStep] = useState(return_shipment_id ? 2 : 1);
 
-  // Step 1 state
   const [returnReason, setReturnReason] = useState("");
   const [lineItems, setLineItems] = useState([]);
   const [initiating, setInitiating] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Step 2 state
   const [returnShipment, setReturnShipment] = useState(null);
   const [loadingReturn, setLoadingReturn] = useState(false);
   const [inventoryRequired, setInventoryRequired] = useState(true);
@@ -57,15 +48,12 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
   const [serialAllocations, setSerialAllocations] = useState([]);
   const [untrackedAllocations, setUntrackedAllocations] = useState([]);
 
-  // If return_shipment_id is passed, auto-fetch on mount
   useEffect(() => {
     if (return_shipment_id) {
       fetchReturnShipment(return_shipment_id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [return_shipment_id]);
 
-  // SKU options from original shipment
   const skuOptions = (shipment?.line_items ?? []).map((li) => ({
     id: li.id,
     shipment_line_item_id: li.id,
@@ -82,7 +70,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
 
   const takenSkuIds = lineItems.map((r) => r._skuId).filter(Boolean);
 
-  // ── Step 1 handlers ──────────────────────────────────────────────────────────
   const addLineItem = () => {
     setLineItems((prev) => [
       ...prev,
@@ -170,7 +157,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         throw new Error(json?.errors?.[0] ?? "Failed to initiate return");
       toast.success("Return initiated!");
       fetchReturnShipment(json?.data?.id);
-      // Auto-populate from response directly (no second GET needed)
       populateStep2(json.data);
       setStep(2);
     } catch (err) {
@@ -180,9 +166,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
     }
   };
 
-  // ── Step 2 helpers ────────────────────────────────────────────────────────────
-
-  // Populate tracking selections from line item meta (when meta has data)
   const populateSelectionsFromMeta = (lineItems) => {
     const batches = {};
     const serials = {};
@@ -190,7 +173,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
     lineItems.forEach((li) => {
       const meta = li.meta ?? {};
       if (meta.allocated_batches?.length) {
-        // Keep max from meta quantity so modals can reference it
         batches[li.id] = meta.allocated_batches.map((b) => ({
           id: Math.random(),
           batch_code: b.batch_code,
@@ -215,7 +197,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
     setUntrackedSelections(untracked);
   };
 
-  // Populate tracking selections from /return_allocation_info endpoint response
   const populateSelectionsFromAllocationInfo = (allocationData, lineItems) => {
     const batches = {};
     const serials = {};
@@ -275,7 +256,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
       lineItems.forEach((li) => { qtys[li.id] = li.quantity; });
       setReturningQtys(qtys);
 
-      // Check if any line item has tracking data in its meta
       const hasMetaTracking = lineItems.some((li) => {
         const meta = li.meta ?? {};
         return (
@@ -288,7 +268,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
       if (hasMetaTracking) {
         populateSelectionsFromMeta(lineItems);
       } else {
-        // meta is empty — fetch allocation info from dedicated endpoint
+        // meta is empty so fetch allocation info from dedicated endpoint
         try {
           const allocRes = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${id}/return_allocation_info`
@@ -325,7 +305,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         const item = { shipment_line_item_id: li.id };
         if (inventoryRequired) {
           if (trackingType === "batch") {
-            // Only include rows where quantity > 0
             item.batch = (batchSelections[li.id] ?? [])
               .filter((b) => Number(b.quantity) > 0)
               .map((b) => ({
@@ -333,10 +312,8 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                 quantity: Number(b.quantity),
               }));
           } else if (trackingType === "serial") {
-            // Send only the serials the user actually selected
             item.serial = [...(serialSelections[li.id] ?? new Set())];
           } else {
-            // Only include rows where quantity > 0
             item.untracked = (untrackedSelections[li.id] ?? [])
               .filter((u) => Number(u.quantity) > 0)
               .map((u) => ({
@@ -362,8 +339,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
       if (!res.ok || json.status === "failure")
         throw new Error(json?.errors?.[0] ?? "Failed to complete return");
       toast.success("Return completed successfully!");
-      // Refresh shipment data to reflect return_completed state
-      await fetchReturnShipment(returnShipment?.id);
+      await fetchReturnShipment(returnShipment?.id); //for refresh 
       if (setShowReturnPanel) setShowReturnPanel(false);
       onSuccess?.();
     } catch (err) {
@@ -394,11 +370,10 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
     return (returnShipment?.line_items ?? []).every((li) => getTrackingStatus(li).complete);
   };
 
-  // ── RENDER ───────────────────────────────────────────────────────────────────
   return (
     <div className={`${fromChild ? "bg-gray-50" : "bg-white"}  rounded-xl border border-gray-100 shadow-sm overflow-visible`}>
 
-      {/* ── Header ── */}
+      {/*      Header  */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
           {!fromChild && (
@@ -441,7 +416,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         </div>
       </div>
 
-      {/*  STEP 1  */}
       {step === 1 && (
         <>
           {/* Return Reason */}
@@ -598,7 +572,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
             </p>
           )}
 
-          {/* Step 1 Action Buttons */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50">
             <button
               onClick={handleInitiateReturn}
@@ -622,7 +596,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         </>
       )}
 
-      {/* STEP 2  */}
       {step === 2 && (
         <>
           {loadingReturn ? (
@@ -653,7 +626,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                 />
               </div>
 
-              {/* Toggles — read-only when completed */}
+              {/* Toggles -> read-only when completed */}
               <div className="flex items-center gap-8 px-6 py-3.5 border-t border-gray-100 bg-gray-50/40">
                 <ToggleField
                   label="Inventory Required"
@@ -748,7 +721,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                           {inventoryRequired && (
                             <td className="px-3 py-3">
                               <div className="flex flex-col gap-1.5">
-                                {/* Qty: plain text when completed, editable input otherwise */}
                                 {isCompleted ? (
                                   <span className="text-xs font-semibold text-gray-800 text-center block">
                                     {qty}
@@ -773,7 +745,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                                     className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center"
                                   />
                                 )}
-                                {/* Tracking button — always clickable (view-only when completed) */}
                                 <button
                                   onClick={() => {
                                     if (trackingType === "batch") setBatchModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
@@ -801,7 +772,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                 </table>
               </div>
 
-              {/* Step 2 Action Buttons — hidden when return_completed */}
               {returnShipment?.status !== "return_completed" && (
                 <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50">
                   <button
@@ -829,14 +799,12 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         </>
       )}
 
-      {/* ── Batch Modal ── */}
       {batchModal && (
         <ReturnBatchModal
           isOpen={!!batchModal}
           onClose={() => setBatchModal(null)}
           lineItem={batchModal.li}
           returningQty={batchModal.qty}
-          // Pass full saved rows (which include id + max) so modal can rehydrate properly
           savedData={
             batchModal.isConfirmed
               ? batchSelections[batchModal.li.id] ?? []
@@ -852,7 +820,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         />
       )}
 
-      {/* ── Serial Modal ── */}
       {serialModal && (
         <ReturnSerialModal
           isOpen={!!serialModal}
@@ -874,14 +841,12 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         />
       )}
 
-      {/* ── Untracked Modal ── */}
       {untrackedModal && (
         <ReturnUntrackedModal
           isOpen={!!untrackedModal}
           onClose={() => setUntrackedModal(null)}
           lineItem={untrackedModal.li}
           returningQty={untrackedModal.qty}
-          // Pass full saved rows (which include id + max) so modal can rehydrate properly
           savedData={
             untrackedModal.isConfirmed
               ? untrackedSelections[untrackedModal.li.id] ?? []
@@ -900,7 +865,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
   );
 }
 
-// ── Toggle Field ──────────────────────────────────────────────────────────────
 function ToggleField({ label, value, onChange, readOnly = false }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -923,15 +887,12 @@ function ToggleField({ label, value, onChange, readOnly = false }) {
   );
 }
 
-// ── Return Batch Modal ────────────────────────────────────────────────────────
 function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, onSave, readOnly = false, shipment, batchAllocations }) {
-  // Prefer meta on lineItem; fall back to matching forward shipment line item by sku id
 
   const getSourceBatches = () => {
     const fromMeta = lineItem?.meta?.allocated_batches ?? [];
     if (fromMeta.length) return fromMeta;
 
-    // 🔹 check allocation API
     const fromAlloc = (batchAllocations ?? []).find(
       (a) => a.shipment_line_item_id === lineItem?.id
     );
@@ -940,7 +901,6 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
       return fromAlloc.allocated_batches;
     }
 
-    // fallback to forward shipment
     const fwdItem = (shipment?.line_items ?? []).find(
       (li) => li.product_sku?.id === lineItem?.product_sku?.id
     );
@@ -1090,7 +1050,6 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
             onClose={onClose}
             onSave={() => {
               if (isValid) {
-                // FIX: Save full row objects including id and max so re-opening works correctly
                 onSave(rows.map((r) => ({
                   id: r.id,
                   batch_code: r.batch_code,
@@ -1108,14 +1067,12 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
   );
 }
 
-// ── Return Serial Modal ───────────────────────────────────────────────────────
 function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData, onSave, readOnly = false, shipment, serialAllocations }) {
   // Prefer meta on lineItem; fall back to forward shipment line item
   const getSourceSerials = () => {
     const fromMeta = lineItem?.meta?.allocated_serials ?? [];
     if (fromMeta.length) return fromMeta;
 
-    // 🔹 check allocation API
     const fromAlloc = (serialAllocations ?? []).find(
       (a) => a.shipment_line_item_id === lineItem?.id
     );
@@ -1136,11 +1093,8 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
     () => getSourceSerials(),
     [lineItem, shipment, serialAllocations]
   );
-  // FIX: Safely convert savedData to Set regardless of whether it's already a Set or an array
   const savedSet = savedData instanceof Set ? savedData : new Set(Array.isArray(savedData) ? savedData : []);
 
-  // In readOnly mode show all serials from savedSet merged with sourceSerials
-  // FIX: When we have savedSet data, always use it as the display list (it may differ from sourceSerials)
   const serialsToShow =
     savedSet.size > 0
       ? [...savedSet]
@@ -1148,7 +1102,6 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
         ? sourceSerials
         : [];
 
-  // Always initialise selectedSerials from savedSet so re-opening to edit restores prior selections
   const [selectedSerials, setSelectedSerials] = useState(() => new Set(savedSet));
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -1157,7 +1110,6 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
   const remaining = total - entered;
   const isFull = remaining <= 0;
 
-  // For non-readOnly: show sourceSerials as the available pool to select from
   const availableForSelection = sourceSerials.length > 0 ? sourceSerials : [...savedSet];
   const filtered = (readOnly ? serialsToShow : availableForSelection).filter((s) =>
     s.toLowerCase().includes(searchQuery.toLowerCase())
@@ -1321,14 +1273,12 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
   );
 }
 
-// ── Return Untracked Modal ────────────────────────────────────────────────────
 function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedData, onSave, readOnly = false, shipment, untrackedAllocations }) {
   // Prefer meta on lineItem; fall back to forward shipment line item
   const getSourceUntracked = () => {
     const fromMeta = lineItem?.meta?.allocated_untracked ?? [];
     if (fromMeta.length) return fromMeta;
 
-    // 🔹 check allocations from API
     const fromAlloc = (untrackedAllocations ?? []).find(
       (a) => a.shipment_line_item_id === lineItem?.id
     );
@@ -1354,7 +1304,7 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
       return savedData.map((u) => ({
         id: u.id ?? Math.random(),
         untracked_number: u.untracked_number,
-        // Always restore the saved quantity — user can edit from where they left off
+        // Always restore the saved quantity —> user can edit from where they left off
         quantity: u.quantity,
         max: u.max ?? u.quantity,
       }));
@@ -1486,7 +1436,6 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
             onClose={onClose}
             onSave={() => {
               if (isValid) {
-                // FIX: Save full row objects including id and max so re-opening works correctly
                 onSave(rows.map((r) => ({
                   id: r.id,
                   untracked_number: r.untracked_number,
@@ -1504,7 +1453,6 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
   );
 }
 
-// ── Shared Primitives ─────────────────────────────────────────────────────────
 function ModalOverlay({ children, onClose }) {
   return (
     <>
@@ -1596,7 +1544,6 @@ function StatusBadge({ status }) {
   );
 }
 
-// ── Inline Searchable Dropdown ────────────────────────────────────────────────
 function InlineDropdown({
   placeholder = "Select…",
   options = [],

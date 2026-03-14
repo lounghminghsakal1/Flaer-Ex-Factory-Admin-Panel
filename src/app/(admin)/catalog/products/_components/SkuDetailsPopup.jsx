@@ -71,7 +71,6 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
       const data = result.data;
       setSkuData(data);
 
-      // Set form data
       setForm({
         sku_name: data.sku_name || "",
         display_name: data.display_name || "",
@@ -88,18 +87,17 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
         threshold_quantity: data.threshold_quantity || "",
       });
 
-      // Determine pricing mode
       if (data.conversion_factor && !data.multiplication_factor) {
         setPricingMode("conversion");
       } else if (data.multiplication_factor && !data.conversion_factor) {
         setPricingMode("multiplication");
       } else if (data.conversion_factor) {
-        setPricingMode("conversion"); // Fallback to conversion
+        setPricingMode("conversion"); 
       } else {
         setPricingMode("conversion");
       }
 
-      // Set options
+    
       if (data.option_type_values && data.option_type_values.length > 0) {
         const extractedOptions = data.option_type_values.map((opt) => ({
           option_type_id: opt.option_type.id,
@@ -112,7 +110,6 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
         setOptions(extractedOptions);
       }
 
-      // Set media
       if (data.sku_media && data.sku_media.length > 0) {
         setSkuMedia(data.sku_media);
       }
@@ -276,12 +273,11 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
     setUpdating(true);
 
     try {
-      // Build option_type_values array
       const option_type_values = options
         .filter(opt => opt.type && opt.value)
         .map(opt => {
 
-          // CASE 1 → Existing + Not Changed
+          // CASE 1 -> Existing and Not Changed
           if (opt.isExisting && !opt.isValueChanged) {
             return {
               option_type_id: opt.option_type_id,
@@ -289,7 +285,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
             };
           }
 
-          // CASE 2 → Existing + Changed Value
+          // CASE 2 ->  Existing and Changed Value
           if (opt.isExisting && opt.isValueChanged) {
             return {
               option_type_id: opt.option_type_id,
@@ -297,7 +293,7 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
             };
           }
 
-          // CASE 3 → New Option
+          // CASE 3 -> New Option
           return {
             option_type: opt.type,
             option_value: opt.value
@@ -305,7 +301,6 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
 
         });
 
-      // Build sku_media array
       const sku_media = skuMedia.map((media) => {
         if (media.isNew) {
           return {
@@ -354,12 +349,10 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
         payload.product_sku.conversion_factor = null;
       }
 
-      // option_type_values if exists
       if (option_type_values.length > 0) {
         payload.product_sku.option_type_values = option_type_values;
       }
 
-      // sku_media if exists
       if (sku_media.length > 0) {
         payload.product_sku.sku_media = sku_media;
       }
@@ -901,7 +894,6 @@ export default function SkuDetailsPopup({ sku, onClose, onSuccess }) {
   );
 }
 
-// Option Row Component
 function OptionRow({
   option,
   optionTypes,
@@ -969,12 +961,10 @@ function OptionRow({
   );
 }
 
-// SKU Media Section Component
 function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
   const [uploading, setUploading] = useState(false);
   const [mediaPopup, setMediaPopup] = useState(false);
 
-  // Upload media to S3
   const handleMediaUpload = async (files) => {
     if (!files.length) return;
 
@@ -1001,13 +991,11 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
         uploadedUrls.push(result.data.media_url);
       }
 
-      // Get current max sequence
       const maxSequence =
         skuMedia.length > 0
           ? Math.max(...skuMedia.map((m) => m.sequence))
           : 0;
 
-      // Add new media with proper sequence
       const newMedia = uploadedUrls.map((url, idx) => ({
         id: Date.now() + idx,
         media_url: url,
@@ -1017,7 +1005,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
         isNew: true,
       }));
 
-      // If this is the first upload, set sequence to 1 (primary)
       if (skuMedia.length === 0 && newMedia.length > 0) {
         newMedia[0].sequence = 1;
       }
@@ -1032,7 +1019,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
     }
   };
 
-  // Set image as primary
   const setPrimary = (id) => {
     setSkuMedia((prev) => {
       const selectedMedia = prev.find((m) => m.id === id);
@@ -1051,7 +1037,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
     setMediaPopup(false);
   };
 
-  // Remove image (cannot remove primary)
   const removeMedia = async (id) => {
     const mediaToRemove = skuMedia.find((m) => m.id === id);
 
@@ -1068,7 +1053,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
     setSkuMedia((prev) => {
       const filtered = prev.filter((m) => m.id !== id);
 
-      // Reorder sequences without changing primary
       const primary = filtered.find((m) => m.sequence === 1);
       const others = filtered
         .filter((m) => m.sequence !== 1)
@@ -1162,7 +1146,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
                 </div>
               ))}
 
-              {/* ADD MORE (show if less than 4 images and editing) */}
               {isEditing && skuMedia.length < 4 && (
                 <label className="shrink-0 w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors">
                   {uploading ? (
@@ -1206,7 +1189,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
 
             </div>
 
-            {/* Add more button below grid (if 4+ images and editing) */}
             {isEditing && skuMedia.length >= 4 && (
               <label className="flex w-80 mx-auto items-center justify-center gap-2 px-3 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer">
                 <Plus size={14} />
@@ -1246,7 +1228,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing }) {
   );
 }
 
-// Media Popup Component
 function MediaPopup({
   media,
   isEditing,

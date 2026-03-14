@@ -5,9 +5,6 @@ import { X, Plus, CheckCircle2, Trash2, AlertCircle, Pencil } from "lucide-react
 import { toast } from "react-toastify";
 import DatePicker from "../../../create/_components/DatePicker";
 
-// ─── Portal wrapper — renders children at document.body, fixing any
-//     "div cannot be child of tbody/tr" DOM nesting errors when modals
-//     are rendered from inside table rows.
 function ModalPortal({ children }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -15,7 +12,6 @@ function ModalPortal({ children }) {
   return createPortal(children, document.body);
 }
 
-// ─── Batching Modal ─
 export function BatchingModal({
   isOpen,
   onClose,
@@ -38,7 +34,6 @@ export function BatchingModal({
       : [emptyBatch()]
   );
 
-  // Re-seed when modal opens — preserve existing values if present
   useEffect(() => {
     if (!isOpen) return;
     setBatches(
@@ -46,7 +41,7 @@ export function BatchingModal({
         ? initialBatches.map((b) => ({ ...b, _id: Math.random().toString(36).slice(2) }))
         : [emptyBatch()]
     );
-  }, [isOpen]); // intentionally only re-run on isOpen change
+  }, [isOpen]); 
 
   const totalEntered = batches.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
   const remaining = Number(totalQuantity) - totalEntered;
@@ -228,8 +223,6 @@ export function BatchingModal({
   );
 }
 
-// ─── Serial Modal ──
-
 export function SerialModal({
   isOpen,
   onClose,
@@ -250,12 +243,10 @@ export function SerialModal({
   const [inputValue, setInputValue] = useState("");
   const [adding, setAdding] = useState(false);
   const [inputError, setInputError] = useState("");
-  // editingId: the chip currently being edited (its value is in inputValue)
   const [editingId, setEditingId] = useState(null);
   const inputRef = useRef(null);
   const [shouldFocus, setShouldFocus] = useState(false);
 
-  // Init
   useEffect(() => {
     if (!isOpen) return;
     setChips(initialSerials.length ? initialSerials.map((s) => makeChip(s)) : []);
@@ -283,7 +274,6 @@ export function SerialModal({
   const isDuplicate = (val, excludeId = null) =>
     chips.some((c) => c.value === val.trim() && c._id !== excludeId);
 
-  // Verify via API
   const verifySerial = async (serialNumber) => {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/goods_received_notes/${grnId}/verify_grn_serial`,
@@ -297,7 +287,6 @@ export function SerialModal({
     if (data.status !== "success") throw new Error(data?.errors?.[0] || "Verification failed.");
   };
 
-  // Add or confirm edit
   const commitInput = async () => {
     const val = inputValue.trim();
     if (!val) return;
@@ -308,7 +297,6 @@ export function SerialModal({
       return;
     }
 
-    // If editing and value unchanged, just cancel edit
     if (editingId) {
       const original = chips.find((c) => c._id === editingId);
       if (original?.value === val) {
@@ -318,7 +306,6 @@ export function SerialModal({
       }
     }
 
-    // If adding new and box is full, block
     if (!editingId && isFull) return;
 
     setAdding(true);
@@ -326,13 +313,11 @@ export function SerialModal({
       await verifySerial(val);
 
       if (editingId) {
-        // Update existing chip
         setChips((prev) =>
           prev.map((c) => (c._id === editingId ? { ...c, value: val } : c))
         );
         setEditingId(null);
       } else {
-        // Add new chip
         setChips((prev) => [...prev, makeChip(val)]);
       }
 
@@ -364,13 +349,11 @@ export function SerialModal({
       setInputValue("");
       setInputError("");
     }
-    // Backspace on empty input cancels edit mode (doesn't delete chip)
     if (e.key === "Backspace" && !inputValue && !editingId && chips.length > 0) {
       setChips((prev) => prev.slice(0, -1));
     }
   };
 
-  // Click chip to move it into the input for editing
   const startEdit = (chip) => {
     setEditingId(chip._id);
     setInputValue(chip.value);
@@ -390,7 +373,6 @@ export function SerialModal({
     inputRef.current?.focus();
   };
 
-  // Remove chip
   const removeChip = (id) => {
     if (editingId === id) {
       setEditingId(null);
@@ -474,7 +456,6 @@ export function SerialModal({
 
           <div className="px-6 pb-2 flex-1 min-h-0 flex flex-col gap-3">
 
-            {/* ── Input box (top) ── */}
             {!viewOnly && (
               <div className="shrink-0">
                 {/* Edit mode banner */}
@@ -512,7 +493,6 @@ export function SerialModal({
                     disabled={adding || (isFull && !editingId)}
                   />
 
-                  {/* Verifying spinner or Add button */}
                   {adding ? (
                     <span className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin shrink-0" />
                   ) : (
@@ -571,7 +551,6 @@ export function SerialModal({
               </div>
             )}
 
-            {/* ── Chips display box (bottom) ── */}
             <div
               className={`min-h-[110px] max-h-[220px] overflow-y-auto border rounded-xl p-2 flex flex-wrap gap-1.5 content-start
                 ${viewOnly ? "bg-gray-50 border-gray-100" : "bg-gray-50 border-gray-100"}

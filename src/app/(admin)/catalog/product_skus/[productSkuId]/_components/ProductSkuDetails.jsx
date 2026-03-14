@@ -33,11 +33,16 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
   const { confirmModal, askConfirm } = useConfirmModal();
 
   const UOM_OPTIONS = [
-    { id: "sq_ft", name: "Sq ft" }, { id: "ml", name: "Ml" },
-    { id: "l", name: "L" }, { id: "gm", name: "Gm" },
-    { id: "kg", name: "Kg" }, { id: "mm", name: "Mm" },
-    { id: "packet", name: "Packet" }, { id: "unit", name: "Unit" },
-    { id: "piece", name: "Piece" }, {id: "m", name: "Metere"}
+    { id: "sq_ft", name: "Sq ft" }, 
+    { id: "ml", name: "Ml" },
+    { id: "l", name: "L" }, 
+    { id: "gm", name: "Gm" },
+    { id: "kg", name: "Kg" }, 
+    { id: "mm", name: "Mm" },
+    { id: "packet", name: "Packet" }, 
+    { id: "unit", name: "Unit" },
+    { id: "piece", name: "Piece" }, 
+    {id: "m", name: "Metere"}
   ];
 
   const STATUS_CONFIG = {
@@ -231,7 +236,7 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
       {confirmModal}
       <div className="min-h-screen bg-gray-50/40">
 
-        {/* ── Header ── */}
+        {/*  Header  */}
         <HeaderWithBackAction
           title="Product SKU Details"
           isEditing={isEditing}
@@ -240,11 +245,11 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
           defaultBackPath="/catalog/product_skus"
         />
 
-        {/* ── Page body ── */}
+        {/*  Page body  */}
         <div className="px-6 py-6">
           <div className="flex gap-6 items-start">
 
-            {/* ══ MAIN CONTENT ══ */}
+            {/*  MAIN CONTENT  */}
             <div className="flex-1 min-w-0 space-y-5">
 
               {/* Basic Information */}
@@ -423,9 +428,8 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
               <SkuMediaSection skuMedia={skuMedia} setSkuMedia={setSkuMedia} isEditing={isEditing} askConfirm={askConfirm} />
 
             </div>
-            {/* ══ END MAIN ══ */}
 
-            {/* ══ SIDEBAR ══ */}
+            {/*  SIDEBAR  */}
             <div className="w-68 shrink-0 space-y-4" style={{ width: "272px" }}>
 
               {/* SKU Details */}
@@ -448,7 +452,7 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
                 </div>
               </aside>
 
-              {/* Price Snapshot — read mode only */}
+              {/* Price Snapshot —> read mode only */}
               {!isEditing && skuData.mrp && (
                 <aside className="bg-white rounded-xl border border-gray-200">
                   <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
@@ -489,7 +493,6 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
               )}
 
             </div>
-            {/* ══ END SIDEBAR ══ */}
 
           </div>
         </div>
@@ -498,7 +501,7 @@ export default function ProductSkuDetailsPage({ productSkuId }) {
   );
 }
 
-/* ─── Reusable Section card ─── */
+/* Reusable Section card  */
 function Section({ title, icon, children, action }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200">
@@ -514,7 +517,7 @@ function Section({ title, icon, children, action }) {
   );
 }
 
-/* ─── Currency input with ₹ symbol ─── */
+/*  Currency input  */
 function CurrencyInput({ className, value, disabled, onChange }) {
   return (
     <div className="relative">
@@ -527,7 +530,7 @@ function CurrencyInput({ className, value, disabled, onChange }) {
   );
 }
 
-/* ─── Auto-calculated badge ─── */
+/*  Auto-calculated badge  */
 function AutoBadge() {
   return (
     <span className="ml-1 text-[10px] font-medium text-primary bg-blue-50 border border-blue-100 px-1.5 py-px rounded">
@@ -536,7 +539,7 @@ function AutoBadge() {
   );
 }
 
-/* ─── Sidebar metadata row ─── */
+/*  Sidebar metadata row  */
 function MetaRow({ label, value, mono, accent }) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5">
@@ -550,7 +553,7 @@ function MetaRow({ label, value, mono, accent }) {
   );
 }
 
-/* ═══════════════ OPTION VALUES SECTION ═══════════════ */
+/*  OPTION VALUES SECTION  */
 function OptionValuesSection({
   options, isEditing, optionTypes, setOptionTypes,
   getSelectedTypes, updateOptionType, updateOptionValue,
@@ -559,7 +562,6 @@ function OptionValuesSection({
   const hasOptions = options.length > 0;
 
   return (
-    /* No overflow-hidden so SearchableDropdown popup can escape the card */
     <div className="bg-white rounded-xl border border-gray-200">
       {/* Card header */}
       <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
@@ -576,7 +578,6 @@ function OptionValuesSection({
           </div>
         )}
 
-        {/* Actual <table> — shown when rows exist OR in edit mode */}
         {(hasOptions || isEditing) && (
           <table className="w-full border border-gray-200 rounded-md border-separate border-spacing-0 text-sm">
             <thead>
@@ -644,7 +645,6 @@ function OptionValuesSection({
                 </tr>
               ))}
 
-              {/* Add item row — always last, edit mode only */}
               {isEditing && (
                 <tr>
                   <td
@@ -668,7 +668,7 @@ function OptionValuesSection({
   );
 }
 
-/* ═══════════════ MEDIA SECTION ═══════════════ */
+/*  MEDIA SECTION  */
 function SkuMediaSection({ skuMedia, setSkuMedia, isEditing, askConfirm }) {
   const [uploading, setUploading] = useState(false);
   const [mediaPopup, setMediaPopup] = useState(false);
@@ -754,7 +754,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing, askConfirm }) {
         )}
         {skuMedia.length > 0 && (
           <div className="flex items-start gap-3 flex-wrap">
-            {/* Primary — large */}
+            {/* Primary img */}
             {primary && (
               <div className="relative w-48 h-48 shrink-0 rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-50 group">
                 <img src={primary.media_url} className="w-full h-full object-cover" alt="Primary" />
@@ -808,7 +808,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia, isEditing, askConfirm }) {
   );
 }
 
-/* ═══════════════ MEDIA POPUP ═══════════════ */
+/* MEDIA POPUP  */
 function MediaPopup({ media, isEditing, onSetPrimary, onRemove, onClose, onUpload, uploading }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">

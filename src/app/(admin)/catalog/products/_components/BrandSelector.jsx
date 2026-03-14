@@ -27,7 +27,6 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
     }
   });
 
-  // Initialize selected brand from formData
   useEffect(() => {
     if (formData?.brand_id && brandOptions.length > 0 && !selectedBrand) {
       const found = brandOptions.find(b => b.id === formData.brand_id);
@@ -79,8 +78,6 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
 
   const handleBrandSelect = (brand) => {
     setSelectedBrand(brand);
-
-    // Update parent form data
     if (setFormData) {
       setFormData(prev => ({
         ...prev,
@@ -149,14 +146,11 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
         setShowCreatePopup(false);
         toast.success("Brand created successfully");
 
-        // Fetch updated brand list
         await fetchBrandOptions();
 
-        // Auto-select the newly created brand
         const newBrandOption = { id: newBrand.id, name: newBrand.name };
         setSelectedBrand(newBrandOption);
 
-        // Update parent form data
         if (setFormData) {
           setFormData(prev => ({
             ...prev,
@@ -166,7 +160,6 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
 
         onBrandSelect?.(newBrandOption);
 
-        // Reopen dropdown and scroll to new brand
         setTimeout(() => {
           setIsOpen(true);
           setTimeout(() => {
@@ -267,7 +260,7 @@ const BrandSelector = ({ selectedBrandId, onBrandSelect, formData, setFormData, 
                 )}
               </div>
 
-              {/* Create Brand Button - Centered */}
+              {/* Create Brand Button */}
               <div className="border-t border-gray-200 p-2">
                 <button
                   type="button"

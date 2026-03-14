@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import ShipmentDetail from "./ShipmentDetail";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
+import DropShipmentDetails from "./DropShipmentDetails";
 
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
@@ -101,6 +102,32 @@ function SearchableDropdown({
 export default function Shipments({ orderId, shipmentIntent }) {
   const [view, setView] = useState(shipmentIntent ?? "list");
   const [selectedShipmentId, setSelectedShipmentId] = useState(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [intent, setIntent] = useState(searchParams.get("shipment-intent"));
+
+  useEffect(() => {
+    const urlIntent = searchParams.get("shipment-intent");
+    if (urlIntent) setIntent(urlIntent);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const id = searchParams.get("shipment-id");
+    if (id) {
+      setSelectedShipmentId(Number(id));
+    }
+  }, [searchParams])
+
+  const clearShipmentParams = () => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    params.delete("shipment-id");
+    params.delete("shipment-intent");
+
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   if (view === "forward") {
     return (
@@ -115,18 +142,21 @@ export default function Shipments({ orderId, shipmentIntent }) {
     return <CreateDropShipment orderId={orderId} onBack={() => setView("list")} onSuccess={() => setView("list")} />;
   }
   if (selectedShipmentId) {
-    return (
-      <ShipmentDetail
-        shipmentId={selectedShipmentId}
-        onBack={() => setSelectedShipmentId(null)}
-      />
-    );
+    if (intent === "forward") {
+      return <ShipmentDetail shipmentId={selectedShipmentId} onBack={() => { clearShipmentParams(); setSelectedShipmentId(null); }} />;
+    }
+    if (intent === "drop") {
+      return <DropShipmentDetails shipmentId={selectedShipmentId} onBack={() => {clearShipmentParams(); setSelectedShipmentId(null);}} />;
+    }
+    if (intent === "reverse") {
+      return <ShipmentDetail shipmentId={selectedShipmentId} onBack={() => {clearShipmentParams(); setSelectedShipmentId(null);}} />;
+    }
+
   }
-  return <ShipmentList orderId={orderId} onSelectShipment={setSelectedShipmentId} />;
+  return <ShipmentsList orderId={orderId} onSelectShipment={setSelectedShipmentId} setIntent={setIntent} />;
 }
 
-// 1. Shipment List
-function ShipmentList({ orderId, onSelectShipment }) {
+function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
@@ -150,11 +180,20 @@ function ShipmentList({ orderId, onSelectShipment }) {
   const typeOptions = ["All", ...new Set(shipments.map((s) => s.shipment_type).filter(Boolean))];
   const filtered = filter === "All" ? shipments : shipments.filter((s) => s.shipment_type === filter);
 
-  const pushIdToUrl = (id) => {
+  const pushIdToUrl = (id, shipmentType) => {
     const params = new URLSearchParams(searchParams.toString());
+
+    let intent = "forward";
+    if (shipmentType === "drop_shipment") intent = "drop";
+    if (shipmentType === "reverse_shipment") intent = "reverse";
+    if (shipmentType === "forward_shipment") intent = "forward";
+
+    params.set("tab", "shipments");   
     params.set("shipment-id", id);
-    router.push(`${pathName}?${params.toString()}`);
-  }
+    params.set("shipment-intent", intent);
+
+    router.push(`?${params.toString()}`);
+  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -190,7 +229,21 @@ function ShipmentList({ orderId, onSelectShipment }) {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {filtered.map((s) => (
-              <tr key={s.id} onClick={() => { onSelectShipment(s.id); pushIdToUrl(s.id) }} className="hover:bg-gray-100 transition-colors cursor-pointer">
+              <tr key={s.id} onClick={() => {
+                if (setIntent) {
+                  if (s.shipment_type === "forward_shipment") {
+                    setIntent("forward")
+                  }
+                  if (s.shipment_type === "reverse_shipment") {
+                    setIntent("reverse");
+                  }
+                  if (s.shipment_type === "drop_shipment") {
+                    setIntent("drop")
+                  }
+                }
+                onSelectShipment(s.id);
+                pushIdToUrl(s.id, s.shipment_type)
+              }} className="hover:bg-gray-100 transition-colors cursor-pointer">
                 <td className="px-4 py-3 font-medium text-gray-800">{s.shipment_number ?? s.id ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-700">{formatLabel(s.shipment_type)}</td>
                 <td className="px-4 py-3 text-gray-700 tabular-nums">{fmt(s.aggregates?.final_amount)}</td>
@@ -212,7 +265,6 @@ function ShipmentList({ orderId, onSelectShipment }) {
   );
 }
 
-// 2. Create Forward Shipment
 function CreateForwardShipment({ orderId, onBack, onSuccess }) {
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState("");
@@ -301,10 +353,9 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
     }
   };
 
-  // Quantity col is fixed 140px; SKU Name takes all remaining space via auto
   const cols = [
     { label: "SKU Name", cls: "" },   // auto / fills remaining
-    { label: "Quantity", cls: "w-36" },   // fixed ~144px
+    { label: "Quantity", cls: "w-36" },   
     { label: "MRP", cls: "w-24" },
     { label: "Selling Price", cls: "w-28" },
     { label: "Discount Amt.", cls: "w-28" },
@@ -335,7 +386,6 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
       </div>
 
       <div className="px-5 py-4 flex flex-col gap-5">
-        {/* Node selector — plain SearchableDropdown, no extra wrapper arrow */}
         <div className="flex flex-col gap-1.5 max-w-xs">
           <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Select Node</label>
           {loadingNodes ? (
@@ -370,7 +420,6 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                   const item = getItem(row.oli_id);
                   const options = availableItems(row.id);
 
-                  // Build dropdown options — always include current selection
                   const dropdownOptions = [
                     ...(item && !options.find((o) => o.oli_id === item.oli_id) ? [item] : []),
                     ...options,
@@ -379,7 +428,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                   return (
                     <tr key={row.id} className="align-top">
 
-                      {/* SKU Name — SearchableDropdown */}
+                      {/* SKU Name -> SearchableDropdown */}
                       <td className="px-3 py-2.5">
                         {loadingItems ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
@@ -393,20 +442,18 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                             labelKey="sku_name"
                             searchPlaceholder="Search SKU..."
                             emptyMessage="No SKUs available"
-                            // Custom option row: name + code only (no badges)
                             renderOption={(opt) => (
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span className="text-xs font-medium text-gray-800 whitespace-normal leading-snug">{opt.sku_name}</span>
                                 <span className="text-[10px] text-gray-400 font-mono">{opt.sku_code}</span>
                               </div>
                             )}
-                            // Selected display: just the name (truncated)
                             renderSelected={(opt) => (
                               <span className="text-xs text-gray-800 whitespace-normal leading-snug">{opt.sku_name}</span>
                             )}
                           />
                         )}
-                        {/* Below dropdown: code + badge only */}
+
                         {item && (
                           <div className="mt-1.5 flex flex-col gap-0.5 px-0.5">
                             <span className="text-[11px] text-gray-400 font-mono">{item.sku_code}</span>
@@ -425,7 +472,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                           </div>
                         )}
                       </td>
-                      {/* Quantity — fixed width, ordered/remaining shown below input */}
+                      
                       <td className="px-3 py-2.5">
                         <div className="flex flex-col gap-1">
                           <input
@@ -488,7 +535,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                   );
                 })}
 
-                {/* Add row — hidden when all SKUs are already in rows */}
+                {/* Add row -> hidden when all SKUs are already in rows */}
                 {lineItems.filter((li) => !rows.map((r) => String(r.oli_id)).includes(String(li.oli_id))).length > 0 && (
                   <tr>
                     <td colSpan={8} className="px-3 py-2.5">
@@ -511,18 +558,23 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
   );
 }
 
-// 3. Create Drop Shipment
 function CreateDropShipment({ orderId, onBack, onSuccess }) {
 
   const [vendors, setVendors] = useState([]);
   const [selectedVendor, setSelectedVendor] = useState("");
   const [lineItems, setLineItems] = useState([]);
-  const [rows, setRows] = useState([{ id: Date.now(), oli_id: "", quantity: "", product_sku_id: "" }]);
+  const [rows, setRows] = useState([{ id: Date.now(), oli_id: "", quantity: "", product_sku_id: "", mrp: "", sku_name: "", sku_code: "" }]);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedSkus, setSelectedSkus] = useState([]);
   const [canSelectVendor, setCanSelectVendor] = useState(false);
+
+  const searchParams = useSearchParams();
+  const params = new URLSearchParams(searchParams.toString());
+  const router = useRouter();
+
+  const [vendorName, setVendorName] = useState("");
 
   useEffect(() => {
     const skus = rows.map(r => r.product_sku_id).filter(Boolean);
@@ -553,9 +605,9 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
       .then((r) => r.json())
       .then((json) => {
         const data = json.data ?? [];
-        setVendors(data.length ? data : [{ id: 1, name: "Default Vendor" }]);
+        setVendors(data ?? []);
       })
-      .catch(() => setVendors([{ id: 1, name: "Default Vendor" }]))
+      .catch(() => setVendors([]))
       .finally(() => setLoadingVendors(false));
   }
 
@@ -577,7 +629,7 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
     const taken = rows.map((r) => String(r.oli_id));
     const remaining = lineItems.filter((li) => !taken.includes(String(li.oli_id)));
     if (remaining.length === 0) { toast.error("All available SKUs have been added."); return; }
-    setRows((prev) => [...prev, { id: Date.now(), oli_id: "", quantity: "", product_sku_id: "" }]);
+    setRows((prev) => [...prev, { id: Date.now(), oli_id: "", quantity: "", product_sku_id: "", mrp: "", sku_name: "", sku_code: "" }]);
   };
 
   const handleCreate = async () => {
@@ -585,27 +637,51 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
     const validRows = rows.filter((r) => r.oli_id && Number(r.quantity) > 0);
     if (!validRows.length) { toast.error("Add at least one line item with a valid quantity."); return; }
 
+    console.log(validRows);
     setSubmitting(true);
+    const payload = {
+      shipment: {
+        order_id: orderId ? Number(orderId) : undefined,
+        vendor_id: Number(selectedVendor),
+        shipment_type: "drop_shipment",
+        line_items: validRows.map((r) => ({
+          order_line_item_id: Number(r.oli_id),
+          quantity: Number(r.quantity),
+        })),
+      },
+    };
+
+    const sessionDataForPo = {
+      shipment: {
+        order_id: orderId ? Number(orderId) : undefined,
+        vendor_id: Number(selectedVendor),
+        vendor_name: vendorName,
+        shipment_type: "drop_shipment",
+        line_items: validRows.map((r) => ({
+          order_line_item_id: Number(r.oli_id),
+          quantity: Number(r.quantity),
+          unit_price: Number(r.mrp),
+          sku_name: r.sku_name,
+          sku_code: r.sku_code
+        })),
+        order_id: orderId,
+      },
+    };
+
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shipment: {
-            order_id: orderId ? Number(orderId) : undefined,
-            vendor_id: Number(selectedVendor),
-            shipment_type: "drop_shipment",
-            line_items: validRows.map((r) => ({
-              order_line_item_id: Number(r.oli_id),
-              quantity: Number(r.quantity),
-            })),
-          },
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to create shipment");
       toast.success("Drop Shipment created successfully!");
       onSuccess();
+      sessionDataForPo.shipment.drop_shipment_id = json?.data?.id;
+      sessionStorage.setItem("dropShipmentData", JSON.stringify(sessionDataForPo));
+      params.set("fromDropShipment", "true");
+      router.push(`/purchase_orders/create?${params.toString()}`);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -613,10 +689,9 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
     }
   };
 
-  // Quantity col is fixed 140px; SKU Name takes all remaining space via auto
   const cols = [
     { label: "SKU Name", cls: "" },   // auto / fills remaining
-    { label: "Quantity", cls: "w-36" },   // fixed ~144px
+    { label: "Quantity", cls: "w-36" },   
     { label: "MRP", cls: "w-24" },
     { label: "Selling Price", cls: "w-28" },
     { label: "Discount Amt.", cls: "w-28" },
@@ -675,7 +750,7 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                   return (
                     <tr key={row.id} className="align-top">
 
-                      {/* SKU Name — SearchableDropdown */}
+                      {/* SKU Name -> SearchableDropdown */}
                       <td className="px-3 py-2.5">
                         {loadingItems ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
@@ -693,7 +768,10 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                                     ? {
                                       ...r,
                                       oli_id: v,
-                                      product_sku_id: item?.product_sku_id ?? ""
+                                      product_sku_id: item?.product_sku_id ?? "",
+                                      mrp: item?.mrp ?? "",
+                                      sku_name: item.sku_name,
+                                      sku_code: item.sku_code
                                     }
                                     : r
                                 )
@@ -703,20 +781,17 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                             labelKey="sku_name"
                             searchPlaceholder="Search SKU..."
                             emptyMessage="No SKUs available"
-                            // Custom option row: name + code only (no badges)
                             renderOption={(opt) => (
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span className="text-xs font-medium text-gray-800 whitespace-normal leading-snug">{opt.sku_name}</span>
                                 <span className="text-[10px] text-gray-400 font-mono">{opt.sku_code}</span>
                               </div>
                             )}
-                            // Selected display: just the name (truncated)
                             renderSelected={(opt) => (
                               <span className="text-xs text-gray-800 whitespace-normal leading-snug">{opt.sku_name}</span>
                             )}
                           />
                         )}
-                        {/* Below dropdown: code + badge only */}
                         {item && (
                           <div className="mt-1.5 flex flex-col gap-0.5 px-0.5">
                             <span className="text-[11px] text-gray-400 font-mono">{item.sku_code}</span>
@@ -735,7 +810,7 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                           </div>
                         )}
                       </td>
-                      {/* Quantity — fixed width, ordered/remaining shown below input */}
+                      {/* Quantity -> fixed width, ordered/remaining shown below input */}
                       <td className="px-3 py-2.5">
                         <div className="flex flex-col gap-1">
                           <input
@@ -798,7 +873,7 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                   );
                 })}
 
-                {/* Add row — hidden when all SKUs are already in rows */}
+                {/* Add row -> hidden when all SKUs are already in rows */}
                 {lineItems.filter((li) => !rows.map((r) => String(r.oli_id)).includes(String(li.oli_id))).length > 0 && (
                   <tr>
                     <td colSpan={8} className="px-3 py-2.5">
@@ -825,7 +900,6 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
           </div>
         )}
 
-        {/* Vendor selector — plain SearchableDropdown, no extra wrapper arrow */}
         {canSelectVendor && (
           <div className="flex flex-col justify-end items-end gap-1.5 ">
             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Select Vendor</label>
@@ -837,7 +911,10 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                   placeholder="Select a vendor"
                   options={vendors}
                   value={selectedVendor}
-                  onChange={setSelectedVendor}
+                  onChange={(option) => {
+                    setVendorName(vendors.find(v => v.id === option)?.firm_name);
+                    setSelectedVendor(option);
+                  }}
                   valueKey="id"
                   labelKey="firm_name"
                   searchPlaceholder="Search vendors..."
@@ -852,7 +929,6 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
   );
 }
 
-// Helpers
 function StatusBadge({ status }) {
   const map = {
     created: "bg-gray-100 text-gray-700",

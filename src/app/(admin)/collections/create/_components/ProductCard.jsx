@@ -1,4 +1,3 @@
-// ProductCard 
 import { useState } from 'react';
 import { Eye, CheckCircle, XCircle, ImageIcon, X, Undo } from 'lucide-react';
 
@@ -61,10 +60,8 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
 
   const handleRemove = () => {
     if (isMarkedForRemoval) {
-      // Undo - remove from removing list
       setRemovingIds(prevIds => prevIds.filter(id => id !== collectionItem.id));
     } else {
-      // Mark for removal - add to removing list
       setRemovingIds(prevIds => [...prevIds, collectionItem.id]);
     }
   };
@@ -181,7 +178,7 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
           </div>
         </div>
         
-          {/* Right Section - Remove Icon (appears on hover when editing) */}
+          {/* Right Section */}
           {isEditing && (
             <div className="flex items-start pr-1.5 shrink-0">
               <button
@@ -202,7 +199,6 @@ const ProductCard = ({ collectionItem, isEditing, removingIds, setRemovingIds, i
           )}
       </div>
 
-      {/* Image Preview Popup */}
       <ImagePreviewPopup
         imageUrl={productImage}
         productName={productName}

@@ -193,9 +193,3 @@ const ShipmentTrackerBar = ({ currShipment }) => {
 };
 
 export default ShipmentTrackerBar;
-// ```
-
-// The key fix for the line issue — the `left`/`right` calculation now correctly uses the **circle's center percentage position** and then subtracts `halfCircle` (16px) from each side:
-// ```
-// left:  calc(${leftPct}%  + 16px)   ← start at center of left circle, shift right by half
-// right: calc(${100 - rightPct}% + 16px)  ← end at center of right circle, shift left by half

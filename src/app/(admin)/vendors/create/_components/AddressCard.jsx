@@ -32,7 +32,6 @@ export default function AddressCard({ form, errors = {}, onChange, isEditing = t
   const [loading, setLoading] = useState(false);
 
   const globalDisabled = !isEditing;
-  // In view mode: city/state/country always editable by address lock logic only if isEditing
   const addressLocked = isEditing && form.pincode.length < 6;
 
   const handlePincode = async (value) => {

@@ -56,7 +56,7 @@ function generateSkus(productName, options) {
   );
 
   if (!validOpts.length) {
-    //  If no options, create one default SKU
+    //  If no options, then create one default SKU
     return [{
       sku_name: productName,
       option_type_values: []
@@ -192,7 +192,7 @@ export default function ProductCreationAttributes({
     }
   }
 
-  /* ================= PROPERTY HANDLERS ================= */
+  /* PROPERTY HANDLERS  */
 
   const addPropertyRow = () => {
     setProperties(p => [...p, { name: "", values: [], input: "" }]);
@@ -210,7 +210,7 @@ export default function ProductCreationAttributes({
 
     let ok = true;
 
-    // CASE 1 — Last property structure
+    // CASE 1 —>  Last property structure
     if (!hasOtherValidProperties) {
 
       ok = await confirm(
@@ -219,7 +219,7 @@ export default function ProductCreationAttributes({
 
       if (!ok) return;
 
-      // Reset to empty structure row (UX friendly)
+      // Reset to empty structure row 
       setProperties([{ name: "", values: [], input: "" }]);
 
       // Clear derived data
@@ -229,7 +229,7 @@ export default function ProductCreationAttributes({
       return;
     }
 
-    // CASE 2 — Normal recompute case
+    // CASE 2 _> Normal recompute case
     const isValidProperty =
       propertyToDelete.name &&
       propertyToDelete.values &&
@@ -247,7 +247,7 @@ export default function ProductCreationAttributes({
 
     setProperties(updatedProperties);
 
-    // Rebuild generated products ALWAYS (source of truth pattern)
+    // Rebuild generated products always
     const newGeneratedProducts = generateProducts(formData.name, updatedProperties);
 
     const validOptions = options.filter(
@@ -262,7 +262,7 @@ export default function ProductCreationAttributes({
       }))
     );
 
-    // Rebuild products + SKUs safely
+    // Rebuild products and SKUs 
     setProducts(prevProducts =>
       syncProductSkus(
         prevProducts || [],
@@ -283,7 +283,6 @@ export default function ProductCreationAttributes({
       return;
     }
 
-    // CHECK IF PRODUCT NAME EXISTS
     if (!formData.name || !formData.name.trim()) {
       confirm("Please enter Product Name first in Main Product Information");
       return;
@@ -315,7 +314,7 @@ export default function ProductCreationAttributes({
       })
     );
 
-    //  Always regenerate products + SKUs together
+    // regenerate products and SKUs together
     setTimeout(() => {
       const currentOptions = options.filter(
         o => o.type && o.values.length > 0
@@ -389,14 +388,14 @@ export default function ProductCreationAttributes({
     const valueToDelete = prop.values[valueIndex];
     let ok;
 
-    // Simulate removal first
+    // Simulate removal 
     const updatedProperties = properties.map((p, i) =>
       i === propIndex
         ? { ...p, values: p.values.filter((_, vi) => vi !== valueIndex) }
         : p
     );
 
-    // Generate products BEFORE + AFTER removal
+    // Generate products BEFORE and AFTER removal
     const oldProducts = generateProducts(formData.name, properties);
     const newProducts = generateProducts(formData.name, updatedProperties);
 
@@ -412,7 +411,6 @@ export default function ProductCreationAttributes({
         ok = await confirm(`Removing ${valueToDelete} can change the name of the products, do you want to continue ?`);
       }
     } else {
-      //  Confirm ONLY if destructive
       if (deletedProducts.length > 0) {
         ok = await confirm(
           `Removing "${valueToDelete}" will delete:\n\n` +
@@ -423,8 +421,6 @@ export default function ProductCreationAttributes({
     }
     if (!ok) return;
 
-
-    //  Apply removal
     setProperties(updatedProperties);
 
     setProducts(prevProducts => {
@@ -471,7 +467,6 @@ export default function ProductCreationAttributes({
         };
       });
 
-      // AFTER PRODUCTS READY → Update Generated Products With Correct SKU COUNT
       setGeneratedProducts(
         newProducts.map(np => {
           const prod = rebuiltProducts.find(p =>
@@ -507,7 +502,7 @@ export default function ProductCreationAttributes({
     );
   };
 
-  /* ================= OPTION HANDLERS ================= */
+  /* OPTION HANDLERS  */
 
   const addOptionRow = () => {
     setOptions(o => [...o, { type: "", values: [], input: "" }]);
@@ -525,7 +520,7 @@ export default function ProductCreationAttributes({
 
     let ok = true;
 
-    //  CASE 1 — Last Option (All SKUs will be removed)
+    //  CASE 1 —> Last Option (All SKUs will be removed)
     if (validRemainingOptions.length === 0) {
 
       ok = await confirm(
@@ -534,7 +529,6 @@ export default function ProductCreationAttributes({
 
       if (!ok) return;
 
-      // Reset option UI structure
       setOptions([{ type: "", values: [], input: "" }]);
 
       // Remove all SKUs but keep products
@@ -556,7 +550,7 @@ export default function ProductCreationAttributes({
       return;
     }
 
-    //  CASE 2 — Normal recompute case
+    //  CASE 2 —> Normal recompute case
     const isValidOption =
       optionToDelete.type &&
       optionToDelete.values &&
@@ -574,14 +568,14 @@ export default function ProductCreationAttributes({
 
     setOptions(updatedOptions);
 
-    //  If products missing → regenerate first
+    //  If products missing -> regenerate first
     let ensuredGeneratedProducts = generatedProducts;
 
     if (!ensuredGeneratedProducts || ensuredGeneratedProducts.length === 0) {
       ensuredGeneratedProducts = generateProducts(formData.name, properties);
     }
 
-    //  Rebuild SKUs using sync engine
+    //  Rebuild SKUs 
     setProducts(prev =>
       syncProductSkus(
         prev || [],
@@ -673,7 +667,7 @@ export default function ProductCreationAttributes({
       const mergedSkus = expectedSkus.map((sku, idx) => {
 
         if (existingSkuMap.has(sku.sku_name)) {
-          return existingSkuMap.get(sku.sku_name); // PRESERVE USER DATA
+          return existingSkuMap.get(sku.sku_name); 
         }
 
         return {
@@ -763,12 +757,11 @@ export default function ProductCreationAttributes({
       syncProductSkus(prev || [], newGeneratedProducts, options)
     );
 
-    return newGeneratedProducts; // RETURN FRESH DATA
+    return newGeneratedProducts; 
   };
 
   const removeOptionValue = async (optIndex, valueIndex) => {
 
-    //  GET FRESH PRODUCTS
     const ensuredGeneratedProducts = await ensureProductsBeforeOptionChange();
 
     if (!ensuredGeneratedProducts) return;
@@ -804,7 +797,6 @@ export default function ProductCreationAttributes({
 
     setOptions(updatedOptions);
 
-    //  USE ENSURED PRODUCTS
     setProducts(prev =>
       syncProductSkus(prev, ensuredGeneratedProducts, updatedOptions)
     );
@@ -821,7 +813,6 @@ export default function ProductCreationAttributes({
 
   };
 
-  // General
   async function deleteGeneratedProduct(productId) {
     const deleted = generatedProducts.find(p => p.id === productId);
     if (!deleted) return;
@@ -870,7 +861,7 @@ export default function ProductCreationAttributes({
             if (existingSkuMap.has(newSku.sku_name)) {
               const existing = existingSkuMap.get(newSku.sku_name);
               console.log(`Preserving existing SKU: ${newSku.sku_name}`);
-              return existing; //  Keep all existing data
+              return existing; 
             }
 
             // Create new SKU only if it doesn't exist
@@ -894,7 +885,7 @@ export default function ProductCreationAttributes({
               uom: "piece",
               threshold_quantity: 1,
               status: "active",
-              master: !hasMaster && idx === 0, //  Only first SKU is master if none exists
+              master: !hasMaster && idx === 0, 
               option_type_values: newSku.option_type_values ?? [],
               sku_media: []
             };
@@ -928,7 +919,6 @@ export default function ProductCreationAttributes({
       prev.filter(p => p.name !== deletedProductName)
     );
 
-    // Remove originating property value
     setProperties(prev =>
       prev
         .map(prop => ({
@@ -940,7 +930,6 @@ export default function ProductCreationAttributes({
       // .filter(prop => prop.values.length > 0 || prop.name === "")
     );
 
-    // Reset flag
     setPendingCascadeDelete(null);
   }, [pendingCascadeDelete, formData.name]);
 
@@ -994,10 +983,9 @@ export default function ProductCreationAttributes({
                   disabled={!isCreateNew}
                   emptyMessage="No properties available"
                   onCreateOption={(newProp) => {
-                    // Add locally
+                  
                     setPropertyNames(prev => [...prev, newProp]);
 
-                    // Auto-select
                     const updated = [...properties];
                     updated[i].name = newProp;
                     setProperties(updated);
@@ -1791,7 +1779,6 @@ export default function ProductCreationAttributes({
                                         console.error(error);
                                         toast.error('Upload failed '+error.message);
 
-                                        // Remove loading state on error
                                         setProducts(prev =>
                                           prev.map((p, pIdx) =>
                                             pIdx === productIndex
@@ -1844,7 +1831,7 @@ export default function ProductCreationAttributes({
                                     );
                                   })()} */}
 
-                                  {/* VIEW ALL BUTTON (if more than 1 image) */}
+                                  {/* VIEW ALL BUTTON (> 1 image) */}
                                   {sku.sku_media.length > 0 && (
                                     <button
                                       type="button"
@@ -2117,7 +2104,6 @@ export default function ProductCreationAttributes({
                             className="w-full h-48 object-cover"
                           />
 
-                          {/* Overlay with actions */}
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                             {!isPrimary && (
                               <button
@@ -2326,7 +2312,6 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
         ? Math.max(...productMedia.map(m => m.sequence))
         : 0;
 
-      // Add new media with proper sequence
       const newMedia = files.map((file, idx) => ({
         id: Date.now() + idx,
         name: file.name,
@@ -2351,7 +2336,6 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
     }
   };
 
-  // Make selected image primary
   const setPrimary = (id) => {
     setProductMedia(prev => {
       // Find current primary
@@ -2388,7 +2372,7 @@ function ProductMediaSection({ productMedia, setProductMedia }) {
     setProductMedia(prev => {
       const filtered = prev.filter(m => m.id !== id);
 
-      // Reorder sequences without changing primary
+      // Reorder sequences 
       const primary = filtered.find(m => m.sequence === 1);
       const others = filtered.filter(m => m.sequence !== 1);
 

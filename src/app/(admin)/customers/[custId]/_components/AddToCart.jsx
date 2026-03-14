@@ -22,7 +22,6 @@ import { LooseQtyPopup } from "./LooseQtyPopup";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-// ─── SKU Search Dropdown ────────────────────────────────────────────────────
 function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,8 +42,6 @@ function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen]);
 
-  // Fetch on search query change
-  // Change the useEffect:
   useEffect(() => {
     if (!isOpen) return;
     clearTimeout(debounceRef.current);
@@ -52,7 +49,6 @@ function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
     return () => clearTimeout(debounceRef.current);
   }, [searchQuery, isOpen, excludedSkuIds]);
 
-  // Change fetchSkus signature to accept it:
   const fetchSkus = async (search = "", excluded = []) => {
     setLoading(true);
     try {
@@ -150,14 +146,11 @@ function SkuSearchDropdown({ selectedSku, onSelect, excludedSkuIds = [] }) {
   );
 }
 
-// ─── Helpers ───────────
-// const emptyNewItem = () => ({ _id: Date.now() + Math.random(), sku: null, quantity: "" });
 const emptyNewItem = () => ({ _id: Date.now() + Math.random(), sku: null, quantity: "" });
 
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
 
-// ─── Main Component ───────
 export default function AddToCart({ customerId = 2, }) {
 
   const [newItems, setNewItems] = useState([]);
@@ -191,7 +184,6 @@ export default function AddToCart({ customerId = 2, }) {
     fetchSkus();
   }, []);
 
-  // ── Fetch cart ────
   const fetchCart = async () => {
     setLoadingCart(true);
     try {
@@ -213,7 +205,6 @@ export default function AddToCart({ customerId = 2, }) {
     fetchCart();
   }, []);
 
-  // ── Derived state ──────────────────────────────────────────────────────────
   const existingLineItems = cartData?.cart_line_items || [];
   const existingSkuIds = existingLineItems.map((li) => li.product_sku?.id).filter(Boolean);
   const newItemSkuIds = newItems.filter((i) => i.sku).map((i) => i.sku.id);
@@ -224,7 +215,6 @@ export default function AddToCart({ customerId = 2, }) {
     existingLineItems.length > 0 &&
     !newItems.some((i) => i.sku || i.quantity);
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
   // const handleExistingQtyChange = (idx, val) => {
   //   setIsEditing(true);
   //   setCartData((prev) => {
@@ -260,9 +250,9 @@ export default function AddToCart({ customerId = 2, }) {
     } else if (loosePopupTarget?.mode === "standalone-loose") {
       // User edited a standalone loose row via popup.
       // newBundleQty: if user set bundle qty in popup (they may have),
-      //               this will be used as-is by the payload builder.
+      //               this will be used as it is by the payload builder.
       // newLooseQty:  the loose portion (shown in the loose input in popup).
-      // We store both back on the line item so the payload builder can use them.
+      // store both back on the line item so the payload builder can use them.
       const idx = loosePopupTarget.idx;
       setCartData((prev) => {
         const items = [...(prev?.cart_line_items || [])];
@@ -270,9 +260,9 @@ export default function AddToCart({ customerId = 2, }) {
         items[idx] = {
           ...item,
           // quantity on a standalone loose line item = total loose qty the user set
-          // We store _bundleQty as a helper for the payload builder
+          // store _bundleQty as a helper for the payload builder
           quantity: newLooseQty,
-          _bundleQty: newBundleQty, // extra field — payload builder will use this
+          _bundleQty: newBundleQty, 
         };
         return { ...prev, cart_line_items: items };
       });
@@ -387,7 +377,6 @@ export default function AddToCart({ customerId = 2, }) {
 
       const bundleFinal = bundleQty * Number(item.sku.bundle_factor) * parseFloat(item.sku.selling_unit_price ?? 0);
       const looseFinal = looseQty * parseFloat(item.sku.loose_sku?.selling_unit_price ?? 0);
-      //return bundleFinal + looseFinal;
       return parseFloat(item.sku.selling_price) * Number(item.quantity);
     }
 
@@ -408,7 +397,7 @@ export default function AddToCart({ customerId = 2, }) {
       return Number(i.quantity) > 0;
     });
 
-    // ── Validation for new items ─
+    // Validation for new items
     for (const item of filledNewItems) {
       if (!item.sku) {
         toast.error("Please select a SKU for all new line items.");
@@ -435,7 +424,7 @@ export default function AddToCart({ customerId = 2, }) {
       return;
     }
 
-    // ── Validation for existing bundle items — catch 0 bundle + 0 loose ──────
+    //  Validation for existing bundle items — catch 0 bundle + 0 loose 
     const isNestedLoose = (li) =>
       li.line_item_type === "loose" &&
       li.meta?.bundle_line_item_id !== null &&
@@ -453,7 +442,7 @@ export default function AddToCart({ customerId = 2, }) {
         }
 
       } else if (item.line_item_type === "loose" && item.bundle_sku != null) {
-        // standalone-loose row: bundle qty lives in _bundleQty, loose qty in item.quantity
+        // standalone-loose row -> bundle qty lives in _bundleQty, loose qty in item.quantity
         const looseQty = Number(item.quantity) || 0;
         const bundleQty = Number(item._bundleQty) || 0;
         const totalQty = bundleQty * Number(item.bundle_sku?.bundle_factor ?? 1) + looseQty;
@@ -472,7 +461,7 @@ export default function AddToCart({ customerId = 2, }) {
       }
     }
 
-    // ── Payload builders ──────────────────────────────────────────────────────
+    //  Payload builders 
     const buildNewItem = (item) => {
       if (!item.sku.is_bundle_sku) {
         return { product_sku_id: item.sku.id, quantity: Number(item.quantity) };
@@ -488,7 +477,7 @@ export default function AddToCart({ customerId = 2, }) {
         };
       }
 
-      // loose-only new item — loose_sku sits directly on the sku object
+      // loose-only new item -> loose_sku sits directly on the sku object
       const looseSkuId = item.sku.loose_sku?.id;
       if (!looseSkuId) {
         toast.error(
@@ -508,13 +497,13 @@ export default function AddToCart({ customerId = 2, }) {
 
         if (bundleCount > 0) {
           return {
-            id: item.id,  // bundle line item already exists, safe to send id
+            id: item.id,  
             product_sku_id: item.product_sku.id,
             quantity: bundleCount * bf + looseItemQty,
           };
         }
 
-        // bundle zeroed out — loose only
+        // bundle zeroed out so — loose only
         const looseSkuId =
           item.loose_sku?.id ??
           item.loose_item?.product_sku?.id ??
@@ -540,7 +529,7 @@ export default function AddToCart({ customerId = 2, }) {
         if (bundleQty > 0) {
           const bundleSkuId = item.bundle_sku?.id ?? item.product_sku?.id;
           return {
-            // Don't send id here — we're creating a NEW bundle line item
+            // Don't send id here — because creating a NEW bundle line item
             // The existing id belongs to the loose line item, not a bundle
             product_sku_id: bundleSkuId,
             quantity: bundleQty * bf + looseQty,
@@ -549,7 +538,7 @@ export default function AddToCart({ customerId = 2, }) {
 
         // pure loose — updating the existing loose line item
         return {
-          id: item.id,  //  safe — we're updating the same loose line item
+          id: item.id, 
           product_sku_id: item.product_sku?.id,
           quantity: looseQty,
         };
@@ -570,13 +559,12 @@ export default function AddToCart({ customerId = 2, }) {
 
     const newPayloadItems = filledNewItems.map(buildNewItem).filter(Boolean);
 
-    // bail out early if any item failed to resolve
     if (
       existingPayloadItems.length !== existingLineItems.filter((li) => !isNestedLoose(li)).length ||
       newPayloadItems.length !== filledNewItems.length
     ) {
       setSaving(false);
-      return; // toast already shown inside the builder
+      return; 
     }
 
     const cartLineItems = [...existingPayloadItems, ...newPayloadItems];
@@ -662,7 +650,6 @@ export default function AddToCart({ customerId = 2, }) {
 
   const hasRows = existingLineItems.length > 0 || newItems.length > 0;
 
-  // ── Column headers ─────────────────────────────────────────────────────────
   const columns = [
     "SKU NAME",
     "SKU CODE",
@@ -690,7 +677,6 @@ export default function AddToCart({ customerId = 2, }) {
     fetchCart={fetchCart}
   />
 
-  // ── Render ───────────────
   return (
     <>
       {confirmModal}
@@ -702,7 +688,7 @@ export default function AddToCart({ customerId = 2, }) {
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm" style={{ overflow: "visible" }}>
 
-          {/* ── Card Header ─────────────────────────────────────────────────── */}
+          {/*  Card Header  */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-blue-900">Cart Line Items</h2>
@@ -718,7 +704,7 @@ export default function AddToCart({ customerId = 2, }) {
             )}
           </div>
 
-          {/* ── Table ───── */}
+          {/*  Table  */}
           <div className="overflow-x-auto" style={{ overflow: "visible" }}>
             <table className="w-full" style={{ overflow: "visible" }}>
               <thead>
@@ -744,7 +730,7 @@ export default function AddToCart({ customerId = 2, }) {
                   </tr>
                 ) : (
                   <>
-                    {/* ── Existing items from backend ───────────────────────── */}
+                    {/*  Existing items from backend  */}
 
                     {existingLineItems
                       .filter((item) => !(item.line_item_type === "loose" && item?.meta?.bundle_line_item_id !== null)) // loose rows are nested in bundle rows
@@ -756,7 +742,7 @@ export default function AddToCart({ customerId = 2, }) {
                           item.bundle_sku != null;
                         const bundleFactor = item.product_sku?.bundle_factor ?? 1;
                         const looseQty = item.loose_item?.quantity ?? 0;
-                        // Show total units in the input (bundle count × factor)
+                        // Show total units in the input (bundle count * factor)
                         const displayQty = isBundle ? item.quantity * bundleFactor : item.quantity;
 
                         return (
@@ -892,7 +878,7 @@ export default function AddToCart({ customerId = 2, }) {
                       })
                     }
 
-                    {/* ── New items being composed ──────────────────────────── */}
+                    {/*  New items being composed  */}
                     {newItems.map((item) => (
                       <tr key={item._id} className="bg-blue-50/20" style={{ overflow: "visible" }}>
                         {/* SKU NAME — dropdown */}
@@ -1011,7 +997,7 @@ export default function AddToCart({ customerId = 2, }) {
                       </tr>
                     ))}
 
-                    {/* ── Empty state ───────────────────────────────────────── */}
+                    {/*  Empty state  */}
                     {!hasRows && !loadingCart && (
                       <tr>
                         <td colSpan={8} className="py-14 text-center">
@@ -1026,7 +1012,7 @@ export default function AddToCart({ customerId = 2, }) {
             </table>
           </div>
 
-          {/* ── Add another Item ─────────────────────────────────────────────── */}
+          {/*  Add another Item  */}
           {(cartStatus === "active" || cartStatus === null) && (
             <div className="px-5 py-3 border-t border-gray-100">
               <button
@@ -1040,7 +1026,7 @@ export default function AddToCart({ customerId = 2, }) {
           )}
 
 
-          {/* ── Coupon + Actions row ─────────────────────────────────────────── */}
+          {/*Coupon and Actions row  */}
           {(cartStatus === "active" || cartStatus === null) && (
             <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end flex-wrap gap-2">
               {/* Coupon input */}
@@ -1110,7 +1096,7 @@ export default function AddToCart({ customerId = 2, }) {
             </div>
           )}
 
-          {/* ── Order Summary (only when not editing) ───────────────────────── */}
+          {/*  Order Summary (only when not editing)  */}
           {showSummary && (
             <div className="px-6 pb-6 flex justify-end">
               <div className="w-72">

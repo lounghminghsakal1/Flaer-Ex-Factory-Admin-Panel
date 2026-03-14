@@ -37,7 +37,6 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
     }));
   }, [formDataPopup.cgst, formDataPopup.sgst]);
 
-  // Initialize selected tax from formData
   useEffect(() => {
     if (formData?.tax_type_id && taxOptions.length > 0 && !selectedTax) {
       const found = taxOptions.find(t => t.id === formData.tax_type_id);
@@ -98,7 +97,6 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
   const handleTaxSelect = (tax) => {
     setSelectedTax(tax);
 
-    // Update parent form data
     if (setFormData) {
       setFormData(prev => ({
         ...prev,
@@ -126,7 +124,6 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
   const handleCreateTax = async (e) => {
     e.preventDefault();
 
-    // Validation
     if (!formDataPopup.name.trim()) {
       toast.error('Tax name is required');
       return;
@@ -187,10 +184,8 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
       setTimeout(() => setShowToast(false), 3000);
       toast.success("Tax type created successfully");
 
-      // Fetch updated tax list
       await fetchTaxOptions();
 
-      // Auto-select the newly created tax
       const newTaxOption = { 
         id: newTax.id, 
         name: newTax.name,
@@ -199,7 +194,6 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
       };
       setSelectedTax(newTaxOption);
 
-      // Update parent form data
       if (setFormData) {
         setFormData(prev => ({
           ...prev,
@@ -209,7 +203,6 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
 
       onTaxSelect?.(newTaxOption);
 
-      // Reopen dropdown and scroll to new tax
       setTimeout(() => {
         setIsOpen(true);
         setTimeout(() => {
@@ -335,7 +328,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                 )}
               </div>
 
-              {/* Create Tax Button - Centered */}
+              {/* Create Tax Button  */}
               <div className="border-t border-gray-200 p-2">
                 <button
                   type="button"
@@ -405,7 +398,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                 />
               </div>
 
-              {/* CGST and SGST in a row */}
+              {/* CGST and SGSt */}
               <div className="grid grid-cols-2 gap-4">
                 {/* CGST */}
                 <div>
@@ -442,7 +435,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                 </div>
               </div>
 
-              {/* IGST (Auto-calculated, Read-only) */}
+              {/* IGST (Auto-calculated and Read-only) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   IGST (%) <span className="text-xs text-gray-500">(Auto-calculated)</span>
@@ -455,7 +448,7 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
                 />
               </div>
 
-              {/* Percentage (Auto-calculated, Read-only) */}
+              {/* Percentage (Auto-calculated and Read-only) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Total Percentage (%) <span className="text-xs text-gray-500">(Auto-calculated)</span>
@@ -492,14 +485,14 @@ const TaxSelector = ({ selectedTaxId, onTaxSelect, formData, setFormData, disabl
       )}
 
       {/* Success Toast */}
-      {showToast && (
+      {/* {showToast && (
         <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in">
           <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
             <div className="w-2 h-3 border-r-2 border-b-2 border-green-500 transform rotate-45"></div>
           </div>
           <span className="font-medium">Tax type created successfully!</span>
         </div>
-      )}
+      )} */}
 
       <style jsx>{`
         @keyframes slide-in {

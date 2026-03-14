@@ -57,7 +57,6 @@ export default function VendorInfoTab({ vendorId, isEditing, setIsEditing }) {
     fetchVendor();
   }, [fetchVendor]);
 
-  // When isEditing turns off externally (e.g. cancel button), restore original
   useEffect(() => {
     if (!isEditing) {
       setForm(originalForm);
@@ -70,7 +69,6 @@ export default function VendorInfoTab({ vendorId, isEditing, setIsEditing }) {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  // Save handler — call this from your Save Changes button
   const handleSave = async () => {
     const validationErrors = validate(form);
     if (Object.keys(validationErrors).length > 0) {
@@ -91,9 +89,6 @@ export default function VendorInfoTab({ vendorId, isEditing, setIsEditing }) {
     }
   };
 
-  // Expose handleSave so parent can bind it to a button
-  // Pattern: pass ref or render prop — here we use a data attribute trick via window
-  // Cleanest pattern: parent calls window.__vendorSave?.()
   useEffect(() => {
     window.__vendorSave = handleSave;
     return () => { delete window.__vendorSave; };

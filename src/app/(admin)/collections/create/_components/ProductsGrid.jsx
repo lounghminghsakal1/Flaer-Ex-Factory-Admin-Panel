@@ -42,7 +42,7 @@ const SortableProductCard = ({ product, isReordering, removingIds, setRemovingId
       style={style}
       className={`relative ${isReordering && !isDraggingAny ? 'jiggle' : ''}`}
     >
-      {/* Drag Handle - 6 Dots Icon */}
+      {/* 6 Dots Icon */}
       {isReordering && (
         <div
           {...attributes}
@@ -83,7 +83,6 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
     })
   );
 
-  // Display products based on collectionId presence
   const displayProducts = collectionId && isReordering ? tempProducts : products;
 
   const handleUpdateSequence = () => {
@@ -170,12 +169,10 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
 
     setIsRemovingItems(true);
     try {
-      // First, remove from temp/display products
       const updatedProducts = (collectionId ? displayProducts : products).filter(
         product => !removingIds.includes(product.id)
       );
 
-      // Update sequences for remaining products
       const resequencedProducts = updatedProducts.map((product, index) => ({
         ...product,
         sequence: index + 1
@@ -199,7 +196,6 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       const result = await response.json();
       if (!response.ok || result.status === "failure") throw new Error(result.errors[0] ?? "Something went wrong ");
 
-      // Update the actual products state
       setProducts(resequencedProducts);
 
       // If in reordering mode, also update temp products
@@ -274,7 +270,6 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       return;
     }
 
-    // Work with appropriate products array
     const workingProducts = collectionId && isReordering ? tempProducts : products;
 
     const oldIndex = workingProducts.findIndex((item) => item.id === active.id);
@@ -288,7 +283,6 @@ const ProductsGrid = ({ products, setProducts, collectionId = null, setCollectio
       sequence: index + 1
     }));
 
-    // Update appropriate state
     if (collectionId && isReordering) {
       setTempProducts(resequencedProducts);
     } else {

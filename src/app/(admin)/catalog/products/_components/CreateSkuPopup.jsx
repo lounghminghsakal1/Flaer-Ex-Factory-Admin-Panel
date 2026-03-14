@@ -100,7 +100,6 @@ function CreateSkuPopup({
 
   function handlePricingModeChange(mode) {
     setPricingMode(mode);
-    // Clear all price fields when switching modes
     updateForm({
       unit_price: "",
       mrp: "",
@@ -126,36 +125,31 @@ function CreateSkuPopup({
     }
   }
 
-  // Add a new empty option row
   function addOptionRow() {
     setOptions([...options, { type: "", value: "" }]);
   }
 
-  // Delete an option row
   function deleteOptionRow(index) {
     const updated = options.filter((_, i) => i !== index);
     setOptions(updated);
   }
-  // Update option type
+
   function updateOptionType(index, type) {
     const updated = [...options];
     updated[index].type = type;
     setOptions(updated);
   }
 
-  // Update option value
   function updateOptionValue(index, value) {
     const updated = [...options];
     updated[index].value = value;
     setOptions(updated);
   }
 
-  // Create new option type
   function createNewOptionType(newOptionName) {
     setOptionTypes(prev => [...prev, { name: newOptionName }]);
   }
 
-  // Get selected types (except current row)
   function getSelectedTypes(currentIndex) {
     return options
       .map((o, idx) => idx !== currentIndex ? o.type : null)
@@ -226,15 +220,13 @@ function CreateSkuPopup({
     setLoading(true);
 
     try {
-      // Build option_type_values array from options (new structure)
       const option_type_values = options
-        .filter(opt => opt.type && opt.value) // Only include options with both type and value
+        .filter(opt => opt.type && opt.value) 
         .map(opt => ({
           option_type: opt.type,
           option_value: opt.value
         }));
 
-      // Build sku_media array from skuMedia state
       const sku_media = skuMedia.map(media => ({
         media_url: media.media_url,
         media_type: media.media_type || 'image',
@@ -260,7 +252,6 @@ function CreateSkuPopup({
         }
       };
 
-      // Add pricing factors based on mode
       if (pricingMode === "conversion") {
         payload.product_sku.conversion_factor = Number(globalPricing.conversion_factor) || 1;
       }
@@ -269,17 +260,14 @@ function CreateSkuPopup({
         payload.product_sku.multiplication_factor = Number(globalPricing.multiplication_factor) || 1;
       }
 
-      // Add tax type if exists
       if (taxTypeId) {
         payload.product_sku.tax_type_id = taxTypeId;
       }
 
-      // Add option_type_values if exists
       if (option_type_values.length > 0) {
         payload.product_sku.option_type_values = option_type_values;
       }
 
-      // Add sku_media if exists
       if (sku_media.length > 0) {
         payload.product_sku.sku_media = sku_media;
       }
@@ -637,7 +625,7 @@ function CreateSkuPopup({
           <div className="border border-gray-200 rounded p-4 space-y-3">
             <h4 className="text-xs font-semibold text-gray-900">Option Values</h4>
 
-            {/* ================= OPTIONS ================= */}
+            {/* OPTIONS */}
             <div className="space-y-3">
               {options.map((opt, i) => (
                 <OptionRow
@@ -717,12 +705,10 @@ function OptionRow({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter available options
   const availableOptions = optionTypes
     .filter(opt => !selectedTypes.includes(opt.name))
     .filter(opt => opt.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  // Check if search term matches exactly with an existing option
   const exactMatch = optionTypes.some(
     opt => opt.name.toLowerCase() === searchTerm.toLowerCase()
   );
@@ -731,7 +717,7 @@ function OptionRow({
     <div className="border border-gray-300 rounded-lg p-2 my-4">
       <div className="grid grid-cols-[1.2fr_2fr_auto] gap-3 items-start">
 
-        {/* Option Type Dropdown with Create Option */}
+        {/* Option Type Dropdown -> Create option aslo*/}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -745,7 +731,7 @@ function OptionRow({
 
           {isOpen && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-64 overflow-hidden flex flex-col">
-              {/* Search Input - Fixed at top */}
+              {/* Search Input*/}
               <div className="p-1 border-b sticky top-0 bg-white">
                 <input
                   type="text"
@@ -757,7 +743,7 @@ function OptionRow({
                 />
               </div>
 
-              {/* Options List - Scrollable */}
+              {/* Options List Scrollable */}
               <div className="overflow-y-auto flex-1">
                 {availableOptions.map((opt) => (
                   <button
@@ -777,7 +763,6 @@ function OptionRow({
                 {searchTerm && !exactMatch && (
                   <button
                     onClick={() => {
-                      // Create new option type
                       if (onCreateNewOption) {
                         onCreateNewOption(searchTerm);
                       }
@@ -859,12 +844,10 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
         uploadedUrls.push(result.data.media_url);
       }
 
-      // Get current max sequence or 0 if no media exists
       const maxSequence = skuMedia.length > 0
         ? Math.max(...skuMedia.map(m => m.sequence))
         : 0;
 
-      // Add new media with proper sequence
       const newMedia = files.map((file, idx) => ({
         id: Date.now() + idx,
         name: file.name,
@@ -874,7 +857,6 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
         sequence: maxSequence + idx + 1
       }));
 
-      // If this is the first upload, set sequence to 1 (primary)
       if (skuMedia.length === 0 && newMedia.length > 0) {
         newMedia[0].sequence = 1;
       }
@@ -889,10 +871,8 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
     }
   };
 
-  // Make selected image primary
   const setPrimary = (id) => {
     setSkuMedia(prev => {
-      // Find current primary
       const currentPrimary = prev.find(m => m.sequence === 1);
       const selectedMedia = prev.find(m => m.id === id);
 
@@ -900,17 +880,14 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
 
       return prev.map(m => {
         if (m.id === id) {
-          // Set selected as primary
           return { ...m, sequence: 1 };
         } else if (m.sequence === 1) {
-          // Move old primary to selected's position
           return { ...m, sequence: selectedMedia.sequence };
         }
         return m;
       });
     });
 
-    // Close popup after setting primary
     setMediaPopup(false);
   };
 
@@ -1011,7 +988,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
                 </div>
               ))}
 
-              {/* ADD MORE (show if less than 4 images) */}
+              {/* ADD MORE (< 4 images) */}
               {skuMedia.length < 4 && (
                 <label className="shrink-0 w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors">
                   {uploading && <span className="text-xs">(Uploading...)</span>}
@@ -1045,7 +1022,7 @@ function SkuMediaSection({ skuMedia, setSkuMedia }) {
               )}
             </div>
 
-            {/* Add more button below grid (if 4+ images) */}
+            {/* Add more button below grid (> 4) */}
             {skuMedia.length >= 4 && (
               <label className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer">
                 <Plus size={14} />

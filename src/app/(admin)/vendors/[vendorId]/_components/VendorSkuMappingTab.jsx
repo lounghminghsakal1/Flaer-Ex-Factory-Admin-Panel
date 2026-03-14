@@ -9,7 +9,6 @@ import MapSkuModal from "./MapSkuModal";
 import { getSkuMappings } from "./skuMappingApi";
 import VendorDetaislSkuTabSkeleton from "./VendorDetailsSkuTabSkeleton";
 
-// ─── Table Columns ───────────────────────────────────────────────────────────
 
 function buildColumns(onEdit) {
   return [
@@ -58,7 +57,6 @@ function buildColumns(onEdit) {
   ];
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function VendorSkuMappingTab({ vendorId }) {
   const [mappings, setMappings] = useState([]);
@@ -66,8 +64,8 @@ export default function VendorSkuMappingTab({ vendorId }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const [editingMapping, setEditingMapping] = useState(null); // for edit modal
-  const [showMapModal, setShowMapModal] = useState(false);     // for map sku modal
+  const [editingMapping, setEditingMapping] = useState(null); 
+  const [showMapModal, setShowMapModal] = useState(false);    
 
   const fetchMappings = useCallback(async (page = 1) => {
     setLoading(true);

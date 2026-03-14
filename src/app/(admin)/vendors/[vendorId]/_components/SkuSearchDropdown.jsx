@@ -11,7 +11,6 @@ export default function SkuSearchDropdown({ value, onChange, allSkus, excludeIds
 
   const selected = allSkus.find((s) => s.id === value) ?? null;
 
-  // Available options: exclude already selected in other rows
   const available = allSkus.filter(
     (s) => !excludeIds.includes(s.id) || s.id === value
   );
@@ -21,14 +20,12 @@ export default function SkuSearchDropdown({ value, onChange, allSkus, excludeIds
     s.sku_code.toLowerCase().includes(query.toLowerCase())
   );
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Auto focus search when opens
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50);
   }, [open]);

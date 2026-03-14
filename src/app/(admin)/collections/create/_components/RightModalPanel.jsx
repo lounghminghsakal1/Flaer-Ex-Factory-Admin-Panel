@@ -178,7 +178,6 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
     return existingProductIds.has(productId);
   };
 
-  // Fetch options when filter type changes
   useEffect(() => {
     if (filterType === 1) {
       fetchBrandOptions();
@@ -187,7 +186,6 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
     }
   }, [filterType]);
 
-  // Fetch subcategories when parent category changes
   useEffect(() => {
     if (selectedParentCategory) {
       fetchSubCategoriesOptionsOfAParent(selectedParentCategory);
@@ -253,7 +251,6 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
   async function fetchProducts(page = 1) {
     setIsLoading(true);
     try {
-      // Build URL with all active filters
       let url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/products?page=${page}`;
 
       if (collectionId) {
@@ -312,12 +309,10 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
       selectableIds.every(id => selectedProducts.includes(id));
 
     if (allSelectableSelected) {
-      // Deselect all selectable products from current page
       setSelectedProducts(prev =>
         prev.filter(id => !selectableIds.includes(id))
       );
     } else {
-      // Select all selectable products from current page
       setSelectedProducts(prev => {
         const newSelected = [...prev];
         selectableIds.forEach(id => {
@@ -604,7 +599,6 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
           {/* Products Section */}
           {products.length > 0 && (
             <div>
-              {/* Select All - Only show when more than 1 product and there are selectable products */}
               {products.length > 1 && selectableProducts.length > 0 && (
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold text-gray-700">
@@ -619,7 +613,6 @@ export default function RightModalPanel({ onClose, productsList, setProductsList
                 </div>
               )}
 
-              {/* Show product count when select all is not shown */}
               {(products.length === 1 || selectableProducts.length === 0) && (
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold text-gray-700">

@@ -5,7 +5,6 @@ export default function VendorDetaislSkuTabSkeleton() {
   return (
     <div className="flex flex-col gap-4">
 
-      {/* ───── Table ───── */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
         {/* Table Header */}

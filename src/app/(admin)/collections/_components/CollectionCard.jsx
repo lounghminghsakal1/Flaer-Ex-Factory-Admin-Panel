@@ -50,7 +50,6 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
 
   const handleClose = () => {
     setShowPopup(false);
-    // Reset form to original values
     setFormData({
       name: collection?.name || '',
       description: collection?.description || '',
@@ -83,7 +82,7 @@ const EditCollectionPopup = ({ collection, showPopup, setShowPopup, onUpdate }) 
       if (response.ok) {
         const data = await response.json();
         if (data.status === "failure") throw new Error(data?.errors[0] ?? "Something went wrong");
-        console.log('Collection updated:', data);
+
         if (onUpdate) {
           onUpdate();
         }
@@ -247,7 +246,6 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
   const [showEditPopup, setShowEditPopup] = useState(false);
 
   const handleCardClick = (e) => {
-    // Don't navigate if clicking the edit button
     if (e.target.closest('.edit-button')) {
       return;
     }
@@ -267,7 +265,7 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
         className="group bg-white rounded-xl border border-gray-200 p-4 transition-all duration-300 hover:shadow-lg hover:border-secondary hover:-translate-y-1 hover:scale-101 cursor-pointer relative"
         onClick={handleCardClick}
       >
-        {/* Edit Button - Top Right */}
+        {/* Edit Button */}
         <button
           onClick={handleEditClick}
           className="edit-button absolute top-3 right-3 p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-blue-100 hover:text-secondary transition-all opacity-0 group-hover:opacity-100 z-10 cursor-pointer"
@@ -303,7 +301,7 @@ const CollectionCard = ({ collection, onUpdateCollection }) => {
           </span>
         </div>
 
-        {/* Footer - Status and Arrow */}
+        {/* Footer*/}
         <div className="flex items-center justify-between pt-3 border-t border-gray-200">
           <span
             className={`px-2.5 py-1 text-sm font-semibold rounded-full ${collection.active

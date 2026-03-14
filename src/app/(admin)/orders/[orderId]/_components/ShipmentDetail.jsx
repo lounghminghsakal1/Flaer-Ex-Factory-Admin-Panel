@@ -29,37 +29,10 @@ const fmtDate = (d) => {
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-const TRACKER_STEPS = [
-  { step: 1, label: "Created", position: "top" },
-  { step: 2, label: "Assign Allocation", position: "bottom" },
-  { step: 3, label: "Packed", position: "top" },
-  { step: 4, label: "Invoiced", position: "bottom" },
-  { step: 5, label: "Dispatched", position: "top" },
-  { step: 6, label: "Delivered", position: "bottom" },
-];
-
-const STATUS_STEP_MAP = {
-  created: 1,
-  packed: 3,
-  invoiced: 4,
-  dispatched: 5,
-  delivered: 6,
-};
-
-
-const getCurrentStep = (shipment) => {
-  const statusStep = STATUS_STEP_MAP[shipment?.status] ?? 1;
-  if (statusStep === 1 && shipment?.fully_allocated) return 2;
-  return statusStep;
-};
-
 const SELECTION_TYPES = ["fifo", "lifo", "fefo", "manual"];
 
-// ── Return status set — statuses where the forward shipment tracker is irrelevant ──
 const RETURN_STATUSES = new Set([
   "return_initiated",
-  "return_processing",
-  "return_received",
   "return_completed",
 ]);
 
@@ -88,7 +61,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   const [sendingToGetInvoice, setSendingToGetInvoice] = useState(false);
   const [sendingToDispatch, setSendingToDispatch] = useState(false);
   const [delivering, setDelivering] = useState(false);
-  // Controls whether the ReturnShipment panel is expanded below the main content
+  
   const [showReturnPanel, setShowReturnPanel] = useState(false);
   const [expandedChildId, setExpandedChildId] = useState(null);
 
@@ -350,7 +323,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   const lineItems = shipment?.line_items ?? [];
   const agg = shipment?.aggregates ?? {};
 
-  // ── Derived flags ────────────────────────────────────────────────────────────
   // True when this shipment IS the return shipment (opened directly, not via the "Return Shipment" button)
   const isReturnShipment = shipment && RETURN_STATUSES.has(shipment.status);
 
@@ -366,7 +338,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   if (!shipment) return null;
 
   // CASE A: This shipment IS a return shipment (status is one of the return statuses).
-  // We skip the normal forward shipment UI entirely and render only the return view
   if (isReturnShipment) {
     return (
       <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
@@ -385,7 +356,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           </div>
         </div> */}
 
-        {/* ReturnShipment component handles its own 4-step tracker + line items */}
         <ReturnShipment
           shipment={null}
           return_shipment_id={shipment.id}
@@ -397,11 +367,10 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
     );
   }
 
-  // CASE B: Normal forward shipment. Show full detail with optional return panel
+  // CASE B: Normal forward shipment. Show full details
   return (
     <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
 
-      {/* ── Top Bar ── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <button
@@ -415,10 +384,10 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           </h2>
         </div>
 
-        <ShipmentTrackerBar currShipment={shipment} />
+        <ShipmentTrackerBar currShipment={shipment}  />
       </div>
 
-      {/* ── Line Items ── */}
+      {/*  Line Items  */}
       <div className="relative bg-white rounded-xl border border-gray-100 shadow-sm">
 
         {/* Options kebab menu — only for statuses that have actions */}
@@ -439,7 +408,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                 className="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-white rounded-md shadow-lg border border-gray-100 p-1 overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Edit — only for created */}
+                {/* Edit ->  only for created */}
                 {!editMode && shipment?.status === "created" && (
                   <div
                     role="button"
@@ -454,13 +423,12 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                   </div>
                 )}
 
-                {/* Cancel — only for created */}
+                {/* Cancel -> only for created */}
                 {shipment?.status === "created" && (
                   <div
                     role="button"
                     onClick={() => {
                       setOpenOptions(false);
-                      // TODO: hook up actual cancel API
                       setCancelShipmentModalOpen(prev => !prev);
                     }}
                     className="flex items-center gap-2.5 px-2.5 rounded-md py-2 text-xs text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
@@ -470,7 +438,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                   </div>
                 )}
 
-                {/* Return Shipment — only for delivered */}
+                {/* Return Shipment -> only for delivered */}
                 {shipment?.status === "delivered" && (
                   <div
                     role="button"
@@ -493,8 +461,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           </div>
         )}
 
-        {/* href={shipment?.shipment_packing_slip} target="_blank" rel="noopener noreferrer" className="flex gap-1 text-primary font-semibold text-xs" */}
-        {/* Meta grid */}
+       {/* Meta grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-t border-gray-100 divide-x divide-gray-100">
           <MetaCell label="Shipment Number" value={<span className="font-bold text-gray-800">{shipment.shipment_number}</span>} />
           <MetaCell label="Status" value={<StatusBadge status={shipment.status} />} />
@@ -823,7 +790,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         </div>
       </div>
 
-      {/* ── Child Shipments Accordion ── */}
       {(shipment?.child_shipments ?? []).length > 0 && (
         <ChildShipmentsAccordion
           childShipments={shipment.child_shipments}
@@ -834,7 +800,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         />
       )}
 
-      {/* ── Return Shipment Panel (shown inline below when triggered from delivered shipment) ── */}
       {showReturnPanel && (
         <ReturnShipment
           shipment={shipment}
@@ -842,14 +807,12 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           onCancel={() => setShowReturnPanel(false)}
           onSuccess={() => {
             fetchShipmentForRefresh(shipmentId);
-            // Keep panel open so user can see the return_completed state
           }}
           setShowReturnPanel={setShowReturnPanel}
           fromChild={true}
         />
       )}
 
-      {/* ── Change Selection Type Panel ── */}
       {changeTypePanel && (
         <ChangeSelectionTypePanel
           lineItem={changeTypePanel}
@@ -859,7 +822,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         />
       )}
 
-      {/* ── Batch Modal ── */}
       {batchModal && (
         <BatchEntryModal
           isOpen={!!batchModal}
@@ -876,7 +838,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         />
       )}
 
-      {/* ── Serial Modal ── */}
       {serialModal && (
         <SerialEntryModal
           isOpen={!!serialModal}
@@ -893,7 +854,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         />
       )}
 
-      {/* ── Untracked Modal ── */}
       {untrackedModal && (
         <UntrackedEntryModal
           isOpen={!!untrackedModal}
@@ -910,7 +870,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         />
       )}
 
-      {/* ── Unassigned Popup ── */}
       {unassignedPopup && (
         <UnassignedPopup items={unassignedPopup} onClose={() => setUnassignedPopup(null)} />
       )}
@@ -923,7 +882,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   );
 }
 
-// ─── Change Selection Type — Right Panel ──────────────────────────────────────
 function ChangeSelectionTypePanel({ lineItem, currentType, onClose, onSave }) {
   const [selected, setSelected] = useState(currentType);
 
@@ -989,7 +947,6 @@ function ChangeSelectionTypePanel({ lineItem, currentType, onClose, onSave }) {
 }
 
 
-// ─── Batch Entry Modal ─────────────────────────────────────────────────────────
 function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, savedData, onSave, shipment }) {
   const skuName = lineItem?.product_sku?.sku_name;
   const skuId = lineItem?.product_sku?.id;
@@ -1247,7 +1204,6 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
   );
 }
 
-// ── Batch Dropdown ────────────────────────────────────────────────────────────
 function BatchDropdown({ options, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -1335,7 +1291,6 @@ function BatchDropdown({ options, value, onChange, placeholder }) {
 }
 
 
-// ─── Serial Entry Modal ────────────────────────────────────────────────────────
 function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, savedData, onSave, shipment }) {
   const skuName = lineItem?.product_sku?.sku_name;
   const skuId = lineItem?.product_sku?.id;
@@ -1572,7 +1527,6 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
   );
 }
 
-// ─── Untracked Entry Modal ─────────────────────────────────────────────────────
 function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, savedData, onSave, shipment }) {
   const skuName = lineItem?.product_sku?.sku_name;
   const skuId = lineItem?.product_sku?.id;
@@ -1823,7 +1777,6 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
   );
 }
 
-// ── Untracked Dropdown ────────────────────────────────────────────────────────
 function UntrackedDropdown({ options, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -1907,8 +1860,6 @@ function UntrackedDropdown({ options, value, onChange, placeholder }) {
   );
 }
 
-
-// ─── Unassigned Popup ──────────────────────────────────────────────────────────
 function UnassignedPopup({ items, onClose }) {
   return (
     <ModalOverlay onClose={onClose}>
@@ -1939,7 +1890,6 @@ function UnassignedPopup({ items, onClose }) {
   );
 }
 
-// ─── Shared modal primitives ───────────────────────────────────────────────────
 function ModalOverlay({ children, onClose }) {
   return (
     <>
@@ -2026,7 +1976,6 @@ function StatusBadge({ status }) {
   );
 }
 
-// ─── Inline Searchable Dropdown ───────────────────────────────────────────────
 function InlineDropdown({
   placeholder = "Select…",
   options = [],
@@ -2124,7 +2073,6 @@ function InlineDropdown({
   );
 }
 
-// ─── Child Shipments Accordion ────────────────────────────────────────────────
 function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, parentShipment, onRefresh }) {
   // Sort: latest (highest id) first
   const sorted = [...childShipments].sort((a, b) => b.id - a.id);
@@ -2193,7 +2141,6 @@ function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, pa
                   </div>
                 </button>
 
-                {/* Accordion Body — only mount ReturnShipment when open */}
                 {isOpen && (
                   <div className="border-t border-gray-100 mb-4">
                     <ReturnShipment

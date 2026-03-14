@@ -1,12 +1,12 @@
 "use client";
 import { useState, useCallback, useMemo, useRef } from "react";
-import { Pencil, Save, ArrowRight, Check, X, MoreVertical } from "lucide-react";
+import { Pencil, Save, ArrowRight, Check, X, MoreVertical, Ship } from "lucide-react";
 import SearchableDropdown from "../../create/_components/SearchableDropdown";
 import DatePicker from "../../create/_components/DatePicker";
 import POLineItems from "../../create/_components/POLineItems";
 import AmountSummary from "./AmountSummary";
 import { toast } from "react-toastify";
-import { useConfirm } from "../../../../../../components/hooks/context/ConfirmContext";
+import { useSearchParams, useRouter } from "next/navigation";
 import PurchaseOrderDetailsSkeleton from "./PurchaseOrderDetailsSkeleton";
 
 function toApiDateStr(date) {
@@ -82,7 +82,7 @@ function checkValid(vendor, deliveryDate, rows) {
   return true;
 }
 
-export default function PurchaseOrderDetails({ poData,loading = false, poId, onRefresh }) {
+export default function PurchaseOrderDetails({ poData, loading = false, poId, onRefresh, orderId = null, shipmentId = null }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -91,7 +91,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
   const [vendorLoading, setVendorLoading] = useState(false);
   const searchTimeout = useRef(null);
 
-  // ── Initialise from API data 
   const initVendor = poData?.vendor
     ? { value: poData.vendor.id, label: poData.vendor.firm_name }
     : null;
@@ -122,18 +121,22 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
   const hasMenuItems = canCancel;
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromDropShipment = searchParams.get("fromDropShipment") ?? null;
+
   const handleCancelPO = async () => {
     try {
       setCancelling(true);
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}/cancel`;
-      const response = await fetch(url, { method:"PATCH", headers: { "Content-Type": "application/json" } });
+      const response = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" } });
       const result = await response.json();
       if (!response.ok || result.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       toast.success("PO cancelled successfully");
       await onRefresh();
     } catch (err) {
       console.log(err);
-      toast.error("Failed to cancel PO "+err.message);
+      toast.error("Failed to cancel PO " + err.message);
     } finally {
       setCancelling(false);
     }
@@ -144,7 +147,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
     [vendor, deliveryDate, rows]
   );
 
-  // ── Vendor search ─────────────────────────────────────────────────────────
   const fetchVendors = useCallback((query = "") => {
     setVendorLoading(true);
     clearTimeout(searchTimeout.current);
@@ -160,8 +162,8 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
         })
         .catch((err) => {
           console.log(err);
-          toast.error("Failed to fetch vendors list "+err.message);
-         })
+          toast.error("Failed to fetch vendors list " + err.message);
+        })
         .finally(() => setVendorLoading(false));
     }, 300);
   }, []);
@@ -172,7 +174,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
     setRows([]);
   };
 
-  // Edit / Cancel / Save 
   const handleCancel = () => {
     setVendor(initVendor);
     setDeliveryDate(initDelivery);
@@ -215,13 +216,12 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save purchase order "+err.message);
+      toast.error("Failed to save purchase order " + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Send for approval ────────────────────────────────────────────────────
   const handleSendForApproval = async () => {
     if (approving || editing) return;
     setApproving(true);
@@ -280,6 +280,7 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
       }
       if (json.status === "success" && onRefresh) onRefresh();
       toast.success("PO approved successfully");
+      if (fromDropShipment && orderId && shipmentId) router.push(`/orders/${orderId}?tab=shipments&shipment-id=${shipmentId}&shipment-intent=drop`);
     } catch (err) {
       console.log(err);
       toast.error("Failed to approve PO" + err.message);
@@ -297,10 +298,8 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
   if (loading) return <PurchaseOrderDetailsSkeleton />
 
   return (
-    // White card — the scrollable area in page.js scrolls this entire card
     <div className="bg-white rounded-xl p-5 space-y-4" onClick={() => setMenuOpen(false)}>
 
-      {/* ── Row 1: PO number + badge + action buttons ── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-gray-800">{poData?.purchase_order_number}</h2>
@@ -309,11 +308,17 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
           >
             {statusLabel(status)}
           </span>
+          {shipmentId && (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mt-2 bg-purple-700/10 border border-primary/20">
+              <Ship className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+              <span className="text-xs font-semibold text-purple-700">Drop Shipment</span>
+              <span className="text-[10px] font-mono font-bold text-purple-700/70 bg-purple-700/10 px-1.5 py-0.5 rounded-md">{shipmentId}</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Edit — only for "created", only when not already editing */}
-          {!editing && isCreated && (
+          {!editing && isCreated && !fromDropShipment && (
             <button
               type="button"
               onClick={() => setEditing(true)}
@@ -361,7 +366,7 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
 
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
-                  {(canCancel && !editing)&& (
+                  {(canCancel && !editing) && (
                     <div
                       role="button"
                       onClick={(e) => {
@@ -382,7 +387,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
         </div>
       </div>
 
-      {/* ── Row 2: form fields ── */}
       <div className="flex items-end gap-4 flex-wrap">
         <div className="w-56">
           <SearchableDropdown
@@ -417,7 +421,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
             readOnly={!editing}
           />
         </div>
-        {/* Status — plain text, matches image */}
         <div className="pb-0.5">
           <p className="text-xs text-gray-500 mb-1">Status</p>
           <p
@@ -428,7 +431,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
         </div>
       </div>
 
-      {/* ── PO Line Items ── */}
       <POLineItems
         vendorId={vendor?.value || null}
         rows={rows}
@@ -437,12 +439,9 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
         editMode={editing}
       />
 
-      {/* ── Bottom row: action buttons (left) ←→ amount summary (right) ── */}
       <div className="flex items-start justify-between gap-4 pt-1">
 
-        {/* Left — action buttons */}
         <div className="flex items-center gap-3 shrink-0">
-          {/* "Created" status buttons */}
           {isCreated && (
             <button
               type="button"
@@ -455,7 +454,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
             </button>
           )}
 
-          {/* "Waiting for approval" buttons */}
           {isWaiting && (
             <>
               <button
@@ -483,7 +481,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
             onReject={handlePOReject}
           />
 
-          {/* "Approved" status indicator button (non-interactive, matches image) */}
           {isApproved && (
             <button
               type="button"
@@ -496,7 +493,6 @@ export default function PurchaseOrderDetails({ poData,loading = false, poId, onR
           )}
         </div>
 
-        {/* Right — amount summary, no border wrapper */}
         {poData?.po_aggregates && (
           <AmountSummary aggregates={poData.po_aggregates} />
         )}
@@ -518,7 +514,6 @@ function RejectPurchaseOrderModal({
 
   const handleReject = () => {
     if (!isValid) return;
-    // Returns boolean `true` indicating the PO was rejected
     onReject(true, rejection_reason);
     setRejection_reason("");
   };
@@ -532,7 +527,6 @@ function RejectPurchaseOrderModal({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity"
         onClick={handleClose}

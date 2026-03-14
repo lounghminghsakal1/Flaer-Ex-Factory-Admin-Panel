@@ -19,7 +19,6 @@ export default function AmountSummary({ aggregates }) {
   ];
 
   return (
-    // w-72 keeps it compact; no border/shadow wrapper — plain rows
     <div className="w-72 shrink-0">
       {items.map((item, i) => (
         <div

@@ -7,7 +7,6 @@ export default function VendorDetailsInfoTabSkeleton() {
   return (
     <div className="flex flex-col gap-4 w-full">
 
-      {/* ───── Basic Info + Settings ───── */}
       <div className="grid grid-cols-[1fr_360px] gap-4 items-start">
 
         {/* Basic Info Card */}
@@ -58,7 +57,6 @@ export default function VendorDetailsInfoTabSkeleton() {
 
       </div>
 
-      {/* ───── Billing Address Card ───── */}
       <div className="bg-white border w-[670px] border-gray-200 rounded-xl p-5 flex flex-col gap-4">
 
         <Skeleton height={20} width={160} />

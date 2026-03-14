@@ -14,7 +14,6 @@ export default function CategoriesFilter({
 
   const router = useRouter();
 
-  // Show apply only if changed
   const isDirty =
     filters.starts_with !== appliedFilters.starts_with ||
     filters.status !== appliedFilters.status;

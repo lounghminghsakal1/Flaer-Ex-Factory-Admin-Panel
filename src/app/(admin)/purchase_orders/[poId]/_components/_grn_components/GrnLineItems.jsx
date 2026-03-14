@@ -6,7 +6,6 @@ import { BatchingModal, SerialModal } from "./TrackingModals";
 import { ViewBatchModal, ViewSerialModal, QCBatchModal, QCSerialModal, ReasonModal, QCBatchViewModal, QCSerialViewModal } from "./QCModals";
 import GrnSkuDropdown from "./GrnSkuDropdown";
 
-// ─── Two-line header ───────────────────────────────────────────────────────────
 function TwoLineHeader({ line1, line2, cls = "" }) {
   return (
     <th className={`px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap ${cls}`}>
@@ -16,7 +15,6 @@ function TwoLineHeader({ line1, line2, cls = "" }) {
   );
 }
 
-// ─── Tracking button (used in normal editable rows) ───────────────────────────
 function TrackingButton({ trackingType, qty, batches = [], serials = [], onOpenBatch, onOpenSerial }) {
   const isBatch = trackingType === "batch";
   const isSerial = trackingType === "serial";
@@ -52,9 +50,6 @@ function TrackingButton({ trackingType, qty, batches = [], serials = [], onOpenB
   );
 }
 
-// ─── Read-only row (normal view) ──────────────────────────────────────────────
-// Always shows clickable batch/serial links (view-only).
-// "View QC" link under Accepted Qty opens read-only QC breakdown modal.
 function ReadOnlyRow({ row }) {
   const [viewBatchOpen, setViewBatchOpen] = useState(false);
   const [viewSerialOpen, setViewSerialOpen] = useState(false);
@@ -141,7 +136,7 @@ function ReadOnlyRow({ row }) {
           <div className="text-sm text-gray-700">{row.received_quantity != null ? Math.floor(Number(row.received_quantity)) : "—"}</div>
           {trackingDisplay && <div className="mt-0.5">{trackingDisplay}</div>}
         </td>
-        {/* Accepted Qty + QC breakdown link */}
+        {/* Accepted Qty and  QC breakdown link */}
         <td className="px-2 py-2 w-[80px]">
           {acceptedQty !== null ? (
             <div>
@@ -194,7 +189,6 @@ function ReadOnlyRow({ row }) {
   );
 }
 
-// ─── QC Row ───────────────────────────────────────────────────────────────────
 function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
   const [viewBatchOpen, setViewBatchOpen] = useState(false);
   const [viewSerialOpen, setViewSerialOpen] = useState(false);
@@ -202,7 +196,6 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
   const [serialQcOpen, setSerialQcOpen] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
 
-  // Per-row confirmed state (yellow = saved but not confirmed, green = confirmed via modal)
   const [isBatchConfirmed, setIsBatchConfirmed] = useState(false);
   const [isSerialConfirmed, setIsSerialConfirmed] = useState(false);
 
@@ -222,7 +215,6 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
   const qc = qcData || null;
   const hasQC = qc !== null && qc.acceptedCount !== null;
 
-  // Untracked: default accepted = receivedQty, user can lower it
   const untrackedAccepted = qc?.untrackedAccepted ?? "";
   const parsedUntrackedAccepted = untrackedAccepted !== "" ? Number(untrackedAccepted) : receivedQty;
   const untrackedRejected = receivedQty - parsedUntrackedAccepted;
@@ -303,7 +295,7 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
           onSave={(result) => {
             onQCDataChange({ ...(qc || {}), ...result });
             setIsSerialConfirmed(true);
-            onConfirmed(); // ← notify parent so allQCDone unlocks Submit
+            onConfirmed(); 
           }}
           skuId={row.product_sku_id}
           grnId={grnId}
@@ -320,12 +312,12 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
       />
 
       <tr className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-        {/* Col 1 — SKU Name */}
+        {/* SKU Name */}
         <td className="px-2 py-3 w-[280px] max-w-[280px]">
           <span title={displayName} className="block truncate text-sm text-gray-800 font-medium">{displayName}</span>
         </td>
 
-        {/* Col 2 — Received Qty + view link */}
+        {/* Received Qty and view link */}
         <td className="px-2 py-3 w-[100px]">
           <div className="text-sm text-gray-800 font-medium">{receivedQty}</div>
           {isBatch && (
@@ -341,14 +333,14 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
           {isUntracked && <div className="text-[10px] text-gray-400 italic mt-0.5">Untracked</div>}
         </td>
 
-        {/* Col 3 — Received Amount */}
+        {/* Received Amount */}
         <td className="px-2 py-3 w-[110px]">
           <span className="text-sm text-gray-600">
             {receivedAmt != null ? `₹${receivedAmt.toLocaleString()}` : "—"}
           </span>
         </td>
 
-        {/* Col 4 — QC Check */}
+        {/* QC Check */}
         <td className="px-2 py-3 w-[110px]">
           {isBatch && (
             <button
@@ -400,7 +392,7 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
           {isBatch && !isBatchConfirmed && (<p className="text-xs text-gray-500">Click to confirm batches</p>) }
         </td>
 
-        {/* Col 5 — Accepted Qty */}
+        {/* Accepted Qty */}
         <td className="px-2 py-3 w-[90px]">
           {acceptedCount !== null ? (
             <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold min-w-[28px]">
@@ -411,7 +403,7 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
           )}
         </td>
 
-        {/* Col 6 — Rejected Qty + reason link */}
+        {/* Rejected Qty + reason link */}
         <td className="px-2 py-3 w-[100px]">
           {rejectedCount !== null ? (
             <div className="flex flex-col gap-0.5">
@@ -438,7 +430,6 @@ function QCRow({ row, qcData, onQCDataChange, onConfirmed, grnId }) {
   );
 }
 
-// ─── Editable existing row ────────────────────────────────────────────────────
 function EditableExistingRow({ row, skuOptions, onChange, }) {
   const [batchingOpen, setBatchingOpen] = useState(false);
   const [serialOpen, setSerialOpen] = useState(false);
@@ -502,7 +493,6 @@ function EditableExistingRow({ row, skuOptions, onChange, }) {
   );
 }
 
-// ─── Editable new row ─────────────────────────────────────────────────────────
 function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove, grnId }) {
   const [batchingOpen, setBatchingOpen] = useState(false);
   const [serialOpen, setSerialOpen] = useState(false);
@@ -583,7 +573,6 @@ function EditableRow({ row, skuOptions, usedSkuIds, onChange, onRemove, grnId })
   );
 }
 
-// ─── Main Export ─
 export default function GrnLineItems({
   grnId, poId, grnStatus, initialLineItems, onSaved,
   setCanSendToQC = null, submittedQC = null, setSubmittedQC = null,
@@ -592,11 +581,8 @@ export default function GrnLineItems({
   const isQCPending = grnStatus === "qc_pending";
   const isCompleted = grnStatus === "completed";
 
-  // showQCTable: true = QC table visible, false = normal table visible
   const [showQCTable, setShowQCTable] = useState(isQCPending && !submittedQC);
 
-  // Track which rows have been "confirmed" via their modal so we can gate Submit QC
-  // Map of rowKey → true (confirmed) | false (not yet confirmed)
   const [confirmedRowKeys, setConfirmedRowKeys] = useState({});
 
   useEffect(() => {
@@ -646,7 +632,6 @@ export default function GrnLineItems({
   const [loadingSku, setLoadingSku] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // qcDataMap — populated from API on mount (if qc_pending) and updated as user interacts with QC modals
   const [qcDataMap, setQcDataMap] = useState({});
   const [qcDataLoading, setQcDataLoading] = useState(false);
   const qcDataFetchedRef = useRef(false);
@@ -656,7 +641,6 @@ export default function GrnLineItems({
 
   const canEdit = grnStatus === "created";
 
-  // ── Fetch QC data from API when status is qc_pending ─
   useEffect(() => {
     if (!isQCPending || !grnId || qcDataFetchedRef.current) return;
     qcDataFetchedRef.current = true;
@@ -673,9 +657,6 @@ export default function GrnLineItems({
           const tracking = item.tracking_type;
           const receivedQty = item.received_quantity != null ? Math.floor(Number(item.received_quantity)) : 0;
 
-          // For untracked: accepted_quantity is null when QC has never been submitted.
-          // In that case seed accepted = receivedQty, rejected = 0 (fully accepted by default).
-          // When accepted_quantity is explicitly set (even 0), respect the saved value.
           const qcNeverSubmitted =
             tracking === "untracked" &&
             (
@@ -734,7 +715,6 @@ export default function GrnLineItems({
       .finally(() => setQcDataLoading(false));
   }, [isQCPending, grnId]);
 
-  // ── SKU options for edit mode ──
   useEffect(() => {
     if (!isEditing || skuFetchedRef.current || !grnId || !poId) return;
     skuFetchedRef.current = true;
@@ -824,11 +804,8 @@ export default function GrnLineItems({
     finally { setSaving(false); }
   };
 
-  // ── QC Save ───────────────────────────────────────────────────────────────────
   const handleQCSave = async () => {
     const rows = normalizeExisting(existingRows);
-
-    // Check all non-untracked rows are confirmed via modal
     const unconfirmedRows = [];
     for (const row of rows) {
       const tracking = row.tracking_type;
@@ -899,27 +876,22 @@ export default function GrnLineItems({
     finally { setSaving(false); }
   };
 
-  // ── allQCDone check ───────────────────────────────────────────────────────────
   const normalizedRowsForQC = normalizeExisting(existingRows);
 
-  // allQCDone = every row has data AND (batch/serial rows must be confirmed)
   const allQCDone = normalizedRowsForQC.every((row) => {
     const tracking = row.tracking_type;
     const rowKey = String(row._id || row.id);
     const qc = qcDataMap[rowKey];
 
     if (tracking === "untracked") {
-      // Untracked is always fine — defaults to fully accepted
       return true;
     }
-    // batch / serial: must be confirmed via modal
     if (!confirmedRowKeys[rowKey]) return false;
     if (!qc || qc.acceptedCount === null) return false;
     if ((qc.rejectedCount ?? 0) > 0 && !qc.rejectionReason) return false;
     return true;
   });
 
-  // ── QC Table ──────────────────────────────────────────────────────────────────
   if (showQCTable) {
     return (
       <div className="mt-4">
@@ -1008,7 +980,6 @@ export default function GrnLineItems({
     );
   }
 
-  // ── Normal View ───────────────────────────────────────────────────────────────
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between mb-3">

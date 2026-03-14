@@ -49,7 +49,6 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
         new Set([...prev, selectedParentCategory.id])
       );
 
-      // preload children of selected parent 
       fetchSubCategories(selectedParentCategory.id).then(children => {
         setCategories(prev =>
           prev.map(p =>
@@ -72,7 +71,6 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
 
-      // Auto-scroll to selected parent/subcategory when dropdown opens
       if (selectedParent && categoryRefs.current[selectedParent.id]) {
         setTimeout(() => {
           categoryRefs.current[selectedParent.id]?.scrollIntoView({
@@ -141,17 +139,14 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
     event.stopPropagation();
 
     if (expandedCategories.has(category.id)) {
-      // Collapse
       const newExpanded = new Set(expandedCategories);
       newExpanded.delete(category.id);
       setExpandedCategories(newExpanded);
     } else {
-      // Expand
       const newExpanded = new Set(expandedCategories);
       newExpanded.add(category.id);
       setExpandedCategories(newExpanded);
 
-      // Load children if not already loaded
       if (category.children?.length === 0) {
         const children = await fetchSubCategories(category.id);
         setCategories(prev => prev.map(cat =>
@@ -159,7 +154,6 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
         ));
       }
 
-      // Auto-scroll to this category
       setTimeout(() => {
         categoryRefs.current[category.id]?.scrollIntoView({
           behavior: 'smooth',
@@ -183,11 +177,9 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
 
   const openCreatePopup = (mode = 'general', parentCategory = null) => {
     if (mode === 'child') {
-      // Creating subcategory from link under parent
       setLockedParentForChild(parentCategory);
       setIsParentToggle(false);
     } else {
-      // General create button
       setLockedParentForChild(null);
       setIsParentToggle(true);
     }
@@ -273,7 +265,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
           ];
         }
 
-        // For parent category: expand it to show empty subcategory section
+        // For parent category -> expand it to show empty subcategory section
         if (isParentToggle) {
           setExpandedCategories(prev => new Set([...prev, newCategory.id]));
 
@@ -291,7 +283,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
             }, 100);
           }, 100);
         } else {
-          // For subcategory: expand parent and select the subcategory
+          // For subcategory_> expand parent and select the subcategory
           setExpandedCategories(prev => new Set([...prev, parentId]));
 
           const parent = categories.find(c => c.id === parentId) || lockedParentForChild;
@@ -361,7 +353,7 @@ const HierarchicalCategorySelector = ({ selectedParentCategory, selectedSubCateg
             )}
           </button>
 
-          {/* Parent Category Name - Clickable to expand */}
+          {/* Parent Category Name - > Clickable to expand */}
           <div
             onClick={(e) => handleParentClick(category, e)}
             className="flex-1 py-3 pr-3 text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"

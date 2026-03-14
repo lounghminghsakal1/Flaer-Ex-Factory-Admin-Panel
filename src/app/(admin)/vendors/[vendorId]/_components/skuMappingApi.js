@@ -1,4 +1,4 @@
-// ─── GET VENDOR SKU MAPPINGS ────────────────────────────────────────────────
+
 // GET /admin/api/v1/procurement/vendors/:vendorId/sku_mappings
 // Response: { status, data: [...], meta: { current_page, total_pages, total_data_count } }
 
@@ -13,7 +13,6 @@ export async function getSkuMappings(vendorId, page = 1) {
   return { data: json.data ?? [], meta: json.meta ?? {} };
 }
 
-// ─── UPDATE VENDOR SKU MAPPING ───────────────────────────────────────────────
 // PUT /admin/api/v1/procurement/vendors/:vendorId/sku_mappings/:productSkuId
 // Payload: { product_sku_id, vendor_sku_code, vendor_unit_price, active }
 
@@ -34,7 +33,6 @@ export async function updateSkuMapping(vendorId, productSkuId, payload) {
   return json;
 }
 
-// ─── CREATE VENDOR SKU MAPPINGS (BULK) ──────────────────────────────────────
 // POST /admin/api/v1/procurement/vendors/:vendorId/sku_mappings
 // Payload: { vendor_sku_mappings: [...] }
 // Example:
@@ -62,7 +60,6 @@ export async function createSkuMappings(vendorId, mappings) {
   return json;
 }
 
-// ─── GET ALL PRODUCT SKUS (for dropdown) ────────────────────────────────────
 // GET /admin/api/v1/product_skus
 // Response: { status, data: [{ id, sku_name, sku_code, ... }] }
 

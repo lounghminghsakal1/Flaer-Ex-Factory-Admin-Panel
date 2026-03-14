@@ -5,20 +5,10 @@ import { toast } from "react-toastify";
 import DatePicker from "../../../create/_components/DatePicker";
 import SearchableDropdown from "../../../create/_components/SearchableDropdown";
 
-/**
- * GrnFormModal
- * Props:
- *  - isOpen: bool
- *  - onClose: fn()
- *  - onSaved: fn(grn) - called after create/update success
- *  - poId: number
- *  - vendorId: number
- *  - grn: existing GRN object | null (null = create mode)
- */
+
 export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId, grn = null }) {
   const isEdit = !!grn; //this line is exactly equals to === const isEdit = Boolean(grn); means if grn object exists then its edit mode else create mode
 
-  // Form state
   const [nodeId, setNodeId] = useState(null);
   const [vendorInvoiceDate, setVendorInvoiceDate] = useState(null);
   const [vendorInvoiceNo, setVendorInvoiceNo] = useState("");
@@ -28,14 +18,12 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Node options - dummy + real
   const [nodeOptions, setNodeOptions] = useState([
     { value: 1, label: "Node One" },
     { value: 2, label: "Node Two" },
     { value: 3, label: "Node Three" },
   ]);
 
-  // Populate form on edit
   useEffect(() => {
     if (!isOpen) return;
     if (grn) {
@@ -55,7 +43,6 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
     }
   }, [isOpen, grn]);
 
-  // Fetch node options
   useEffect(() => {
     if (!isOpen) return;
     const fetchNodes = async () => {
@@ -70,7 +57,6 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
         }
         if (data.status === "failure") throw new Error(data?.errors[0] ?? "Something went wrong");
       } catch(err) {
-        // keep dummy options
         console.log(err);
         toast.error("Failed to fetch nodes list "+err.message);
       }
@@ -231,7 +217,6 @@ export default function GrnFormModal({ isOpen, onClose, onSaved, poId, vendorId,
                 disablePast={false}
                 disableFuture
               />
-              {/* Validate no future date */}
             </div>
 
             {/* Vendor Invoice No */}

@@ -71,7 +71,7 @@ export default function OrderDetails({ orderId, onTabChange }) {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
 
-          {/* ── Header: Title + Buttons ── */}
+          {/* Title and Buttons  */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h2 className="text-sm font-bold text-primary">Order Line Items</h2>
             <div className="flex items-center gap-2">

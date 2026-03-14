@@ -26,7 +26,7 @@ export default function ConfirmModal({
   message = "This action cannot be undone.",
   confirmLabel = "Remove",
   cancelLabel = "Cancel",
-  variant = "danger", // "danger" | "warning"
+  variant = "danger", 
   onConfirm,
   onCancel,
 }) {
@@ -87,7 +87,7 @@ export default function ConfirmModal({
 }
 
 /**
- * Hook to use confirm modal imperatively
+ * Hook to use confirm modal 
  * 
  * Usage:
  *   const { confirmModal, askConfirm } = useConfirmModal();

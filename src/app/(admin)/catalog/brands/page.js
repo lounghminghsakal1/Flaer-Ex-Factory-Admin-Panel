@@ -17,24 +17,20 @@ export default function BrandsPage() {
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Pagination from URL
   const [currentPage, setCurrentPage] = useState(1);
 
   const [totalPages, setTotalPages] = useState(1);
 
-  // Applied filters (API source of truth)
   const [appliedFilters, setAppliedFilters] = useState({
     starts_with: "",
     status: ""
   });
 
-  // Draft filters (UI editing)
   const [draftFilters, setDraftFilters] = useState({
     starts_with: "",
     status: ""
   });
 
-  // Fetch when page or applied filters change
   useEffect(() => {
     const pageFromUrl = Number(searchParams.get("page")) || 1;
 
@@ -90,7 +86,6 @@ export default function BrandsPage() {
     }
   };
 
-  // APPLY filters
   const handleApplyFilters = (override) => {
     const next = override ?? draftFilters;
 
@@ -103,7 +98,6 @@ export default function BrandsPage() {
     router.push(`?${query.toString()}`, { scroll: false });
   };
 
-  // CLEAR filters
   const handleClearFilters = () => {
     const empty = { starts_with: "", status: "" };
 

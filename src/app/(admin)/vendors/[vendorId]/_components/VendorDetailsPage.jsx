@@ -15,21 +15,6 @@ const TABS = [
   { key: "sku", label: "Vendor SKU Mapping" },
 ];
 
-/**
- * VendorDetailPage
- *
- * Props:
- *   vendorsData — array of vendor objects from parent/list page
- *                 Each item needs: { id, firm_name, vendor_type, status }
- *
- * Usage in Next.js App Router:
- *   // app/vendors/[vendorId]/page.jsx
- *   import VendorDetailPage from "@/components/vendor-detail/VendorDetailPage";
- *   export default function Page() {
- *     // fetch vendorsData from your list API or pass via server component
- *     return <VendorDetailPage vendorsData={vendorsData} />;
- *   }
- */
 export default function VendorDetailPage() {
   const params = useParams();
   const vendorId = params?.vendorId ?? params?.id;
@@ -55,7 +40,6 @@ export default function VendorDetailPage() {
   const handleSaveChanges = async () => {
     setSaving(true);
     try {
-      // Delegate to VendorInfoTab's internal save handler
       await window.__vendorSave?.();
     } finally {
       setSaving(false);
@@ -82,16 +66,13 @@ export default function VendorDetailPage() {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 font-sans">
 
-      {/* ── Fixed Left Sidebar ─────────────────────────── */}
       <VendorSidebar vendorsData={vendorsData} currentVendorId={vendorId} />
 
-      {/* ── Main Content ───────────────────────────────── */}
       <main className="flex-1 overflow-y-auto">
         <div className="px-5 py-4">
 
-          {/* ── Top bar: Tabs + Action Buttons ─────────── */}
           <div className="flex items-center justify-between mb-4">
-            {/* Tabs */}
+            
             <div className="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
               {TABS.map((tab) => (
                 <button
@@ -112,7 +93,6 @@ export default function VendorDetailPage() {
               ))}
             </div>
 
-            {/* Action Buttons — YOU control these */}
             <div className="flex items-center gap-2">
               {!isEditing ? (
                 <button
@@ -147,7 +127,6 @@ export default function VendorDetailPage() {
             </div>
           </div>
 
-          {/* ── Tab Content ────────────────────────────── */}
           {activeTab === "info" && (
             <VendorInfoTab
               vendorId={vendorId}

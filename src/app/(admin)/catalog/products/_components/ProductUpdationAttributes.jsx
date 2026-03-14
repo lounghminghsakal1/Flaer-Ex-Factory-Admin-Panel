@@ -38,7 +38,6 @@ export default function ProductUpdationAttributes({
     values: prop.values || []
   }));
 
-  // Contents state
   const [contents, setContents] = useState([]);
   const [hasContentsChanges, setHasContentsChanges] = useState(false);
 
@@ -46,7 +45,6 @@ export default function ProductUpdationAttributes({
 
   const confirm = useConfirm();
 
-  // Add useEffect to notify parent of changes
   useEffect(() => {
     if (onPropertiesChange) {
       onPropertiesChange(properties);
@@ -167,14 +165,14 @@ export default function ProductUpdationAttributes({
   );
 }
 
-// ==================== PROPERTY TYPES SECTION ====================
+//  PROPERTY TYPES SECTION 
 function PropertyTypesSection({
   productData,
   properties,
   setProperties,
   hasChanges,
   setHasChanges,
-  isEditing // prop to control edit mode
+  isEditing 
 }) {
 
   const [propertyNames, setPropertyNames] = useState([]);
@@ -192,7 +190,6 @@ function PropertyTypesSection({
       return;
     }
 
-    // Create a map to consolidate properties 
     const propertiesMap = {};
 
     productData.product_properties.forEach(prop => {
@@ -219,7 +216,6 @@ function PropertyTypesSection({
   }
 
   useEffect(() => {
-    // Check if properties have changed
     const changed = JSON.stringify(properties) !== JSON.stringify(originalProperties);
     setHasChanges(changed);
   }, [properties, originalProperties]);
@@ -254,7 +250,6 @@ function PropertyTypesSection({
   const deletePropertyRow = async (index) => {
     const propertyToRemove = properties[index];
 
-    // Confirm if removing an existing property
     if (propertyToRemove.isExisting && propertyToRemove.value) {
       const ok = await confirm(
         `Removing "${propertyToRemove.name}: ${propertyToRemove.value}" Are you sure you want to remove this ?`
@@ -320,7 +315,7 @@ function PropertyTypesSection({
               onRemoveProperty={() => deletePropertyRow(i)}
               onCreateNewProperty={createNewPropertyName}
               isEditing={isEditing}
-              isExisting={prop.isExisting} // Existing properties cannot change name
+              isExisting={prop.isExisting} 
             />
           ))
         )}
@@ -350,7 +345,7 @@ function PropertyRow({
   onRemoveProperty,
   onCreateNewProperty,
   isEditing,
-  isExisting // If true, property type cannot be changed
+  isExisting 
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -367,12 +362,10 @@ function PropertyRow({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter available property names
   const availableNames = propertyNames
     .filter(name => !selectedNames.includes(name))
     .filter(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  // Check if search term matches exactly with an existing property
   const exactMatch = propertyNames.some(
     name => name.toLowerCase() === searchTerm.toLowerCase()
   );
@@ -499,7 +492,6 @@ function PropertyRow({
   );
 }
 
-// SKU TABLE SECTION 
 function SkuTableSection({
   productData,
   setSkuDetailsPopup,
@@ -516,7 +508,7 @@ function SkuTableSection({
   if (allVariants.length === 0) {
     return (
       <div className="space-y-4">
-        {/* Header with Create Button */}
+        {/* HEADer */}
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">Product SKUs</h3>
           <button
@@ -556,7 +548,7 @@ function SkuTableSection({
 
   return (
     <div className="space-y-4">
-      {/* Header with Create Button */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">Product SKUs</h3>
         <button
@@ -691,7 +683,6 @@ function ProductContentsSection({
   }
 
   useEffect(() => {
-    // Check if contents have changed
     const changed = JSON.stringify(contents) !== JSON.stringify(originalContents);
     setHasChanges(changed);
   }, [contents, originalContents]);
@@ -703,7 +694,6 @@ function ProductContentsSection({
   const deleteContentRow = async (index) => {
     const contentToRemove = contents[index];
 
-    // Confirm if removing an existing content
     if (contentToRemove.isExisting && contentToRemove.content_value) {
       const ok = await confirm(
         `Removing "${contentToRemove.content_type}: ${contentToRemove.content_value}" Are sure you want to remove this ?`
@@ -775,7 +765,7 @@ function ContentRow({
   onValueChange,
   onRemoveContent,
   isEditing,
-  isExisting // If true, content type cannot be changed
+  isExisting 
 }) {
 
   return (
@@ -872,23 +862,20 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
         uploadedUrls.push(result.data.media_url);
       }
 
-      // Get current max sequence
       const maxSequence =
         productMedia.length > 0
           ? Math.max(...productMedia.map((m) => m.sequence))
           : 0;
 
-      // Add new media with proper sequence
       const newMedia = files.map((file, idx) => ({
         id: Date.now() + idx, // Temporary ID for new uploads
         media_url: uploadedUrls[idx],
         media_type: "image",
         active: true,
         sequence: maxSequence + idx + 1,
-        isNew: true, // Flag to identify new uploads
+        isNew: true, 
       }));
 
-      // If this is the first upload, set sequence to 1 (primary)
       if (productMedia.length === 0 && newMedia.length > 0) {
         newMedia[0].sequence = 1;
       }
@@ -902,7 +889,6 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
     }
   };
 
-  // Set image as primary
   const setPrimary = (id) => {
     setProductMedia((prev) => {
       const selectedMedia = prev.find((m) => m.id === id);
@@ -921,7 +907,6 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
     setMediaPopup(false);
   };
 
-  // Remove image (cannot remove primary)
   const removeMedia = async (id) => {
     const mediaToRemove = productMedia.find((m) => m.id === id);
 
@@ -938,7 +923,6 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
     setProductMedia((prev) => {
       const filtered = prev.filter((m) => m.id !== id);
 
-      // Reorder sequences without changing primary
       const primary = filtered.find((m) => m.sequence === 1);
       const others = filtered
         .filter((m) => m.sequence !== 1)
@@ -963,12 +947,10 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
         <h3 className="text-lg font-semibold text-gray-900">Product Media</h3>
 
         {productMedia.length === 0 && !isEditing ? (
-          // Empty state - non-editing mode
           <div className="text-center py-12 text-gray-500 border border-gray-200 rounded-lg">
             No media uploaded yet
           </div>
         ) : productMedia.length === 0 && isEditing ? (
-          // Empty state - editing mode with upload
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
             <label className="cursor-pointer block text-center">
               <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
@@ -996,7 +978,6 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
             </label>
           </div>
         ) : (
-          // Images display
           <div className="border border-gray-200 rounded-lg p-4">
             <div className="flex items-start gap-3 flex-wrap">
               {/* PRIMARY IMAGE - Larger */}
@@ -1013,7 +994,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
                     Primary
                   </span>
 
-                  {/* Hover overlay - only in editing mode */}
+                  {/* Hover overlay */}
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center">
                       <span className="text-white text-sm font-medium">
@@ -1024,7 +1005,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
                 </div>
               )}
 
-              {/* OTHER IMAGES - Smaller (show first 3) */}
+              {/* OTHER IMAGES - Smaller */}
               {visibleOthers.map((media) => (
                 <div key={media.id} className="relative group">
                   <div className="w-56 h-48 rounded-lg overflow-hidden border border-gray-300">
@@ -1035,7 +1016,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
                     />
                   </div>
 
-                  {/* Hover overlay - only in editing mode */}
+                  {/* Hover overlay */}
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition rounded-lg flex flex-col items-center justify-center gap-2">
                       <button
@@ -1069,7 +1050,7 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
                 </button>
               )}
 
-              {/* ADD MORE BUTTON - only in editing mode */}
+              {/* ADD MORE BUTTON - */}
               {isEditing && (
                 <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition cursor-pointer">
                   {uploading ? (
@@ -1127,7 +1108,6 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
         )}
       </div>
 
-      {/* Media Popup */}
       {mediaPopup && (
         <MediaPopup
           media={sortedMedia}
@@ -1143,7 +1123,6 @@ function ProductMediaSection({ productData, isEditing, onMediaChange }) {
   );
 }
 
-// Media Popup Component
 function MediaPopup({
   media,
   isEditing,
@@ -1193,7 +1172,7 @@ function MediaPopup({
                   )}
                 </div>
 
-                {/* Hover Overlay - only in editing mode and not for primary */}
+                {/* Hover Overlay  */}
                 {isEditing && m.sequence !== 1 && (
                   <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center gap-2">
                     <button

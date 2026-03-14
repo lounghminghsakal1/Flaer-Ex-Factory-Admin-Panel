@@ -18,7 +18,7 @@ export default function DataTable({
   const currentData = data;
   const startIndex = (currentPage - 1) * itemsPerPage;
 
-  // Generate page numbers to display
+  // Generate page numbers 
   const getPageNumbers = () => {
     const pages = [];
     const maxPagesToShow = 10;
@@ -64,7 +64,7 @@ export default function DataTable({
     <div className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          {/* ---------- TABLE HEAD ---------- */}
+          {/* TABLE HEAD  */}
           <thead>
             <tr className="bg-blue-50 border-b border-blue-100">
               <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wide">
@@ -86,7 +86,7 @@ export default function DataTable({
             </tr>
           </thead>
 
-          {/* ---------- TABLE BODY ---------- */}
+          {/*  TABLE BODY  */}
           <tbody className="divide-y divide-gray-100">
             {currentData.length === 0 ? (
               <tr>

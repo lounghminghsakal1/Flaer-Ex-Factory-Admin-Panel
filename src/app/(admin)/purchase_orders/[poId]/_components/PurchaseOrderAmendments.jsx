@@ -19,7 +19,6 @@ import { toast } from "react-toastify";
 import SearchableDropdown from "../../create/_components/SearchableDropdown";
 import PurchaseOrderAmendmentsSkeleton from "./PurchaseOrderAmendmentsSkeleton";
 
-// Helpers
 const makeEmptyRow = () => ({
   _id: Math.random().toString(36).slice(2),
   lineItemId: null,
@@ -52,7 +51,6 @@ function AmendmentStatusBadge({ status }) {
   );
 }
 
-// Reject Amendment Modal — UNCHANGED
 function RejectAmendmentModal({ isOpen, onClose, onReject }) {
   const [rejection_reason, setRejection_reason] = useState("");
 
@@ -136,8 +134,6 @@ function RejectAmendmentModal({ isOpen, onClose, onReject }) {
   );
 }
 
-// ─── Single editable table row (CREATE mode) ──────────────────────────────────
-// Shows simplified "Units" and "Price" columns (no before/after split)
 function AmendmentCreateRow({ row, allLineItems, usedIds, poStatus, onChange, onRemove, disabled }) {
   const [searchText, setSearchText] = useState("");
 
@@ -198,7 +194,7 @@ function AmendmentCreateRow({ row, allLineItems, usedIds, poStatus, onChange, on
         />
       </td>
 
-      {/* Units — single input (only for approved PO) */}
+      {/* Units -> single input (only for approved PO) */}
       {showUnits && (
         <td className="px-3 py-2 w-24">
           <input
@@ -218,7 +214,7 @@ function AmendmentCreateRow({ row, allLineItems, usedIds, poStatus, onChange, on
         </td>
       )}
 
-      {/* Price — single input */}
+      {/* Price -> single input */}
       <td className="px-3 py-2 w-24">
         <input
           type="number"
@@ -255,8 +251,6 @@ function AmendmentCreateRow({ row, allLineItems, usedIds, poStatus, onChange, on
   );
 }
 
-// ─── Single editable table row (EDIT mode) ────────────────────────────────────
-// Shows full before → after columns (existing behaviour)
 function AmendmentEditRow({ row, allLineItems, usedIds, poStatus, onChange, onRemove, disabled }) {
   const [searchText, setSearchText] = useState("");
 
@@ -324,7 +318,6 @@ function AmendmentEditRow({ row, allLineItems, usedIds, poStatus, onChange, onRe
             className={readonlyInput + " text-left"} />
         </td>
       )}
-      {/* → arrow between units */}
       {showUnits && (
         <td className="w-6 text-center">
           <ArrowRight className="w-3 h-3 text-gray-400 mx-auto" />
@@ -348,7 +341,6 @@ function AmendmentEditRow({ row, allLineItems, usedIds, poStatus, onChange, onRe
           />
         </td>
       )}
-      {/* Units (completed PO — no arrow) */}
       {!showUnits && (
         <td className="px-3 py-2 w-24">
           <input readOnly value={row.beforeUnits || ""}
@@ -364,7 +356,6 @@ function AmendmentEditRow({ row, allLineItems, usedIds, poStatus, onChange, onRe
           className={readonlyInput + " text-left"}
         />
       </td>
-      {/* → arrow between prices */}
       <td className="w-6 text-center">
         <ArrowRight className="w-3 h-3 text-gray-400 mx-auto" />
       </td>
@@ -403,7 +394,6 @@ function AmendmentEditRow({ row, allLineItems, usedIds, poStatus, onChange, onRe
   );
 }
 
-// Amendment Form — isCreating=true uses simplified columns, isCreating=false uses full before/after
 function AmendmentForm({
   poId,
   poStatus,
@@ -511,7 +501,6 @@ function AmendmentForm({
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-72">SKU</th>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-44">SKU Code</th>
 
-              {/* CREATE mode: simple single columns */}
               {isCreating && showUnits && (
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Units</th>
               )}
@@ -519,7 +508,6 @@ function AmendmentForm({
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Price</th>
               )}
 
-              {/* EDIT mode: full before/after columns */}
               {/* {!isCreating && showUnits && (
                 <>
                   <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wide w-32">Before Units</th>
@@ -593,7 +581,6 @@ function AmendmentForm({
         </table>
       </div>
 
-      {/* Footer: Add Item left, Cancel + Save right */}
       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
         <div>
           {canAddMore && (
@@ -634,7 +621,6 @@ function AmendmentForm({
   );
 }
 
-// Accordion Item (view mode)
 function AmendmentAccordion({
   amendment,
   isOpen,
@@ -767,7 +753,6 @@ function AmendmentAccordion({
       />
 
       <div className="border border-gray-200 rounded-2xl bg-white overflow-hidden shadow-sm">
-        {/* Accordion Header — UNCHANGED */}
         <div
           role="button"
           onClick={onToggle}
@@ -820,7 +805,6 @@ function AmendmentAccordion({
           </div>
         </div>
 
-        {/* Accordion Body — view rows in a <table> with full before/after */}
         {isOpen && (
           <div className="border-t border-gray-100">
             {viewRows.length === 0 ? (
@@ -878,7 +862,7 @@ function AmendmentAccordion({
                             <span className="text-sm font-semibold text-primary">{li.after_units ?? "—"}</span>
                           </td>
                         )}
-                        {/* Units (completed PO — single col) */}
+                        {/* Units  */}
                         {!showUnits && (
                           <td className="px-4 py-3 text-center w-32">
                             <span className="text-sm font-semibold text-gray-700">{li.before_units ?? "—"}</span>
@@ -890,7 +874,7 @@ function AmendmentAccordion({
                             ₹{parseFloat(li.before_unit_price || 0).toLocaleString()}
                           </span>
                         </td>
-                        {/* → arrow */}
+                        {/* -> arrow */}
                         <td className="w-6 text-center">
                           <ArrowRight className="w-3 h-3 text-gray-600 mx-auto" />
                         </td>
@@ -907,7 +891,6 @@ function AmendmentAccordion({
               </div>
             )}
 
-            {/* Action buttons — UNCHANGED logic */}
             <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-100">
               {isDraft && (
                 <div
@@ -961,7 +944,6 @@ function AmendmentAccordion({
   );
 }
 
-// Main Component — UNCHANGED
 export default function PurchaseOrderAmendments({ poId, refreshPo }) {
   const [amendments, setAmendments] = useState([]);
   const [poData, setPoData] = useState(null);

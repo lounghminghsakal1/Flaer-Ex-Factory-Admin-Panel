@@ -20,7 +20,7 @@ export default function OrderDetailsPage() {
   const pathName     = usePathname();
 
   const [activeTab, setActiveTab]         = useState("order-details");
-  const [shipmentIntent, setShipmentIntent] = useState(null); // "forward" | "drop" | null
+  const [shipmentIntent, setShipmentIntent] = useState(null); 
   const [orderData, setOrderData]         = useState(null);
 
   useEffect(() => {
@@ -36,7 +36,6 @@ export default function OrderDetailsPage() {
       .catch(console.error);
   }, [orderId]);
 
-  // Called from OrderDetails buttons — goes to Shipments with an intent
   const handleTabChange = (tabKey, intent) => {
     setShipmentIntent(intent ?? null);
     const p = new URLSearchParams(searchParams.toString());
@@ -53,10 +52,9 @@ export default function OrderDetailsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
 
-      {/* ── Top bar ── */}
+      {/*  Top bar  */}
       <div className="flex items-center gap-4 px-5 py-3 bg-white border-b border-gray-200">
 
-        {/* Back button — circle outline like screenshot */}
         <button
           onClick={() => router.push("/orders")}
           className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-primary text-primary hover:bg-primary hover:text-gray-100 transition-colors shrink-0 cursor-pointer"
@@ -66,17 +64,15 @@ export default function OrderDetailsPage() {
           </svg>
         </button>
 
-        {/* Order number */}
         <span className="text-base font-bold text-gray-800">
           #{orderData?.order_number ?? orderId}
         </span>
 
-        {/* Tabs — outlined pill group matching screenshot */}
         <div className="flex items-center rounded-full border border-gray-200 bg-white p-1 gap-0.5 ml-4">
           {TABS.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => handleTabChange(tab.key)}
+              onClick={() => handleTabChange(tab.key, tab.key === "shipments" ? "list" : null)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-all whitespace-nowrap
                 ${activeTab === tab.key
                   ? "bg-primary text-white shadow-sm"
@@ -89,10 +85,8 @@ export default function OrderDetailsPage() {
         </div>
       </div>
 
-      {/* ── Body ── */}
       <div className="flex flex-1 gap-4 p-4 items-start">
 
-        {/* ── Main content ── */}
         <main className="flex-1 min-w-0">
           {activeTab === "order-details" && (
             <OrderDetails orderId={orderId} onTabChange={handleTabChange} />
@@ -101,7 +95,6 @@ export default function OrderDetailsPage() {
           {activeTab === "invoices"  && <Invoices  orderId={orderId} />}
         </main>
 
-        {/* ── Right Sidebar — separate cards ── */}
         <aside className="w-72 shrink-0 flex flex-col gap-3">
 
           {/* Order Details card */}

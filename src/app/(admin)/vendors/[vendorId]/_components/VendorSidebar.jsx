@@ -82,7 +82,7 @@ export default function VendorSidebar({ currentVendorId }) {
           <p className="text-[11px] text-gray-500 mt-0.5">{vendorsData?.length ?? 0} total</p>
         </div>
 
-        {/* Search + filter row */}
+        {/* Search and filter row */}
         <div className="relative" >
           <div className="flex items-center gap-1 border border-gray-200 rounded-md px-2 py-1.5 bg-gray-50">
             <Search size={13} className="text-gray-400 shrink-0" />
@@ -126,7 +126,7 @@ export default function VendorSidebar({ currentVendorId }) {
                 {vendor.firm_name}
               </p>
 
-              {/* Vendor Type + Status row */}
+              {/* Vendor Type and Status row */}
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <span className="text-[11px] text-gray-400 truncate">
                   {getVendorTypeLabel(vendor.vendor_type)}

@@ -78,7 +78,6 @@ export default function CategoriesListing({
       totalPages={totalPages}
       onPageChange={handlePageChange}
 
-      // Pass returnTo so filters and page are preserved
       getDetailsLink={(row) =>
         `/catalog/categories/form?id=${row.id}&returnTo=${getReturnTo()}`
       }

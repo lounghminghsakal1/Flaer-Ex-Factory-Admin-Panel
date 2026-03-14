@@ -33,7 +33,6 @@ export default function CategoryForm({
     parent_id: null
   });
 
-  // Get category ID from URL
   const categoryId = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('id')
     : null;
@@ -188,7 +187,7 @@ export default function CategoryForm({
   return (
     <div className="space-y-3">
 
-      {/* CATEGORY TYPE TOGGLE - Only for Create New */}
+      {/* CATEGORY TYPE TOGGLE -> ONLY FOR CREATE NEW */}
       {isCreateNew && (
         <div className="w-150 bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">

@@ -78,7 +78,7 @@ export default function VendorDetailPage() {
         {/*Main Content */}
         <main className="flex-1 overflow-y-auto">
 
-          {/* Fixed Top Bar: Tabs + Action Buttons */}
+          {/* Fixed Top Bar->  Tabs and Action Buttons */}
           <div className="sticky top-0 z-20 bg-gray-50 px-5 border-b border-gray-300">
 
             <div className="flex items-center justify-between gap-4">

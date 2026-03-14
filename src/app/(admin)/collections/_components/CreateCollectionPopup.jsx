@@ -29,7 +29,6 @@ const CreateCollectionPopup = ({ showCreateCollectionPopup, setShowCreateCollect
 
   const handleClose = () => {
     setShowCreateCollectionPopup(false);
-    // Reset form
     setFormData({
       name: '',
       description: '',
@@ -56,7 +55,6 @@ const CreateCollectionPopup = ({ showCreateCollectionPopup, setShowCreateCollect
       if (response.ok) {
         const data = await response.json();
         if (data.status === "failure") throw new Error(data?.errors[0] ?? "Something went wrong");
-        console.log('Collection created:', data);
         handleClose();
         toast.success("Collection created successfully");
         onSuccess();

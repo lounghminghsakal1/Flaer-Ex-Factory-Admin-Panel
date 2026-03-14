@@ -17,7 +17,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-/* ---------------- Sidebar Item ---------------- */
+/*  Sidebar Item  */
 const SidebarItem = ({
   icon: Icon,
   label,
@@ -72,7 +72,7 @@ const SidebarItem = ({
   );
 };
 
-/* ---------------- Floating Submenu ---------------- */
+/*  Floating Submenu  */
 const FloatingSubmenu = ({
   hoveredItem,
   isCollapsed,
@@ -86,13 +86,9 @@ const FloatingSubmenu = ({
 
   if (!hoveredItem || !submenuData) return null;
 
-  // Collect ALL items across all sections, then find the single best match.
-  // "Best match" = the item whose href is the longest prefix of the current pathname.
-  // This ensures "/catalog/brands/form" beats "/catalog/brands" when both are prefixes.
   const allItems = submenuData.flatMap((section) => section.items);
 
   const bestMatch = allItems.reduce((best, item) => {
-    // Strip query strings from both sides before comparing
     const cleanPathname = pathname.split('?')[0];
     const cleanItemHref = item.href.split('?')[0];
     const isMatch =
@@ -101,7 +97,6 @@ const FloatingSubmenu = ({
 
     if (!isMatch) return best;
 
-    // Prefer the longer (more specific) href
     if (!best || cleanItemHref.length > best.href.split('?')[0].length) return item;
     return best;
   }, null);
@@ -129,7 +124,6 @@ const FloatingSubmenu = ({
             
             <div className="space-y-0.5">
               {section.items.map((item, itemIdx) => {
-                // An item is active only if it is the single best match
                 const isActive = bestMatch?.href === item.href;
 
                 return (
@@ -159,7 +153,7 @@ const FloatingSubmenu = ({
   );
 };
 
-/* ---------------- Layout ---------------- */
+/*  Layout  */
 const SidebarLayout = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
@@ -324,7 +318,6 @@ const SidebarLayout = ({ children }) => {
     return { top: `${rect.top}px` };
   };
 
-  // Check if current path matches any submenu item using the same best-match logic
   const isSubmenuItemActive = (item) => {
     if (!item.hasSubmenu || !item.submenuData) return false;
 

@@ -51,7 +51,7 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
 
   return (
     <div className="w-full mx-auto py-4">
-      {/* ── Page Title row ── */}
+      {/*  Page Title row  */}
       <div className="flex items-center justify-between mb-2">
         <button
           onClick={handleBack}
@@ -61,14 +61,13 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
           Back to Cart
         </button>
         <h1 className="text-xl font-bold text-blue-900 tracking-tight">Checkout</h1>
-        {/* spacer to keep title centred */}
         <div className="w-24" />
       </div>
 
-      {/* ── Body ── */}
+      {/*  Body  */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
 
-        {/* ── Card Header ── */}
+        {/*  Card Header  */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold text-blue-900">Order Summary</h2>
@@ -78,7 +77,7 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
           </div>
         </div>
 
-        {/* ── Info Strip ── */}
+        {/*  Info Strip */}
         <div className="flex flex-wrap items-stretch gap-0 border-b border-gray-100">
           <InfoDiv label="Cart Number" value={cartData?.cart_number} />
           <InfoDiv label="Customer Name" value={cartData?.customer?.name} />
@@ -86,7 +85,7 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
           <InfoDiv label="Billing Address" value={cartData?.billing_address} />
         </div>
 
-        {/* ── Table ── */}
+        {/*  Table  */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -202,7 +201,7 @@ export default function CheckedOutPage({ cartData, customerId, onBack = null }) 
           </table>
         </div>
 
-        {/* ── Amount Summary ── */}
+        {/*  Amount Summary  */}
         <div className="px-6 pb-6 flex justify-end">
           <div className="w-72 mt-4">
             <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 space-y-2.5">

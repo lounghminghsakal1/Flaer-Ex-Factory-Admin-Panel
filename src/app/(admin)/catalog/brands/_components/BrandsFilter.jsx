@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import CreateNewButton from "../../../../../../components/shared/CreateNewButton";
 
 export default function BrandsFilter({
-  filters,            // draft
-  appliedFilters,     // applied
+  filters,            
+  appliedFilters,     
   setFilters,
   onApply,
   onClear

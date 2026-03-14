@@ -46,14 +46,11 @@ export default function CreateCollectionPage() {
       toast.error("Please fill all required fields");
       return;
     }
-    console.log("Inside build create collection payload2");
 
     if (!productsList || productsList.length === 0) {
       toast.error("Map atleast one product to the collection");
       return;
     }
-
-    console.log("Inside build create collection payload3");
 
     const transformedItems = productsList.map((product, index) => ({
       product_id: product.id,
@@ -74,19 +71,12 @@ export default function CreateCollectionPage() {
 
   const handleSave = async () => {
     try {
-      console.log("SAVE CLICKED");
-
       setLoading(true);
-
       const payload = buildCreateCollectionPayload();
-
       if (!payload) {
         setLoading(false);
         return;
       }
-
-      console.log("FINAL PAYLOAD", payload);
-
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/collections`;
 
       const json = await fetch(url, {

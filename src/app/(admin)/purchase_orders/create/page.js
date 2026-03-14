@@ -1,12 +1,12 @@
 "use client";
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import SearchableDropdown from "./_components/SearchableDropdown";
 import DatePicker from "./_components/DatePicker";
 import POLineItems from "./_components/POLineItems";
 import HeaderWithBack from "../../../../../components/shared/HeaderWithBack";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "react-toastify";
-import { Save } from "lucide-react";
+import { Save, Ship } from "lucide-react";
 
 function toApiDateStr(date) {
   if (!date) return "";
@@ -37,15 +37,60 @@ export default function CreatePurchaseOrderForm() {
   const [vendorLoading, setVendorLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const searchTimeout = useRef(null);
+  const [orderId, setOrderId] = useState("");
+  const [shipmentId, setShipmentId] = useState("");
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromDropShipment = searchParams.get("fromDropShipment");
+
+  const isDropShipmentFlow = fromDropShipment === "true";
 
   const isFormValid = useMemo(
     () => checkFormValid(vendor, deliveryDate, rows),
     [vendor, deliveryDate, rows]
   );
 
+  useEffect(() => {
+    if (!isDropShipmentFlow) return;
+    const data = sessionStorage.getItem("dropShipmentData");
+    if (!data) return;
+
+    const dropShipmentData = JSON.parse(data);
+    const { vendor_id, line_items } = dropShipmentData.shipment;
+    console.log(dropShipmentData);
+    setVendor({
+      value: vendor_id,
+      label: dropShipmentData.shipment.vendor_name ?? "Vendor"
+    });
+
+    setVendorOptions([
+      {
+        value: vendor_id,
+        label: dropShipmentData.shipment.vendor_name ?? "Vendor"
+      }
+    ]);
+    if (line_items && line_items.length > 0) {
+      const autoFilledRows = line_items.map(li => ({
+        skuOption: {
+          value: li.order_line_item_id,
+          label: li.sku_name ?? "SKU"
+        },
+        skuCode: li.sku_code ?? "SKU CODE",
+        totalUnits: Number(li.quantity),
+        unitPrice: Number(li.unit_price)
+      }));
+      setRows(autoFilledRows);
+    }
+    setOrderId(dropShipmentData.shipment.order_id);
+    setShipmentId(dropShipmentData.shipment.drop_shipment_id);
+
+    sessionStorage.removeItem("dropShipmentData");
+
+  }, [isDropShipmentFlow])
+
   const fetchVendors = useCallback((query = "") => {
+    if (isDropShipmentFlow) return;
     setVendorLoading(true);
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
@@ -59,7 +104,7 @@ export default function CreatePurchaseOrderForm() {
         })
         .catch((err) => {
           console.log(err);
-          toast.error("Failed to fetch vendors data "+err.message);
+          toast.error("Failed to fetch vendors data " + err.message);
         })
         .finally(() => setVendorLoading(false));
     }, 300);
@@ -93,32 +138,35 @@ export default function CreatePurchaseOrderForm() {
       const data = await res.json();
       if (data.status === "success") {
         toast.success("Purchase order created successfully");
-        router.push(`/purchase_orders/${data.data.id}`);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("tab");
+        params.set("return-order-id", orderId);
+        params.set("return-shipment-id", shipmentId);
+        router.push(`/purchase_orders/${data.data.id}?${params.toString()}`);
         return;
       } else {
         throw new Error(data?.errors?.[0] ?? "Something went wrong")
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save purchase order "+err.message);
+      toast.error("Failed to save purchase order " + err.message);
     } finally {
       setSaving(false);
     }
   };
 
+
   return (
     <div className="px-2 py-4 space-y-2">
       <HeaderWithBack title="Create Purchase Order" onBack={() => router.push("/purchase_orders")} />
 
-      {/* Save button — top right */}
       <div className="text-right m-3 flex justify-end">
         <button
           type="button"
           onClick={handleSave}
           disabled={!isFormValid || saving}
-          className={`flex items-center gap-1 px-5 py-2 rounded-lg text-sm font-semibold text-white transition-all cursor-pointer disabled:cursor-not-allowed ${
-            isFormValid && !saving ? "bg-green-700 hover:bg-green-800" : "bg-gray-400/90"
-          }`}
+          className={`flex items-center gap-1 px-5 py-2 rounded-lg text-sm font-semibold text-white transition-all cursor-pointer disabled:cursor-not-allowed ${isFormValid && !saving ? "bg-green-700 hover:bg-green-800" : "bg-gray-400/90"
+            }`}
         >
           <Save size={16} />
           {saving ? "Saving..." : "Save Purchase Order"}
@@ -140,6 +188,7 @@ export default function CreatePurchaseOrderForm() {
               onSearch={fetchVendors}
               loading={vendorLoading}
               optionsMaxHeight={220}
+              disabled={isDropShipmentFlow}
             />
           </div>
 
@@ -163,7 +212,19 @@ export default function CreatePurchaseOrderForm() {
               disablePast={false}
             />
           </div>
+
+
         </div>
+
+
+        {isDropShipmentFlow && (
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mt-4 bg-purple-700/10 border border-primary/20">
+            <Ship className="w-4 h-4 text-purple-700 shrink-0" />
+            <span className="text-sm font-semibold text-purple-700">Drop Shipment</span>
+            <span className="text-[12px] font-mono font-bold text-purple-700/70 bg-purple-700/10 px-1.5 py-0.5 rounded-md">{shipmentId}</span>
+          </span>
+        )}
+
       </div>
 
       {/* PO Line Items */}
@@ -172,8 +233,8 @@ export default function CreatePurchaseOrderForm() {
           vendorId={vendor?.value || null}
           rows={rows}
           onChange={setRows}
-          readOnly={false}
-          editMode={false}
+          readOnly={isDropShipmentFlow}
+          editMode={!isDropShipmentFlow}
         />
       </div>
     </div>

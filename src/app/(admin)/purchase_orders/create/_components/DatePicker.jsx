@@ -72,7 +72,6 @@ export default function DatePicker({
     }
   }, [value]);
 
-  // ── helpers ────────────────────────────────────────────────────────────────
   const isPastMonth = (y, m) => {
     if (!disablePast) return false;
     return y < today.getFullYear() || (y === today.getFullYear() && m < today.getMonth());
@@ -102,7 +101,6 @@ export default function DatePicker({
     return false;
   };
 
-  // ── navigation ─────────────────────────────────────────────────────────────
   const prevMonth = () => {
     let m = viewMonth - 1;
     let y = viewYear;
@@ -142,7 +140,6 @@ export default function DatePicker({
     setViewYear(y);
   };
 
-  // ── calendar grid ──────────────────────────────────────────────────────────
   const buildCells = () => {
     const daysInCurrent = getDaysInMonth(viewYear, viewMonth);
     const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
@@ -172,7 +169,6 @@ export default function DatePicker({
     cell.month === value.getMonth() &&
     cell.year === value.getFullYear();
 
-  // Year range: past 5 → future 5, clamped by disablePast / disableFuture
   const startYear = disablePast ? today.getFullYear() : today.getFullYear() - 5;
   const endYear   = disableFuture ? today.getFullYear() : today.getFullYear() + 5;
   const years = [];

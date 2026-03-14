@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, CheckCircle2, AlertCircle, CheckSquare, Square, Minus, Eye } from "lucide-react";
 
-// ─── Portal ───────────────────────────────────────────────────────────────────
 function ModalPortal({ children }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -19,7 +18,6 @@ const formatDate = (d) => {
   } catch { return String(d); }
 };
 
-// ─── View-only Batch Modal ────────────────────────────────────────────────────
 export function ViewBatchModal({ isOpen, onClose, skuName, batches = [] }) {
   if (!isOpen) return null;
   return (
@@ -85,7 +83,6 @@ export function ViewBatchModal({ isOpen, onClose, skuName, batches = [] }) {
   );
 }
 
-// ─── View-only Serial Modal ───────────────────────────────────────────────────
 export function ViewSerialModal({ isOpen, onClose, skuName, serials = [] }) {
   if (!isOpen) return null;
   const half = Math.ceil(serials.length / 2);
@@ -145,7 +142,6 @@ export function ViewSerialModal({ isOpen, onClose, skuName, serials = [] }) {
   );
 }
 
-// ─── Reason Modal ─────────────────────────────────────────────────────────────
 export function ReasonModal({ isOpen, onClose, onSave, existingReason = "", viewOnly = false }) {
   const [reason, setReason] = useState("");
 
@@ -204,8 +200,6 @@ export function ReasonModal({ isOpen, onClose, onSave, existingReason = "", view
   );
 }
 
-// ─── QC Batch Modal ───────────────────────────────────────────────────────────
-// onSave is called when user clicks "Confirm QC" — parent marks the row as confirmed.
 export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], savedQcData = null }) {
   const [rows, setRows] = useState([]);
 
@@ -299,7 +293,6 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
         expiry_date: toDate(r.expiry_date),
       }));
 
-    // onSave triggers parent to mark row as confirmed (yellow → green)
     onSave({
       accepted_batches,
       rejected_batches,
@@ -457,8 +450,6 @@ export function QCBatchModal({ isOpen, onClose, onSave, skuName, batches = [], s
   );
 }
 
-// ─── QC Serial Modal ──────────────────────────────────────────────────────────
-// onSave is called when user clicks "Confirm QC" — parent marks the row as confirmed.
 export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], savedQcData = null }) {
   const [checked, setChecked] = useState(new Set());
 
@@ -498,7 +489,6 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
   const rejectedCount = serials.length - acceptedCount;
 
   const handleSave = () => {
-    // onSave triggers parent to mark row as confirmed (yellow → green)
     onSave({
       accepted_serials: serials.filter((s) => checked.has(s)),
       rejected_serials: serials.filter((s) => !checked.has(s)),
@@ -527,7 +517,7 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
             </button>
           </div>
 
-          {/* SKU + live summary */}
+          {/* SKU and  live summary */}
           <div className="mx-6 mt-4 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SKU</span>
@@ -612,13 +602,9 @@ export function QCSerialModal({ isOpen, onClose, onSave, skuName, serials = [], 
   );
 }
 
-// ─── Read-only QC Batch View Modal ────────────────────────────────────────────
-// Shows per-batch accepted / rejected breakdown. No editing — purely informational.
-// accepted_batches and rejected_batches come directly from the row (API data).
 export function QCBatchViewModal({ isOpen, onClose, skuName, receivedBatches = [], acceptedBatches = [], rejectedBatches = [] }) {
   if (!isOpen) return null;
 
-  // Build a lookup so we can show accepted + rejected qty per batch code
   const acceptedMap = {};
   acceptedBatches.forEach((b) => { acceptedMap[b.batch_code] = Number(b.quantity) || 0; });
   const rejectedMap = {};
@@ -760,8 +746,6 @@ export function QCBatchViewModal({ isOpen, onClose, skuName, receivedBatches = [
   );
 }
 
-// ─── Read-only QC Serial View Modal ──────────────────────────────────────────
-// Shows each serial with its accepted / rejected status. No editing.
 export function QCSerialViewModal({ isOpen, onClose, skuName, receivedSerials = [], acceptedSerials = [], rejectedSerials = [] }) {
   if (!isOpen) return null;
 

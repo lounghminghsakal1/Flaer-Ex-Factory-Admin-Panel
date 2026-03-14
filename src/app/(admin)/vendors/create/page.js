@@ -91,7 +91,6 @@ export default function VendorForm() {
     return res.json();
   }
 
-  // Exposed submit handler — call this from parent or a Save button wherever needed
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
 

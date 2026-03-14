@@ -1,5 +1,3 @@
-// ─── ENUM MAPS ──────────────────────────────────────────────────────────────
-
 export const VENDOR_TYPE_LABEL_TO_VALUE = {
   manufacturer: 1,
   distributor: 2,
@@ -36,7 +34,6 @@ export const TAX_TYPE_VALUE_TO_LABEL = {
   2: "Exclusive",
 };
 
-// ─── NORMALIZE API RESPONSE → FORM STATE ────────────────────────────────────
 
 export function normalizeVendorResponse(data) {
   return {
@@ -62,7 +59,6 @@ export function normalizeVendorResponse(data) {
   };
 }
 
-// ─── GET VENDOR ──────────────────────────────────────────────────────────────
 
 export async function getVendor(vendorId) {
   const res = await fetch(
@@ -74,32 +70,6 @@ export async function getVendor(vendorId) {
   return json.data;
 }
 
-// ─── UPDATE VENDOR ────────────────────────────────────────────────────────────
-
-/**
- * PUT /admin/api/v1/procurement/vendors/:id
- * Payload example:
- * {
- *   "vendor": {
- *     "firm_name": "Sri Lakshmi Steels",
- *     "vendor_type": 1,
- *     "status": 1,
- *     "primary_contact_name": "Ramesh Kumar",
- *     "primary_contact_email": "ramesh@example.com",
- *     "primary_contact_phone": "9876543210",
- *     "pan": "ABCDE1234F",
- *     "gstin": "29ABCDE1234F1Z5",
- *     "tax_exempted": false,
- *     "tax_applied_type": 1,
- *     "address1": "Plot 42, Industrial Area",
- *     "address2": "Phase 2",
- *     "city": "Bengaluru",
- *     "state": "Karnataka",
- *     "pin_code": "560058",
- *     "country": "India"
- *   }
- * }
- */
 export async function updateVendor(vendorId, formData) {
   const payload = {
     vendor: {
