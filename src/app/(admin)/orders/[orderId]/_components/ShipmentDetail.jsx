@@ -61,12 +61,13 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   const [sendingToGetInvoice, setSendingToGetInvoice] = useState(false);
   const [sendingToDispatch, setSendingToDispatch] = useState(false);
   const [delivering, setDelivering] = useState(false);
-  
+
   const [showReturnPanel, setShowReturnPanel] = useState(false);
   const [expandedChildId, setExpandedChildId] = useState(null);
 
   const [cancelShipmentModalOpen, setCancelShipmentModalOpen] = useState(false);
   const [rejection_reason, setRejection_reason] = useState("");
+  const [parentShipment, setParentShipment] = useState(null);
 
   const fetchShipment = async (preserveSelectionTypes = false, shipmentID = shipmentId) => {
     setLoading(true);
@@ -76,6 +77,15 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
       if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load shipment");
       const data = json.data;
       setShipment(data);
+      const isReturn = RETURN_STATUSES.has(data.status);
+      if (isReturn && data.parent_shipment?.id) {
+        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${data.parent_shipment.id}`)
+          .then((r) => r.json())
+          .then((pJson) => {
+            if (pJson.status !== "failure") setParentShipment(pJson.data);
+          })
+          .catch(() => { });
+      }
       setSelectionTypes((prev) => {
         const next = { ...prev };
         (data.line_items ?? []).forEach((li) => {
@@ -177,7 +187,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
     toast.success("Selection type updated.");
   };
 
-  const handleAssignAllocations = async () => {
+  const handleAssignAllocations = async (fromPacking = false) => {
     const lineItems = shipment?.line_items ?? [];
     const unassigned = [];
 
@@ -215,14 +225,14 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           return item;
         }),
       };
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}/allocations/assign_allocations`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/inventory/allocations/assign_shipment_allocations?shipment_id=${shipmentId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Assignment failed");
-      toast.success("Allocations assigned successfully!");
+      if (!fromPacking) toast.success("Allocations assigned successfully!");
       await fetchShipment(true);
     } catch (err) {
       toast.error(err.message);
@@ -234,6 +244,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   const handleProceedToPacking = async () => {
     try {
       setPacking(true);
+      await handleAssignAllocations(true);
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}/pack`;
       const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" } });
       const result = await response.json();
@@ -312,9 +323,9 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
       if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
       toast.success("Shipment cancelled successfully");
       await fetchShipment();
-    } catch(err) {
+    } catch (err) {
       console.log(err);
-      toast.error("Failed to cancel shipment "+err.message); 
+      toast.error("Failed to cancel shipment " + err.message);
     } finally {
       setIsCancelling(false);
     }
@@ -322,8 +333,6 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
 
   const lineItems = shipment?.line_items ?? [];
   const agg = shipment?.aggregates ?? {};
-
-  // True when this shipment IS the return shipment (opened directly, not via the "Return Shipment" button)
   const isReturnShipment = shipment && RETURN_STATUSES.has(shipment.status);
 
   if (loading) {
@@ -336,9 +345,21 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
   }
 
   if (!shipment) return null;
+  // console.log("par",parentShipmentId);
+  // console.log(shipment);
+  // console.log("ship",shipmentId);
 
+  
   // CASE A: This shipment IS a return shipment (status is one of the return statuses).
   if (isReturnShipment) {
+    // if (!parentShipment) {
+    //   return (
+    //     <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-20 flex flex-col items-center gap-3">
+    //       <Loader2 className="w-5 h-5 animate-spin text-primary" />
+    //       <p className="text-xs text-gray-400">Loading shipment details...</p>
+    //     </div>
+    //   );
+    // }
     return (
       <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
         {/* Back button bar */}
@@ -357,11 +378,12 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         </div> */}
 
         <ReturnShipment
-          shipment={null}
-          return_shipment_id={shipment.id}
+          shipment={parentShipment}           //  parent (delivered), not the return shipment
+          return_shipment_id={shipment.id}    //  the return shipment id (154)
           onCancel={onBack}
           onSuccess={() => fetchShipment()}
           backRoute={onBack}
+          fromChild={true}                    //  match accordion behavior exactly
         />
       </div>
     );
@@ -384,7 +406,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           </h2>
         </div>
 
-        <ShipmentTrackerBar currShipment={shipment}  />
+        <ShipmentTrackerBar currShipment={shipment} />
       </div>
 
       {/*  Line Items  */}
@@ -461,7 +483,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           </div>
         )}
 
-       {/* Meta grid */}
+        {/* Meta grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-t border-gray-100 divide-x divide-gray-100">
           <MetaCell label="Shipment Number" value={<span className="font-bold text-gray-800">{shipment.shipment_number}</span>} />
           <MetaCell label="Status" value={<StatusBadge status={shipment.status} />} />
@@ -796,7 +818,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
           expandedChildId={expandedChildId}
           onToggle={(id) => setExpandedChildId((prev) => (prev === id ? null : id))}
           parentShipment={shipment}
-          onRefresh = {() => fetchShipmentForRefresh(shipmentId)}
+          onRefresh={() => fetchShipmentForRefresh(shipmentId)}
         />
       )}
 
@@ -972,7 +994,7 @@ function BatchEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, save
       if (viewMode) return;
       setFetchingBatches(true);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}/allocations/batch_availability?product_sku_id=${skuId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/inventory/allocations/batch_availability?node_id=${shipment?.node?.id}&product_sku_id=${skuId}`);
         const json = await res.json();
         if (json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load batches");
         setAvailableBatches(json.data ?? []);
@@ -1324,7 +1346,7 @@ function SerialEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, sav
       if (viewMode) return;
       setFetchingSerials(true);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}/allocations/serial_availability?product_sku_id=${skuId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/inventory/allocations/serial_availability?node_id=${shipment?.node?.id}&product_sku_id=${skuId}`);
         const json = await res.json();
         if (json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load serials");
         setAvailableSerials(json.data?.map((s) => s.serial_number) ?? []);
@@ -1554,7 +1576,7 @@ function UntrackedEntryModal({ isOpen, onClose, shipmentId, lineItem, totalQty, 
       if (viewMode) return;
       setFetchingUntracked(true);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipmentId}/allocations/untracked_availability?product_sku_id=${skuId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/inventory/allocations/untracked_availability?node_id=${shipment?.node?.id}&product_sku_id=${skuId}`);
         const json = await res.json();
         if (json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to load untracked");
         setAvailableUntracked(json.data ?? []);

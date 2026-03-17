@@ -22,7 +22,8 @@ export default function PurchaseOrderDetailsPage() {
   const [activeTab, setActiveTab] = useState("purchase_order");
   const fromDropShipment = searchParams.get("fromDropShipment") ?? null;
   const orderId = searchParams.get("return-order-id") ?? null;
-  const shipmentId = searchParams.get("return-shipment-id") ?? null;
+  const [shipmentId, setShipmentId] = useState(null);
+  const [shipmentNumber, setShipmentNumber] = useState(null);
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
@@ -44,7 +45,7 @@ export default function PurchaseOrderDetailsPage() {
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}`)
       .then((r) => r.json())
       .then((res) => {
-        if (res.status === "success") setPoData(res.data);
+        if (res.status === "success") {setPoData(res.data); setShipmentId(res.data?.shipment?.id); setShipmentNumber(res?.data?.shipment?.shipment_number)}
         else setError("Failed to load purchase order.");
       })
       .catch(() => setError("Failed to load purchase order."))
@@ -77,7 +78,7 @@ export default function PurchaseOrderDetailsPage() {
 
         {/* Sidebar */}
         <POSidebar currentPoId={poId} />
-\
+
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-gray-50">
 
           <div className="shrink-0 bg-white border-b border-gray-200 px-6">
@@ -115,6 +116,7 @@ export default function PurchaseOrderDetailsPage() {
                 onRefresh={fetchPO}
                 orderId={orderId}
                 shipmentId={shipmentId}
+                shipmentNumber= {shipmentNumber}
               />
             ) : activeTab === "grn" ? (
               <div className="bg-white rounded-xl border border-gray-200 p-2">

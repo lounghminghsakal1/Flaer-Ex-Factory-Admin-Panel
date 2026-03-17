@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import ShipmentDetail from "./ShipmentDetail";
 import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
 import DropShipmentDetails from "./DropShipmentDetails";
+import DropReturnShipment from "./DropReturnShipment";
 
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
@@ -138,21 +139,29 @@ export default function Shipments({ orderId, shipmentIntent }) {
       />
     );
   }
+
   if (view === "drop") {
-    return <CreateDropShipment orderId={orderId} onBack={() => setView("list")} onSuccess={() => setView("list")} />;
+    return (
+      <CreateDropShipment
+        orderId={orderId}
+        onBack={() => setView("list")}
+        onSuccess={() => setView("list")}
+      />
+    );
   }
+
   if (selectedShipmentId) {
-    if (intent === "forward") {
-      return <ShipmentDetail shipmentId={selectedShipmentId} onBack={() => { clearShipmentParams(); setSelectedShipmentId(null); }} />;
-    }
-    if (intent === "drop") {
-      return <DropShipmentDetails shipmentId={selectedShipmentId} onBack={() => {clearShipmentParams(); setSelectedShipmentId(null);}} />;
-    }
-    if (intent === "reverse") {
-      return <ShipmentDetail shipmentId={selectedShipmentId} onBack={() => {clearShipmentParams(); setSelectedShipmentId(null);}} />;
+    const onBack = () => { clearShipmentParams(); setSelectedShipmentId(null); };
+
+    if (intent === "forward" || intent === "reverse_forward") {
+      return <ShipmentDetail shipmentId={selectedShipmentId} onBack={onBack} />;
     }
 
+    if (intent === "drop" || intent === "reverse_drop") {
+      return <DropShipmentDetails shipmentId={selectedShipmentId} orderId={orderId} onBack={onBack} />;
+    }
   }
+
   return <ShipmentsList orderId={orderId} onSelectShipment={setSelectedShipmentId} setIntent={setIntent} />;
 }
 
@@ -185,10 +194,11 @@ function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
 
     let intent = "forward";
     if (shipmentType === "drop_shipment") intent = "drop";
-    if (shipmentType === "reverse_shipment") intent = "reverse";
     if (shipmentType === "forward_shipment") intent = "forward";
+    if (shipmentType === "reverse_shipment") intent = "reverse_forward";
+    if (shipmentType === "drop_return_shipment") intent = "reverse_drop";
 
-    params.set("tab", "shipments");   
+    params.set("tab", "shipments");
     params.set("shipment-id", id);
     params.set("shipment-intent", intent);
 
@@ -220,7 +230,7 @@ function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              {["Shipment No.", "Shipment Type", "Final Amt.", "Invoice Link", "Status"].map((col) => (
+              {["Shipment No.", "Shipment Type", "Discount Amt.", "Final Amt.", "Status"].map((col) => (
                 <th key={col} className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wide whitespace-nowrap">
                   {col}
                 </th>
@@ -231,30 +241,19 @@ function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
             {filtered.map((s) => (
               <tr key={s.id} onClick={() => {
                 if (setIntent) {
-                  if (s.shipment_type === "forward_shipment") {
-                    setIntent("forward")
-                  }
-                  if (s.shipment_type === "reverse_shipment") {
-                    setIntent("reverse");
-                  }
-                  if (s.shipment_type === "drop_shipment") {
-                    setIntent("drop")
-                  }
+                  if (s.shipment_type === "forward_shipment") setIntent("forward");
+                  if (s.shipment_type === "drop_shipment") setIntent("drop");
+                  if (s.shipment_type === "reverse_shipment") setIntent("reverse_forward");
+                  if (s.shipment_type === "drop_return_shipment") setIntent("reverse_drop");
                 }
                 onSelectShipment(s.id);
-                pushIdToUrl(s.id, s.shipment_type)
-              }} className="hover:bg-gray-100 transition-colors cursor-pointer">
+                pushIdToUrl(s.id, s.shipment_type);
+              }}
+                className="hover:bg-gray-100 transition-colors cursor-pointer">
                 <td className="px-4 py-3 font-medium text-gray-800">{s.shipment_number ?? s.id ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-700">{formatLabel(s.shipment_type)}</td>
-                <td className="px-4 py-3 text-gray-700 tabular-nums">{fmt(s.aggregates?.final_amount)}</td>
-                <td className="px-4 py-3">
-                  {s.invoice_link ? (
-                    <a href={s.invoice_link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 text-primary font-semibold hover:underline">
-                      Link <ExternalLink className="w-3 h-3" />
-                    </a>
-                  ) : <span className="text-gray-400">—</span>}
-                </td>
+                <td className="px-4 py-3 text-gray-700 tabular-nums">{fmt(s?.aggregates?.discount_amount)}</td>
+                <td className="px-4 py-3 text-gray-700 tabular-nums font-semibold">{fmt(s.aggregates?.final_amount)}</td>
                 <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
               </tr>
             ))}
@@ -344,7 +343,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
       });
       const json = await res.json();
       if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to create shipment");
-      toast.success("Shipment created successfully!");
+      toast.success("Forward Shipment created successfully!");
       onSuccess();
     } catch (err) {
       toast.error(err.message);
@@ -355,7 +354,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
 
   const cols = [
     { label: "SKU Name", cls: "" },   // auto / fills remaining
-    { label: "Quantity", cls: "w-36" },   
+    { label: "Quantity", cls: "w-36" },
     { label: "MRP", cls: "w-24" },
     { label: "Selling Price", cls: "w-28" },
     { label: "Discount Amt.", cls: "w-28" },
@@ -446,6 +445,11 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span className="text-xs font-medium text-gray-800 whitespace-normal leading-snug">{opt.sku_name}</span>
                                 <span className="text-[10px] text-gray-400 font-mono">{opt.sku_code}</span>
+                                <span className="flex gap-2 text-[10px] text-gray-500 font-mono">
+                                  <span className="font-medium">Ordered: {opt.ordered_quantity}</span>
+                                  <span className="font-medium">Shipped: {opt.shipped_quantity}</span>
+                                  <span className="font-medium">Remaining: {opt.remaining_quantity}</span>
+                                </span>
                               </div>
                             )}
                             renderSelected={(opt) => (
@@ -472,7 +476,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                           </div>
                         )}
                       </td>
-                      
+
                       <td className="px-3 py-2.5">
                         <div className="flex flex-col gap-1">
                           <input
@@ -496,6 +500,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
                           {item && (
                             <div className="flex flex-col text-[11px] text-gray-500 leading-snug px-0.5">
                               <span>Ordered: <b className="text-gray-700">{item.ordered_quantity}</b></span>
+                              <span>Shipped: <b className="text-gray-700">{item.shipped_quantity}</b></span>
                               <span>Remaining: <b className="text-gray-700">{item.remaining_quantity}</b></span>
                             </div>
                           )}
@@ -678,10 +683,10 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
       if (!res.ok || json.status === "failure") throw new Error(json?.errors?.[0] ?? "Failed to create shipment");
       toast.success("Drop Shipment created successfully!");
       onSuccess();
-      sessionDataForPo.shipment.drop_shipment_id = json?.data?.id;
-      sessionStorage.setItem("dropShipmentData", JSON.stringify(sessionDataForPo));
-      params.set("fromDropShipment", "true");
-      router.push(`/purchase_orders/create?${params.toString()}`);
+      // sessionDataForPo.shipment.drop_shipment_id = json?.data?.id;
+      // sessionStorage.setItem("dropShipmentData", JSON.stringify(sessionDataForPo));
+      // params.set("fromDropShipment", "true");
+      // router.push(`/purchase_orders/create?${params.toString()}`);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -691,7 +696,7 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
 
   const cols = [
     { label: "SKU Name", cls: "" },   // auto / fills remaining
-    { label: "Quantity", cls: "w-36" },   
+    { label: "Quantity", cls: "w-36" },
     { label: "MRP", cls: "w-24" },
     { label: "Selling Price", cls: "w-28" },
     { label: "Discount Amt.", cls: "w-28" },
@@ -784,7 +789,12 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                             renderOption={(opt) => (
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span className="text-xs font-medium text-gray-800 whitespace-normal leading-snug">{opt.sku_name}</span>
-                                <span className="text-[10px] text-gray-400 font-mono">{opt.sku_code}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">{opt.sku_code} </span>
+                                <span className="flex gap-2 text-[10px] text-gray-500 font-mono">
+                                  <span className="font-medium">Ordered: {opt.ordered_quantity}</span>
+                                  <span className="font-medium">Shipped: {opt.shipped_quantity}</span>
+                                  <span className="font-medium">Remaining: {opt.remaining_quantity}</span>
+                                </span>
                               </div>
                             )}
                             renderSelected={(opt) => (
@@ -834,6 +844,7 @@ function CreateDropShipment({ orderId, onBack, onSuccess }) {
                           {item && (
                             <div className="flex flex-col text-[11px] text-gray-500 leading-snug px-0.5">
                               <span>Ordered: <b className="text-gray-700">{item.ordered_quantity}</b></span>
+                              <span>Shipped: <b className="text-gray-700">{item.shipped_quantity}</b></span>
                               <span>Remaining: <b className="text-gray-700">{item.remaining_quantity}</b></span>
                             </div>
                           )}

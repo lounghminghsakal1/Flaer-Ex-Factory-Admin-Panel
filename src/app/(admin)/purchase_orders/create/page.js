@@ -45,6 +45,7 @@ export default function CreatePurchaseOrderForm() {
   const fromDropShipment = searchParams.get("fromDropShipment");
 
   const isDropShipmentFlow = fromDropShipment === "true";
+  const [shipmentNumber, setShipmentNumber] = useState(null);
 
   const isFormValid = useMemo(
     () => checkFormValid(vendor, deliveryDate, rows),
@@ -84,6 +85,7 @@ export default function CreatePurchaseOrderForm() {
     }
     setOrderId(dropShipmentData.shipment.order_id);
     setShipmentId(dropShipmentData.shipment.drop_shipment_id);
+    setShipmentNumber(dropShipmentData.shipment.shipment_number);
 
     sessionStorage.removeItem("dropShipmentData");
 
@@ -129,6 +131,7 @@ export default function CreatePurchaseOrderForm() {
             total_units: parseInt(r.totalUnits, 10),
             unit_price: parseFloat(r.unitPrice),
           })),
+          ...(isDropShipmentFlow ? {shipment_id : shipmentId} : {})
         },
       };
       const res = await fetch(
@@ -221,7 +224,7 @@ export default function CreatePurchaseOrderForm() {
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mt-4 bg-purple-700/10 border border-primary/20">
             <Ship className="w-4 h-4 text-purple-700 shrink-0" />
             <span className="text-sm font-semibold text-purple-700">Drop Shipment</span>
-            <span className="text-[12px] font-mono font-bold text-purple-700/70 bg-purple-700/10 px-1.5 py-0.5 rounded-md">{shipmentId}</span>
+            <span className="text-[12px] font-mono font-bold text-purple-700/70 bg-purple-700/10 px-1.5 py-0.5 rounded-md">{shipmentNumber}</span>
           </span>
         )}
 

@@ -8,20 +8,20 @@ import Invoices from "./_components/Invoices";
 
 const TABS = [
   { key: "order-details", label: "Order Details" },
-  { key: "shipments",     label: "Shipments"     },
-  { key: "invoices",      label: "Invoices"       },
+  { key: "shipments", label: "Shipments" },
+  { key: "invoices", label: "Invoices" },
 ];
 
 export default function OrderDetailsPage() {
-  const params       = useParams();
-  const orderId      = params.orderId;
+  const params = useParams();
+  const orderId = params.orderId;
   const searchParams = useSearchParams();
-  const router       = useRouter();
-  const pathName     = usePathname();
+  const router = useRouter();
+  const pathName = usePathname();
 
-  const [activeTab, setActiveTab]         = useState("order-details");
-  const [shipmentIntent, setShipmentIntent] = useState(null); 
-  const [orderData, setOrderData]         = useState(null);
+  const [activeTab, setActiveTab] = useState("order-details");
+  const [shipmentIntent, setShipmentIntent] = useState(null);
+  const [orderData, setOrderData] = useState(null);
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
@@ -39,6 +39,8 @@ export default function OrderDetailsPage() {
   const handleTabChange = (tabKey, intent) => {
     setShipmentIntent(intent ?? null);
     const p = new URLSearchParams(searchParams.toString());
+    p.delete("shipment-id");
+    p.delete("shipment-intent");
     p.set("tab", tabKey);
     router.push(`${pathName}?${p.toString()}`);
     setActiveTab(tabKey);
@@ -48,6 +50,15 @@ export default function OrderDetailsPage() {
     val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
 
   const agg = orderData?.aggregates ?? {};
+
+  // const clearShipmentParams = () => {
+  //   const params = new URLSearchParams(searchParams.toString());
+
+  //   params.delete("shipment-id");
+  //   params.delete("shipment-intent");
+
+  //   router.push(`${pathName}?${params.toString()}`);
+  // };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -92,7 +103,7 @@ export default function OrderDetailsPage() {
             <OrderDetails orderId={orderId} onTabChange={handleTabChange} />
           )}
           {activeTab === "shipments" && <Shipments orderId={orderId} shipmentIntent={shipmentIntent} />}
-          {activeTab === "invoices"  && <Invoices  orderId={orderId} />}
+          {activeTab === "invoices" && <Invoices orderId={orderId} />}
         </main>
 
         <aside className="w-72 shrink-0 flex flex-col gap-3">
@@ -110,8 +121,8 @@ export default function OrderDetailsPage() {
                       ${orderData.status === "confirmed" || orderData.status === "placed"
                         ? "bg-green-100 text-green-700"
                         : orderData.status === "cancelled"
-                        ? "bg-red-100 text-red-600"
-                        : "bg-gray-100 text-gray-600"}`}>
+                          ? "bg-red-100 text-red-600"
+                          : "bg-gray-100 text-gray-600"}`}>
                       {orderData.status}
                     </span>
                   ) : "—"
@@ -122,14 +133,14 @@ export default function OrderDetailsPage() {
                 value={
                   orderData?.confirmed_at
                     ? new Date(orderData.confirmed_at).toLocaleString("en-IN", {
-                        day: "2-digit", month: "short", year: "numeric",
-                        hour: "2-digit", minute: "2-digit",
-                      })
+                      day: "2-digit", month: "short", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })
                     : "—"
                 }
               />
               <SidebarRow label="Expected Delivery" value={orderData?.expected_delivery_date ?? "—"} />
-              <SidebarRow label="Order Created By"   value={orderData?.created_by ?? "—"} />
+              <SidebarRow label="Order Created By" value={orderData?.created_by ?? "—"} />
               {orderData?.billing_address && (
                 <div className="pt-2 mt-1 border-t border-gray-100">
                   <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Billing Address</p>
@@ -149,9 +160,9 @@ export default function OrderDetailsPage() {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
             <p className="text-xs font-bold text-gray-700 mb-3">Customer</p>
             <div className="flex flex-col gap-2">
-              <SidebarRow label="Name"      value={orderData?.customer?.name ?? "—"} />
+              <SidebarRow label="Name" value={orderData?.customer?.name ?? "—"} />
               <SidebarRow label="Customer ID" value={orderData?.customer?.member_id ?? "—"} />
-              <SidebarRow label="GSTIN"     value={orderData?.customer?.gstin || "—"} />
+              <SidebarRow label="GSTIN" value={orderData?.customer?.gstin || "—"} />
             </div>
           </div>
 
@@ -159,22 +170,22 @@ export default function OrderDetailsPage() {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
             <p className="text-xs font-bold text-gray-700 mb-3">Order Summary</p>
             <div className="flex flex-col gap-2">
-              <SidebarRow label="Item Total"     value={fmt(agg.item_total)} />
+              <SidebarRow label="Item Total" value={fmt(agg.item_total)} />
               <SidebarRow
                 label="Discount"
                 value={<span className="text-[11px] font-medium text-red-500">-{fmt(agg.discount_amount)}</span>}
               />
               <SidebarRow label="Taxable Amount" value={fmt(agg.taxable_amount)} />
-              <SidebarRow label="CGST"           value={fmt(agg.cgst_amount)} />
-              <SidebarRow label="SGST"           value={fmt(agg.sgst_amount)} />
+              <SidebarRow label="CGST" value={fmt(agg.cgst_amount)} />
+              <SidebarRow label="SGST" value={fmt(agg.sgst_amount)} />
               {parseFloat(agg.igst_amount) > 0 && (
-                <SidebarRow label="IGST"         value={fmt(agg.igst_amount)} />
+                <SidebarRow label="IGST" value={fmt(agg.igst_amount)} />
               )}
               {parseFloat(agg.delivery_partner_fee) > 0 && (
                 <SidebarRow label="Delivery Fee" value={fmt(agg.delivery_partner_fee)} />
               )}
               {parseFloat(agg.labour_fee) > 0 && (
-                <SidebarRow label="Labour Fee"   value={fmt(agg.labour_fee)} />
+                <SidebarRow label="Labour Fee" value={fmt(agg.labour_fee)} />
               )}
               <SidebarRow
                 label="Total Savings"

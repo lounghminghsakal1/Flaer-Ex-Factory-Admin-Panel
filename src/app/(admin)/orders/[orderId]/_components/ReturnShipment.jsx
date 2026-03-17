@@ -7,30 +7,31 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader2,
+  MoreVertical,
+  Pencil,
   Plus,
   RotateCcw,
   Search,
   Trash2,
   X,
   RefreshCcw,
-  ToggleLeft,
-  ToggleRight,
   ArrowLeft
 } from "lucide-react";
 import { toast } from "react-toastify";
+import ShipmentCancelModal from "./ShipmentCancelModal";
 
 const fmt = (val) =>
   val != null && !isNaN(val) ? `₹${parseFloat(val).toLocaleString()}` : "—";
 
-export default function ReturnShipment({ shipment, return_shipment_id, onCancel, onSuccess, fromChild = false, setShowReturnPanel = null, backRoute = null }) {
+export default function ReturnShipment({ shipment, return_shipment_id, onCancel, onSuccess, fromChild = false, setShowReturnPanel = null, backRoute = null, }) {
 
   const [step, setStep] = useState(return_shipment_id ? 2 : 1);
 
-  const [returnReason, setReturnReason] = useState("");
   const [lineItems, setLineItems] = useState([]);
   const [initiating, setInitiating] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const [returnReason, setReturnReason] = useState("");
   const [returnShipment, setReturnShipment] = useState(null);
   const [loadingReturn, setLoadingReturn] = useState(false);
   const [inventoryRequired, setInventoryRequired] = useState(true);
@@ -47,6 +48,22 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
   const [batchAllocations, setBatchAllocations] = useState([]);
   const [serialAllocations, setSerialAllocations] = useState([]);
   const [untrackedAllocations, setUntrackedAllocations] = useState([]);
+  const [cancellingReturnShipment, setCancellingReturnShipment] = useState(false);
+  const [cancelShipmentModalOpen, setCancelShipmentModalOpen] = useState(false);
+  const [rejection_reason, setRejection_reason] = useState("");
+
+  // Kebab menu state
+  const [openKebab, setOpenKebab] = useState(false);
+  const kebabRef = useRef(null);
+
+  // Close kebab on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (kebabRef.current && !kebabRef.current.contains(e.target)) setOpenKebab(false);
+    };
+    if (openKebab) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openKebab]);
 
   useEffect(() => {
     if (return_shipment_id) {
@@ -121,8 +138,38 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
     );
   };
 
+  // Pre-fill step 1 from the existing return shipment so user can edit and re-submit
+  const handleEditReturn = () => {
+    if (!returnShipment) return;
+    setOpenKebab(false);
+
+    const rebuilt = (returnShipment.line_items ?? []).map((rli) => {
+      const parentLi = (shipment?.line_items ?? []).find(
+        (pli) => pli.product_sku?.id === rli.product_sku?.id
+      );
+      return {
+        tempId: Date.now() + Math.random(),
+        _skuId: parentLi?.id ?? null,
+        sku_name: rli.product_sku?.sku_name,
+        sku_code: rli.product_sku?.sku_code,
+        mrp: rli.mrp,
+        selling_price: rli.selling_price,
+        final_amount: rli.final_amount,
+        max_qty: parentLi?.quantity ?? rli.quantity,
+        tracking_type: rli.product_sku?.tracking_type,
+        order_line_item_id: parentLi?.order_line_item?.id ?? null,
+        shipment_line_item_id: parentLi?.id ?? null,
+        quantity: rli.quantity,
+      };
+    });
+
+    setLineItems(rebuilt);
+    setReturnReason(returnShipment.return_reason ?? "");
+    setErrors({});
+    setStep(1);
+  };
+
   const validate = () => {
-    console.log(lineItems);
     const errs = {};
     if (!returnReason || returnReason.trim().length < 6)
       errs.returnReason = "Return reason must be at least 6 characters.";
@@ -147,6 +194,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
           shipment_line_item_id: li.shipment_line_item_id,
           quantity: Number(li.quantity),
         })),
+        ...(returnShipment ? { return_shipment_id: returnShipment.id } : {})
       };
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipment?.id}/initiate_return`,
@@ -155,7 +203,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
       const json = await res.json();
       if (!res.ok || json.status === "failure")
         throw new Error(json?.errors?.[0] ?? "Failed to initiate return");
-      toast.success("Return initiated!");
+      toast.success(returnShipment ? "Return updated!" : "Return initiated!");
       fetchReturnShipment(json?.data?.id);
       populateStep2(json.data);
       setStep(2);
@@ -268,7 +316,6 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
       if (hasMetaTracking) {
         populateSelectionsFromMeta(lineItems);
       } else {
-        // meta is empty so fetch allocation info from dedicated endpoint
         try {
           const allocRes = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${id}/return_allocation_info`
@@ -307,19 +354,13 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
           if (trackingType === "batch") {
             item.batch = (batchSelections[li.id] ?? [])
               .filter((b) => Number(b.quantity) > 0)
-              .map((b) => ({
-                batch_code: b.batch_code,
-                quantity: Number(b.quantity),
-              }));
+              .map((b) => ({ batch_code: b.batch_code, quantity: Number(b.quantity) }));
           } else if (trackingType === "serial") {
             item.serial = [...(serialSelections[li.id] ?? new Set())];
           } else {
             item.untracked = (untrackedSelections[li.id] ?? [])
               .filter((u) => Number(u.quantity) > 0)
-              .map((u) => ({
-                untracked_number: u.untracked_number,
-                quantity: Number(u.quantity),
-              }));
+              .map((u) => ({ untracked_number: u.untracked_number, quantity: Number(u.quantity) }));
           }
         }
         return item;
@@ -339,7 +380,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
       if (!res.ok || json.status === "failure")
         throw new Error(json?.errors?.[0] ?? "Failed to complete return");
       toast.success("Return completed successfully!");
-      await fetchReturnShipment(returnShipment?.id); //for refresh 
+      await fetchReturnShipment(returnShipment?.id);
       if (setShowReturnPanel) setShowReturnPanel(false);
       onSuccess?.();
     } catch (err) {
@@ -370,52 +411,113 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
     return (returnShipment?.line_items ?? []).every((li) => getTrackingStatus(li).complete);
   };
 
-  return (
-    <div className={`${fromChild ? "bg-gray-50" : "bg-white"}  rounded-xl border border-gray-100 shadow-sm overflow-visible`}>
+  const handleCancelReturnShipment = async () => {
+    try {
+      setCancellingReturnShipment(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${returnShipment.id}/cancel?cancellation_reason=${rejection_reason}`;
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" } });
+      const result = await res.json();
+      if (!res.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
+      toast.success("Return shipment cancelled successfully");
+      await fetchReturnShipment(returnShipment?.id);
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to cancel return shipment ", err.message);
+    } finally {
+      setCancellingReturnShipment(false);
+    }
+  }
 
-      {/*      Header  */}
+  return (
+    <div className={`${fromChild ? "bg-gray-50" : "bg-white"} rounded-xl border border-gray-100 shadow-sm overflow-visible`}>
+
+      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
-          {!fromChild && (
+          {/* Show back button when backRoute is provided (standalone page) */}
+          {backRoute && (
             <button
-              onClick={() => {
-                if (backRoute) {
-                  backRoute();
-                }
-              }}
+              onClick={() => backRoute?.()}
               className="flex items-center justify-center w-7 h-7 rounded-full border-2 border-primary text-primary hover:bg-primary/5 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
             </button>
           )}
-
           <h2 className="flex-1 text-sm font-bold text-primary">
             Return Shipment
           </h2>
         </div>
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step === 1
-              ? "bg-primary border-primary text-white"
-              : "bg-green-500 border-green-500 text-white"
-              }`}
-          >
-            {step === 1 ? "1" : <Check className="w-3.5 h-3.5" />}
-          </div>
-          <div className={`w-16 h-0.5 ${step >= 2 ? "bg-primary" : "bg-gray-300"}`} />
-          <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step >= 2
-              ? "bg-primary border-primary text-white"
-              : "bg-white border-gray-300 text-gray-400"
-              }`}
-          >
-            2
+        <div className="flex items-center gap-3">
+          {/* Kebab — only on step 2 when not yet completed and parent shipment is available */}
+          {step === 2 &&
+            returnShipment?.status !== "return_completed" &&
+            returnShipment?.status !== "cancelled" && (
+              <div className="relative" ref={kebabRef}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setOpenKebab((p) => !p); }}
+                  className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {openKebab && (
+                  <div
+                    className="absolute right-0 top-full mt-1 z-50 min-w-[140px] bg-white rounded-md shadow-lg border border-gray-100 p-1 overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+
+                    <div
+                      role="button"
+                      onClick={handleEditReturn}
+                      className="flex items-center gap-2.5 px-2.5 rounded-md py-2 text-xs text-gray-700 hover:bg-blue-50 cursor-pointer transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit Return
+                    </div>
+                    {shipment?.status !== "return_completed" && (
+                      <div
+                        role="button"
+                        onClick={() => setCancelShipmentModalOpen(true)}
+                        className="flex items-center gap-2.5 px-2.5 rounded-md py-2 text-xs text-gray-700 hover:bg-blue-50 cursor-pointer transition-colors"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Cancel Shipment
+                      </div>
+                    )}
+
+                    {cancelShipmentModalOpen && (
+                      <ShipmentCancelModal isOpen={cancelShipmentModalOpen} onClose={() => setCancelShipmentModalOpen(false)} onCancel={handleCancelReturnShipment} rejection_reason={rejection_reason} setRejection_reason={setRejection_reason} />
+                    )}
+
+                  </div>
+                )}
+              </div>
+            )}
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step === 1
+                ? "bg-primary border-primary text-white"
+                : "bg-green-500 border-green-500 text-white"
+                }`}
+            >
+              {step === 1 ? "1" : <Check className="w-3.5 h-3.5" />}
+            </div>
+            <div className={`w-16 h-0.5 ${step >= 2 ? "bg-primary" : "bg-gray-300"}`} />
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step >= 2
+                ? "bg-primary border-primary text-white"
+                : "bg-white border-gray-300 text-gray-400"
+                }`}
+            >
+              2
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Step 1 – Initiate / Edit                                         */}
       {step === 1 && (
         <>
           {/* Return Reason */}
@@ -510,9 +612,8 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                           type="number"
                           max={row.max_qty ?? undefined}
                           value={row.quantity ?? ""}
-                          onChange={(e) => {
+                          onChange={(e) =>
                             updateLineItem(row.tempId, "quantity", e.target.value === "" ? "" : parseInt(e.target.value))
-                          }
                           }
                           onWheel={(e) => e.target.blur()}
                           className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center"
@@ -575,7 +676,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
           {/* Action Buttons */}
           <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50">
             <button
-              onClick={handleInitiateReturn}
+              onClick={() => { handleInitiateReturn() }}
               disabled={initiating}
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors cursor-pointer shadow-md"
             >
@@ -584,18 +685,32 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
               ) : (
                 <RotateCcw className="w-3.5 h-3.5" />
               )}
-              {initiating ? "Initiating..." : "1. Initiate Return"}
+              {initiating ? "Initiating..." : returnShipment ? "Update Return" : "1. Initiate Return"}
             </button>
-            <button
-              onClick={onCancel}
-              className="px-5 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
+            {/* Show cancel only when this is a fresh initiation (no existing return yet) */}
+            {!returnShipment && (
+              <button
+                onClick={() => handleCancelReturnShipment()}
+                className="px-5 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
+            {/* When editing an existing return, allow going back to step 2 */}
+            {returnShipment && (
+              <button
+                onClick={() => setStep(2)}
+                className="px-5 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Go Back
+              </button>
+            )}
           </div>
         </>
       )}
 
+
+      {/* Step 2 – Complete                                                */}
       {step === 2 && (
         <>
           {loadingReturn ? (
@@ -632,13 +747,13 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                   label="Inventory Required"
                   value={inventoryRequired}
                   onChange={returnShipment?.status === "return_completed" ? undefined : setInventoryRequired}
-                  readOnly={returnShipment?.status === "return_completed"}
+                  readOnly={returnShipment?.status === "return_completed" || returnShipment?.status === "cancelled"}
                 />
                 <ToggleField
                   label="Create Replacement"
                   value={createReplacement}
                   onChange={returnShipment?.status === "return_completed" ? undefined : setCreateReplacement}
-                  readOnly={returnShipment?.status === "return_completed"}
+                  readOnly={returnShipment?.status === "return_completed" || returnShipment?.status === "cancelled"}
                 />
               </div>
 
@@ -732,6 +847,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                                     max={li.quantity}
                                     value={qty}
                                     onChange={(e) => {
+                                      if (returnShipment?.status === "cancelled") return;
                                       const v = Math.min(
                                         Math.max(1, parseInt(e.target.value) || 1),
                                         li.quantity
@@ -745,7 +861,8 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                                     className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center"
                                   />
                                 )}
-                                <button
+                                {returnShipment?.status !== "cancelled" && (
+                                   <button
                                   onClick={() => {
                                     if (trackingType === "batch") setBatchModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
                                     else if (trackingType === "serial") setSerialModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
@@ -762,6 +879,8 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                                     <><Plus className="w-2.5 h-2.5" /> Assign {trackingType}</>
                                   )}
                                 </button>
+                                )}
+                               
                               </div>
                             </td>
                           )}
@@ -772,28 +891,23 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                 </table>
               </div>
 
-              {returnShipment?.status !== "return_completed" && (
-                <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50">
-                  <button
-                    onClick={handleCompleteReturn}
-                    disabled={completing || !isCompleteReturnValid()}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors cursor-pointer shadow-md"
-                  >
-                    {completing ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <RefreshCcw className="w-3.5 h-3.5" />
-                    )}
-                    {completing ? "Completing…" : "Complete Return"}
-                  </button>
-                  <button
-                    onClick={onCancel}
-                    className="px-5 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+              {returnShipment?.status !== "return_completed" &&
+                returnShipment?.status !== "cancelled" && (
+                  <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50">
+                    <button
+                      onClick={handleCompleteReturn}
+                      disabled={completing || !isCompleteReturnValid()}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors cursor-pointer shadow-md"
+                    >
+                      {completing ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCcw className="w-3.5 h-3.5" />
+                      )}
+                      {completing ? "Completing…" : "Complete Return"}
+                    </button>
+                  </div>
+                )}
             </>
           )}
         </>
@@ -805,11 +919,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
           onClose={() => setBatchModal(null)}
           lineItem={batchModal.li}
           returningQty={batchModal.qty}
-          savedData={
-            batchModal.isConfirmed
-              ? batchSelections[batchModal.li.id] ?? []
-              : []
-          }
+          savedData={batchModal.isConfirmed ? batchSelections[batchModal.li.id] ?? [] : []}
           readOnly={batchModal.readOnly ?? false}
           shipment={shipment}
           onSave={(rows) => {
@@ -826,11 +936,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
           onClose={() => setSerialModal(null)}
           lineItem={serialModal.li}
           returningQty={serialModal.qty}
-          savedData={
-            serialModal.isConfirmed
-              ? serialSelections[serialModal.li.id] ?? new Set()
-              : new Set()
-          }
+          savedData={serialModal.isConfirmed ? serialSelections[serialModal.li.id] ?? new Set() : new Set()}
           readOnly={serialModal.readOnly ?? false}
           shipment={shipment}
           onSave={(set) => {
@@ -847,11 +953,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
           onClose={() => setUntrackedModal(null)}
           lineItem={untrackedModal.li}
           returningQty={untrackedModal.qty}
-          savedData={
-            untrackedModal.isConfirmed
-              ? untrackedSelections[untrackedModal.li.id] ?? []
-              : []
-          }
+          savedData={untrackedModal.isConfirmed ? untrackedSelections[untrackedModal.li.id] ?? [] : []}
           readOnly={untrackedModal.readOnly ?? false}
           shipment={shipment}
           onSave={(rows) => {
@@ -888,47 +990,22 @@ function ToggleField({ label, value, onChange, readOnly = false }) {
 }
 
 function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, onSave, readOnly = false, shipment, batchAllocations }) {
-
   const getSourceBatches = () => {
     const fromMeta = lineItem?.meta?.allocated_batches ?? [];
     if (fromMeta.length) return fromMeta;
-
-    const fromAlloc = (batchAllocations ?? []).find(
-      (a) => a.shipment_line_item_id === lineItem?.id
-    );
-
-    if (fromAlloc?.allocated_batches?.length) {
-      return fromAlloc.allocated_batches;
-    }
-
-    const fwdItem = (shipment?.line_items ?? []).find(
-      (li) => li.product_sku?.id === lineItem?.product_sku?.id
-    );
-
+    const fromAlloc = (batchAllocations ?? []).find((a) => a.shipment_line_item_id === lineItem?.id);
+    if (fromAlloc?.allocated_batches?.length) return fromAlloc.allocated_batches;
+    const fwdItem = (shipment?.line_items ?? []).find((li) => li.product_sku?.id === lineItem?.product_sku?.id);
     return fwdItem?.meta?.allocated_batches ?? [];
   };
 
   const sourceBatches = getSourceBatches();
 
   const [rows, setRows] = useState(() => {
-    // If savedData has rows, reuse them with their saved quantities intact
-    // so the user sees what they previously entered when re-opening to edit
     if (savedData?.length) {
-      return savedData.map((sd) => ({
-        id: sd.id ?? Math.random(),
-        batch_code: sd.batch_code,
-        // Always restore the saved quantity — user can edit from where they left off
-        quantity: sd.quantity,
-        max: sd.max ?? sd.quantity,
-      }));
+      return savedData.map((sd) => ({ id: sd.id ?? Math.random(), batch_code: sd.batch_code, quantity: sd.quantity, max: sd.max ?? sd.quantity }));
     }
-    // No saved data — build from source batches with empty quantity
-    return sourceBatches.map((b) => ({
-      id: Math.random(),
-      batch_code: b.batch_code,
-      quantity: "",
-      max: b.quantity,
-    }));
+    return sourceBatches.map((b) => ({ id: Math.random(), batch_code: b.batch_code, quantity: "", max: b.quantity }));
   });
 
   const totalEntered = rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
@@ -936,18 +1013,10 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
 
   useEffect(() => {
     const source = getSourceBatches();
-
     if (savedData?.length) {
       setRows(savedData);
     } else if (source?.length) {
-      setRows(
-        source.map((b) => ({
-          id: Math.random(),
-          batch_code: b.batch_code,
-          quantity: "",
-          max: b.quantity
-        }))
-      );
+      setRows(source.map((b) => ({ id: Math.random(), batch_code: b.batch_code, quantity: "", max: b.quantity })));
     }
   }, [batchAllocations, lineItem, savedData]);
 
@@ -960,9 +1029,7 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
       setRows((prev) => prev.map((r) => (r.id === id ? { ...r, quantity: 0 } : r)));
       return;
     }
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, quantity: isNaN(parsed) || parsed < 0 ? "" : parsed } : r))
-    );
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, quantity: isNaN(parsed) || parsed < 0 ? "" : parsed } : r)));
   };
 
   if (!isOpen) return null;
@@ -972,12 +1039,7 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl">
         <ModalHeader title={readOnly ? "Batch Allocation Details" : "Assign Return Batches"} onClose={onClose} />
         <div className="px-6 py-3">
-          <SkuSummaryBar
-            skuName={lineItem?.product_sku?.sku_name}
-            label="Return Qty"
-            value={returningQty}
-            entered={totalEntered}
-          />
+          <SkuSummaryBar skuName={lineItem?.product_sku?.sku_name} label="Return Qty" value={returningQty} entered={totalEntered} />
         </div>
         <div className="px-6 pb-4 max-h-72 overflow-y-auto">
           <table className="w-full text-xs">
@@ -985,7 +1047,7 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">#</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">Batch Code</th>
-                {!readOnly && (<th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">Max Qty</th>)}
+                {!readOnly && <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">Max Qty</th>}
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase w-24">
                   {readOnly ? "Qty" : "Return Qty"}
                 </th>
@@ -993,36 +1055,22 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
             </thead>
             <tbody className="divide-y divide-gray-50">
               {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-xs text-gray-400">
-                    No batches available
-                  </td>
-                </tr>
+                <tr><td colSpan={4} className="px-3 py-8 text-center text-xs text-gray-400">No batches available</td></tr>
               ) : (
                 rows.map((r, i) => (
                   <tr key={r.id} className="align-middle">
                     <td className="px-3 py-2.5 text-gray-400">{i + 1}</td>
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-lg text-xs font-mono font-semibold text-blue-700">
-                        <CheckCircle2 className="w-3 h-3 text-blue-500" />
-                        {r.batch_code}
+                        <CheckCircle2 className="w-3 h-3 text-blue-500" />{r.batch_code}
                       </span>
                     </td>
-                    {!readOnly && (<td className="px-3 py-2.5 text-xs text-gray-500">{r.max}</td>)}
+                    {!readOnly && <td className="px-3 py-2.5 text-xs text-gray-500">{r.max}</td>}
                     <td className="px-3 py-2.5">
                       {readOnly ? (
                         <span className="text-xs font-semibold text-gray-800">{r.quantity}</span>
                       ) : (
-                        <input
-                          type="number"
-                          min={0}
-                          max={r.max}
-                          value={r.quantity}
-                          onChange={(e) => updateQty(r.id, e.target.value)}
-                          placeholder="Qty"
-                          onWheel={(e) => e.target.blur()}
-                          className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
+                        <input type="number" min={0} max={r.max} value={r.quantity} onChange={(e) => updateQty(r.id, e.target.value)} placeholder="Qty" onWheel={(e) => e.target.blur()} className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       )}
                     </td>
                   </tr>
@@ -1032,35 +1080,14 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
           </table>
         </div>
         {!readOnly && totalEntered !== Number(returningQty) && rows.length > 0 && (
-          <p className="px-6 text-[11px] text-red-500 pb-2">
-            Total entered ({totalEntered}) must equal return quantity ({returningQty}).
-          </p>
+          <p className="px-6 text-[11px] text-red-500 pb-2">Total entered ({totalEntered}) must equal return quantity ({returningQty}).</p>
         )}
         {readOnly ? (
           <div className="flex justify-center px-6 pb-5 pt-3 border-t border-gray-100">
-            <button
-              onClick={onClose}
-              className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Close
-            </button>
+            <button onClick={onClose} className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">Close</button>
           </div>
         ) : (
-          <ModalFooter
-            onClose={onClose}
-            onSave={() => {
-              if (isValid) {
-                onSave(rows.map((r) => ({
-                  id: r.id,
-                  batch_code: r.batch_code,
-                  quantity: r.quantity,
-                  max: r.max,
-                })));
-              }
-            }}
-            saveLabel="Confirm"
-            saveDisabled={!isValid}
-          />
+          <ModalFooter onClose={onClose} onSave={() => { if (isValid) onSave(rows.map(({ id, availableQty, ...rest }) => rest)); }} saveLabel="Confirm" saveDisabled={!isValid} />
         )}
       </div>
     </ModalOverlay>
@@ -1068,39 +1095,18 @@ function ReturnBatchModal({ isOpen, onClose, lineItem, returningQty, savedData, 
 }
 
 function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData, onSave, readOnly = false, shipment, serialAllocations }) {
-  // Prefer meta on lineItem; fall back to forward shipment line item
   const getSourceSerials = () => {
     const fromMeta = lineItem?.meta?.allocated_serials ?? [];
     if (fromMeta.length) return fromMeta;
-
-    const fromAlloc = (serialAllocations ?? []).find(
-      (a) => a.shipment_line_item_id === lineItem?.id
-    );
-
-    if (fromAlloc?.allocated_serials?.length) {
-      return fromAlloc.allocated_serials;
-    }
-
-    // fallback to forward shipment
-    const fwdItem = (shipment?.line_items ?? []).find(
-      (li) => li.product_sku?.id === lineItem?.product_sku?.id
-    );
-
+    const fromAlloc = (serialAllocations ?? []).find((a) => a.shipment_line_item_id === lineItem?.id);
+    if (fromAlloc?.allocated_serials?.length) return fromAlloc.allocated_serials;
+    const fwdItem = (shipment?.line_items ?? []).find((li) => li.product_sku?.id === lineItem?.product_sku?.id);
     return fwdItem?.meta?.allocated_serials ?? [];
   };
 
-  const sourceSerials = useMemo(
-    () => getSourceSerials(),
-    [lineItem, shipment, serialAllocations]
-  );
+  const sourceSerials = useMemo(() => getSourceSerials(), [lineItem, shipment, serialAllocations]);
   const savedSet = savedData instanceof Set ? savedData : new Set(Array.isArray(savedData) ? savedData : []);
-
-  const serialsToShow =
-    savedSet.size > 0
-      ? [...savedSet]
-      : sourceSerials.length > 0
-        ? sourceSerials
-        : [];
+  const serialsToShow = savedSet.size > 0 ? [...savedSet] : sourceSerials.length > 0 ? sourceSerials : [];
 
   const [selectedSerials, setSelectedSerials] = useState(() => new Set(savedSet));
   const [searchQuery, setSearchQuery] = useState("");
@@ -1117,23 +1123,16 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
 
   useEffect(() => {
     const source = getSourceSerials();
-
-    if (!savedData && source?.length) {
-      setSelectedSerials(new Set(source));
-    }
+    if (!savedData && source?.length) setSelectedSerials(new Set(source));
   }, [serialAllocations, lineItem]);
 
   const toggleSerial = (serial) => {
     if (readOnly) return;
     setSelectedSerials((prev) => {
       const next = new Set(prev);
-      if (next.has(serial)) {
-        next.delete(serial);
-      } else {
-        if (next.size >= total) {
-          toast.error(`You can only select ${total} serial(s).`);
-          return prev;
-        }
+      if (next.has(serial)) { next.delete(serial); }
+      else {
+        if (next.size >= total) { toast.error(`You can only select ${total} serial(s).`); return prev; }
         next.add(serial);
       }
       return next;
@@ -1146,15 +1145,8 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
     <ModalOverlay onClose={onClose}>
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-base font-bold text-gray-900">
-            {readOnly ? "Serial Allocation Details" : "Select Returning Serials"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-700 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <h2 className="text-base font-bold text-gray-900">{readOnly ? "Serial Allocation Details" : "Select Returning Serials"}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-700 transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
         <div className="mx-6 mt-4 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100 shrink-0">
           <div className="flex items-center gap-2">
@@ -1168,35 +1160,19 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
         </div>
         <div className="px-6 pt-4 pb-2 shrink-0 flex flex-col gap-3">
           <div className="flex items-center justify-between text-xs font-semibold">
-            <span className="text-gray-700">
-              {readOnly ? `Allocated Serials (${entered})` : `Select Serials (${entered} / ${total})`}
-            </span>
+            <span className="text-gray-700">{readOnly ? `Allocated Serials (${entered})` : `Select Serials (${entered} / ${total})`}</span>
             {readOnly ? (
-              <span className="flex items-center gap-1 text-emerald-600">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-              </span>
+              <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> Completed</span>
             ) : isFull ? (
-              <span className="flex items-center gap-1 text-emerald-600">
-                <CheckCircle2 className="w-3.5 h-3.5" /> All done!
-              </span>
+              <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> All done!</span>
             ) : (
               <span className="text-amber-500">{remaining} remaining</span>
             )}
           </div>
           <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-colors">
             <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search serial numbers…"
-              className="flex-1 text-xs bg-transparent outline-none text-gray-700 placeholder-gray-400"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")}>
-                <X className="w-3 h-3 text-gray-400" />
-              </button>
-            )}
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search serial numbers…" className="flex-1 text-xs bg-transparent outline-none text-gray-700 placeholder-gray-400" />
+            {searchQuery && <button onClick={() => setSearchQuery("")}><X className="w-3 h-3 text-gray-400" /></button>}
           </div>
         </div>
         <div className="flex-1 min-h-0 px-6 pb-4 overflow-y-auto">
@@ -1208,29 +1184,9 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
                 const isChecked = selectedSerials.has(serial);
                 const isDisabled = readOnly || (!isChecked && isFull);
                 return (
-                  <label
-                    key={serial}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors
-                      ${isChecked
-                        ? "bg-blue-50 border-blue-300"
-                        : isDisabled
-                          ? "bg-gray-50 border-gray-100 opacity-50"
-                          : "bg-white border-gray-100 hover:bg-gray-50 hover:border-gray-200"}
-                      ${readOnly ? "cursor-default" : "cursor-pointer"}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      disabled={isDisabled}
-                      onChange={() => !isDisabled && toggleSerial(serial)}
-                      className="w-3.5 h-3.5 accent-primary shrink-0"
-                    />
-                    <span
-                      className={`text-xs font-mono ${isChecked ? "text-blue-700 font-semibold" : "text-gray-700"
-                        }`}
-                    >
-                      {serial}
-                    </span>
+                  <label key={serial} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors ${isChecked ? "bg-blue-50 border-blue-300" : isDisabled ? "bg-gray-50 border-gray-100 opacity-50" : "bg-white border-gray-100 hover:bg-gray-50 hover:border-gray-200"} ${readOnly ? "cursor-default" : "cursor-pointer"}`}>
+                    <input type="checkbox" checked={isChecked} disabled={isDisabled} onChange={() => !isDisabled && toggleSerial(serial)} className="w-3.5 h-3.5 accent-primary shrink-0" />
+                    <span className={`text-xs font-mono ${isChecked ? "text-blue-700 font-semibold" : "text-gray-700"}`}>{serial}</span>
                     {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 ml-auto shrink-0" />}
                   </label>
                 );
@@ -1240,28 +1196,11 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
         </div>
         <div className="flex justify-center items-center gap-3 px-6 pb-5 pt-3 border-t border-gray-100 shrink-0">
           {readOnly ? (
-            <button
-              onClick={onClose}
-              className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Close
-            </button>
+            <button onClick={onClose} className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">Close</button>
           ) : (
             <>
-              <button
-                onClick={onClose}
-                className="px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Go Back
-              </button>
-              <button
-                onClick={() => { if (entered === total) onSave(selectedSerials); }}
-                disabled={entered !== total}
-                className={`px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2
-                  ${entered === total
-                    ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
-              >
+              <button onClick={onClose} className="px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">Go Back</button>
+              <button onClick={() => { if (entered === total) onSave(selectedSerials); }} disabled={entered !== total} className={`px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 ${entered === total ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
                 {entered === total && <CheckCircle2 className="w-4 h-4" />}
                 {entered === total ? "Save Serials" : `Select ${remaining} more`}
               </button>
@@ -1274,47 +1213,22 @@ function ReturnSerialModal({ isOpen, onClose, lineItem, returningQty, savedData,
 }
 
 function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedData, onSave, readOnly = false, shipment, untrackedAllocations }) {
-  // Prefer meta on lineItem; fall back to forward shipment line item
   const getSourceUntracked = () => {
     const fromMeta = lineItem?.meta?.allocated_untracked ?? [];
     if (fromMeta.length) return fromMeta;
-
-    const fromAlloc = (untrackedAllocations ?? []).find(
-      (a) => a.shipment_line_item_id === lineItem?.id
-    );
-
-    if (fromAlloc?.allocated_untracked?.length) {
-      return fromAlloc.allocated_untracked;
-    }
-
-    // fallback to forward shipment
-    const fwdItem = (shipment?.line_items ?? []).find(
-      (li) => li.product_sku?.id === lineItem?.product_sku?.id
-    );
-
+    const fromAlloc = (untrackedAllocations ?? []).find((a) => a.shipment_line_item_id === lineItem?.id);
+    if (fromAlloc?.allocated_untracked?.length) return fromAlloc.allocated_untracked;
+    const fwdItem = (shipment?.line_items ?? []).find((li) => li.product_sku?.id === lineItem?.product_sku?.id);
     return fwdItem?.meta?.allocated_untracked ?? [];
   };
 
   const sourceUntracked = getSourceUntracked();
 
   const [rows, setRows] = useState(() => {
-    // If savedData has rows, reuse them with their saved quantities intact
-    // so the user sees what they previously entered when re-opening to edit
     if (savedData?.length) {
-      return savedData.map((u) => ({
-        id: u.id ?? Math.random(),
-        untracked_number: u.untracked_number,
-        // Always restore the saved quantity —> user can edit from where they left off
-        quantity: u.quantity,
-        max: u.max ?? u.quantity,
-      }));
+      return savedData.map((u) => ({ id: u.id ?? Math.random(), untracked_number: u.untracked_number, quantity: u.quantity, max: u.max ?? u.quantity }));
     }
-    return sourceUntracked.map((u) => ({
-      id: Math.random(),
-      untracked_number: u.untracked_number,
-      quantity: "",
-      max: u.quantity,
-    }));
+    return sourceUntracked.map((u) => ({ id: Math.random(), untracked_number: u.untracked_number, quantity: "", max: u.quantity }));
   });
 
   const totalEntered = rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
@@ -1322,18 +1236,9 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
 
   useEffect(() => {
     const source = getSourceUntracked();
-
-    if (savedData?.length) {
-      setRows(savedData);
-    } else if (source?.length) {
-      setRows(
-        source.map((u) => ({
-          id: Math.random(),
-          untracked_number: u.untracked_number,
-          quantity: "",
-          max: u.quantity,
-        }))
-      );
+    if (savedData?.length) { setRows(savedData); }
+    else if (source?.length) {
+      setRows(source.map((u) => ({ id: Math.random(), untracked_number: u.untracked_number, quantity: "", max: u.quantity })));
     }
   }, [untrackedAllocations, lineItem, savedData]);
 
@@ -1346,9 +1251,7 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
       setRows((prev) => prev.map((r) => (r.id === id ? { ...r, quantity: row.max } : r)));
       return;
     }
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, quantity: isNaN(parsed) || parsed < 0 ? "" : parsed } : r))
-    );
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, quantity: isNaN(parsed) || parsed < 0 ? "" : parsed } : r)));
   };
 
   if (!isOpen) return null;
@@ -1358,12 +1261,7 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl">
         <ModalHeader title={readOnly ? "Untracked Allocation Details" : "Assign Return Untracked"} onClose={onClose} />
         <div className="px-6 py-3">
-          <SkuSummaryBar
-            skuName={lineItem?.product_sku?.sku_name}
-            label="Return Qty"
-            value={returningQty}
-            entered={totalEntered}
-          />
+          <SkuSummaryBar skuName={lineItem?.product_sku?.sku_name} label="Return Qty" value={returningQty} entered={totalEntered} />
         </div>
         <div className="px-6 pb-4 max-h-72 overflow-y-auto">
           <table className="w-full text-xs">
@@ -1371,44 +1269,28 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">#</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">Untracked Number</th>
-                {!readOnly && (<th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">Max Qty</th>)}
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase w-24">
-                  {readOnly ? "Qty" : "Return Qty"}
-                </th>
+                {!readOnly && <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase">Max Qty</th>}
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase w-24">{readOnly ? "Qty" : "Return Qty"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-xs text-gray-400">
-                    No untracked numbers available
-                  </td>
-                </tr>
+                <tr><td colSpan={4} className="px-3 py-8 text-center text-xs text-gray-400">No untracked numbers available</td></tr>
               ) : (
                 rows.map((r, i) => (
                   <tr key={r.id} className="align-middle">
                     <td className="px-3 py-2.5 text-gray-400">{i + 1}</td>
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg text-xs font-mono font-semibold text-amber-700">
-                        <CheckCircle2 className="w-3 h-3 text-amber-500" />
-                        {r.untracked_number}
+                        <CheckCircle2 className="w-3 h-3 text-amber-500" />{r.untracked_number}
                       </span>
                     </td>
-                    {!readOnly && (<td className="px-3 py-2.5 text-xs text-gray-500">{r.max}</td>)}
+                    {!readOnly && <td className="px-3 py-2.5 text-xs text-gray-500">{r.max}</td>}
                     <td className="px-3 py-2.5">
                       {readOnly ? (
                         <span className="text-xs font-semibold text-gray-800">{r.quantity}</span>
                       ) : (
-                        <input
-                          type="number"
-                          min={0}
-                          max={r.max}
-                          value={r.quantity}
-                          onChange={(e) => updateQty(r.id, e.target.value)}
-                          placeholder="Qty"
-                          onWheel={(e) => e.target.blur()}
-                          className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
+                        <input type="number" min={0} max={r.max} value={r.quantity} onChange={(e) => updateQty(r.id, e.target.value)} placeholder="Qty" onWheel={(e) => e.target.blur()} className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       )}
                     </td>
                   </tr>
@@ -1418,35 +1300,14 @@ function ReturnUntrackedModal({ isOpen, onClose, lineItem, returningQty, savedDa
           </table>
         </div>
         {!readOnly && totalEntered !== Number(returningQty) && rows.length > 0 && (
-          <p className="px-6 text-[11px] text-red-500 pb-2">
-            Total entered ({totalEntered}) must equal return quantity ({returningQty}).
-          </p>
+          <p className="px-6 text-[11px] text-red-500 pb-2">Total entered ({totalEntered}) must equal return quantity ({returningQty}).</p>
         )}
         {readOnly ? (
           <div className="flex justify-center px-6 pb-5 pt-3 border-t border-gray-100">
-            <button
-              onClick={onClose}
-              className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Close
-            </button>
+            <button onClick={onClose} className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">Close</button>
           </div>
         ) : (
-          <ModalFooter
-            onClose={onClose}
-            onSave={() => {
-              if (isValid) {
-                onSave(rows.map((r) => ({
-                  id: r.id,
-                  untracked_number: r.untracked_number,
-                  quantity: r.quantity,
-                  max: r.max,
-                })));
-              }
-            }}
-            saveLabel="Confirm"
-            saveDisabled={!isValid}
-          />
+          <ModalFooter onClose={onClose} onSave={() => { if (isValid) onSave(rows.map(({ id, availableQty, ...rest }) => rest)); }} saveLabel="Confirm" saveDisabled={!isValid} />
         )}
       </div>
     </ModalOverlay>
@@ -1468,10 +1329,7 @@ function ModalHeader({ title, onClose }) {
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
       <h2 className="text-base font-bold text-gray-800">{title}</h2>
-      <button
-        onClick={onClose}
-        className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
-      >
+      <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
         <X className="w-4 h-4" />
       </button>
     </div>
@@ -1481,20 +1339,8 @@ function ModalHeader({ title, onClose }) {
 function ModalFooter({ onClose, onSave, saveLabel = "Save", saveDisabled = false }) {
   return (
     <div className="flex justify-center gap-3 px-6 pb-5 pt-3 border-t border-gray-100">
-      <button
-        onClick={onClose}
-        className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-      >
-        Go Back
-      </button>
-      <button
-        onClick={onSave}
-        disabled={saveDisabled}
-        className={`w-36 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2
-          ${saveDisabled
-            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700 text-white cursor-pointer"}`}
-      >
+      <button onClick={onClose} className="w-36 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">Go Back</button>
+      <button onClick={onSave} disabled={saveDisabled} className={`w-36 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 ${saveDisabled ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white cursor-pointer"}`}>
         <CheckCircle2 className="w-4 h-4" />
         {saveLabel}
       </button>
@@ -1511,9 +1357,7 @@ function SkuSummaryBar({ skuName, label, value, entered }) {
         <span className="text-sm font-semibold text-gray-800 truncate">{skuName}</span>
       </div>
       <div className="flex items-center gap-3 text-xs font-semibold shrink-0">
-        <span className="text-gray-500">
-          {label}: <span className="text-gray-800">{value}</span>
-        </span>
+        <span className="text-gray-500">{label}: <span className="text-gray-800">{value}</span></span>
         <span className={match ? "text-emerald-600" : "text-orange-500"}>Entered: {entered}</span>
       </div>
     </div>
@@ -1535,26 +1379,13 @@ function StatusBadge({ status }) {
     return_completed: "bg-emerald-100 text-emerald-700",
   };
   return (
-    <span
-      className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"
-        }`}
-    >
+    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"}`}>
       {status?.replace(/_/g, " ") ?? "—"}
     </span>
   );
 }
 
-function InlineDropdown({
-  placeholder = "Select…",
-  options = [],
-  value,
-  onChange,
-  valueKey = "id",
-  labelKey = "name",
-  renderOption,
-  renderSelected,
-  disabled = false,
-}) {
+function InlineDropdown({ placeholder = "Select…", options = [], value, onChange, valueKey = "id", labelKey = "name", renderOption, renderSelected, disabled = false }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef(null);
@@ -1562,10 +1393,7 @@ function InlineDropdown({
 
   useEffect(() => {
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-        setQuery("");
-      }
+      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQuery(""); }
     };
     if (open) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -1576,9 +1404,7 @@ function InlineDropdown({
   }, [open]);
 
   const selected = options.find((o) => o[valueKey] === value);
-  const filtered = options.filter((o) =>
-    (o[labelKey] ?? "").toString().toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = options.filter((o) => (o[labelKey] ?? "").toString().toLowerCase().includes(query.toLowerCase()));
 
   return (
     <div className="relative w-full" ref={ref}>
@@ -1592,16 +1418,9 @@ function InlineDropdown({
           ${!selected ? "text-gray-400" : "text-gray-800 font-medium"}`}
       >
         <span className="leading-snug whitespace-normal break-words text-left flex-1 min-w-0">
-          {selected
-            ? renderSelected
-              ? renderSelected(selected)
-              : selected[labelKey]
-            : placeholder}
+          {selected ? (renderSelected ? renderSelected(selected) : selected[labelKey]) : placeholder}
         </span>
-        <ChevronDown
-          className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""
-            }`}
-        />
+        <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
@@ -1609,22 +1428,8 @@ function InlineDropdown({
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 rounded-lg border border-gray-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-colors">
               <Search className="w-3 h-3 text-gray-400 shrink-0" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search…"
-                className="flex-1 text-xs bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0"
-              />
-              {query && (
-                <button
-                  onClick={() => setQuery("")}
-                  className="text-gray-300 hover:text-gray-500"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
+              <input ref={inputRef} type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" className="flex-1 text-xs bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0" />
+              {query && <button onClick={() => setQuery("")} className="text-gray-300 hover:text-gray-500"><X className="w-3 h-3" /></button>}
             </div>
           </div>
           <div className="max-h-48 overflow-y-auto py-1">
@@ -1634,18 +1439,8 @@ function InlineDropdown({
               filtered.map((opt) => {
                 const isSelected = opt[valueKey] === value;
                 return (
-                  <button
-                    key={opt[valueKey]}
-                    type="button"
-                    onClick={() => {
-                      onChange(opt[valueKey]);
-                      setOpen(false);
-                      setQuery("");
-                    }}
-                    className={`w-full text-left px-3 py-2.5 text-xs transition-colors flex items-start justify-between gap-2
-                      ${isSelected
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-gray-700 hover:bg-gray-50"}`}
+                  <button key={opt[valueKey]} type="button" onClick={() => { onChange(opt[valueKey]); setOpen(false); setQuery(""); }}
+                    className={`w-full text-left px-3 py-2.5 text-xs transition-colors flex items-start justify-between gap-2 ${isSelected ? "bg-primary/10 text-primary font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
                   >
                     <span className="leading-snug whitespace-normal break-words flex-1 min-w-0">
                       {renderOption ? renderOption(opt) : opt[labelKey]}

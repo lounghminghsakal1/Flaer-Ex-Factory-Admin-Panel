@@ -82,7 +82,7 @@ function checkValid(vendor, deliveryDate, rows) {
   return true;
 }
 
-export default function PurchaseOrderDetails({ poData, loading = false, poId, onRefresh, orderId = null, shipmentId = null }) {
+export default function PurchaseOrderDetails({ poData, loading = false, poId, onRefresh, orderId = null, shipmentId = null, shipmentNumber = null }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -280,10 +280,26 @@ export default function PurchaseOrderDetails({ poData, loading = false, poId, on
       }
       if (json.status === "success" && onRefresh) onRefresh();
       toast.success("PO approved successfully");
-      if (fromDropShipment && orderId && shipmentId) router.push(`/orders/${orderId}?tab=shipments&shipment-id=${shipmentId}&shipment-intent=drop`);
+      // if (fromDropShipment && orderId && shipmentId) router.push(`/orders/${orderId}?tab=shipments&shipment-id=${shipmentId}&shipment-intent=drop`);
     } catch (err) {
       console.log(err);
       toast.error("Failed to approve PO" + err.message);
+    }
+  }
+
+  const handleMaterialDispatch = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/procurement/purchase_orders/${poId}}/complete`, { method: "PATCH", headers: { "Content-Type": "application/json" } });
+      const json = await res.json();
+      if (!res.ok || json.status === "failure") {
+        throw new Error(json?.errors[0] ?? "Something went wrong");
+      }
+      if (json.status === "success" && onRefresh) onRefresh();
+      toast.success("PO completed successfully");
+      if (orderId && shipmentId) router.push(`/orders/${orderId}?tab=shipments&shipment-id=${shipmentId}&shipment-intent=drop`);
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to complete PO" + err.message);
     }
   }
 
@@ -312,7 +328,7 @@ export default function PurchaseOrderDetails({ poData, loading = false, poId, on
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mt-2 bg-purple-700/10 border border-primary/20">
               <Ship className="w-3.5 h-3.5 text-purple-700 shrink-0" />
               <span className="text-xs font-semibold text-purple-700">Drop Shipment</span>
-              <span className="text-[10px] font-mono font-bold text-purple-700/70 bg-purple-700/10 px-1.5 py-0.5 rounded-md">{shipmentId}</span>
+              <span className="text-[10px] font-mono font-bold text-purple-700/70 bg-purple-700/10 px-1.5 py-0.5 rounded-md">{shipmentNumber}</span>
             </span>
           )}
         </div>
@@ -491,6 +507,18 @@ export default function PurchaseOrderDetails({ poData, loading = false, poId, on
               <Check size={16} />
             </button>
           )}
+
+          {shipmentId && poData?.status === "approved" && (
+            <button
+              type="button"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-purple-700 hover:opacity-80 cursor-pointer text-sm font-semibold text-white cursor-default"
+              onClick={() => handleMaterialDispatch()}
+            >
+              Material dispatch
+              <ArrowRight size={16} />
+            </button>
+          )}
+
         </div>
 
         {poData?.po_aggregates && (

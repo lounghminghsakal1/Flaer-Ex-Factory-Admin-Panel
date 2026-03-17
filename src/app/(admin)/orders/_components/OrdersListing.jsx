@@ -24,8 +24,8 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       key: "order_number",
       label: "Order Number",
       render: (val) => (
-        <span className="font-mono font-semibold text-primary text-xs">
-          #{val}
+        <span className="font-mono font-semibold text-primary text-[10px]">
+          {val}
         </span>
       ),
     },
@@ -111,7 +111,7 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       key: "final_amount",
       label: "Final Amount",
       render: (_, row) => (
-        <span className="text-sm font-bold text-primary tabular-nums">
+        <span className="text-xs font-bold text-primary tabular-nums">
           {fmt(row?.aggregates?.final_amount)}
         </span>
       ),
@@ -120,7 +120,7 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       key: "shipments",
       label: "Shipments",
       render: (_, row) => {
-        const shipments = row?.shipments || [];
+        const shipments = row?.shipments.sort((a, b) => b.id - a.id) || [];
         const [expanded, setExpanded] = useState(false);
 
         const typePrefix = {
@@ -143,19 +143,20 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
         const visible = expanded ? shipments : shipments.slice(0, LIMIT);
         const hasMore = shipments.length > LIMIT;
 
-        if (shipments.length === 0) return <p>—</p>
+        if (shipments.length === 0) return <p>—</p>;
 
         return (
           <div className="flex flex-col gap-[3px]">
             {visible.map((s) => {
               const sc = statusConfig[s.status] ?? { label: s.status };
               const tp = typePrefix[s.shipment_type];
+              const colorClass = s.status === "cancelled" ? tp.cancelledColor : tp.color;
               return (
-                <div key={s.id} className="inline-flex items-center gap-1 w-fit">
-                  <span className={`text-[11px] font-medium ${s.status === "cancelled" ? tp.cancelledColor : tp.color}`}>
-                    {tp.shortName}-{s.shipment_number.replace("EXP-S", "")}
+                <div key={s.id} className="flex items-center gap-1 whitespace-nowrap w-fit">
+                  <span className={`text-[10px] font-medium ${colorClass}`}>
+                    {tp.shortName}-{s.shipment_number}
                   </span>
-                  <span className={`text-[11px] font-bold ${s.status === "cancelled" ? tp.cancelledColor : tp.color}`}>
+                  <span className={`text-[10px] font-bold ${colorClass}`}>
                     {sc.label}
                   </span>
                 </div>
