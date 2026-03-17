@@ -14,12 +14,12 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrdersData();
-  },[]);
+  },[currentPage]);
 
   const fetchOrdersData = async () => {
     try {
       setLoading(true);
-      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/orders`;
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/orders?page=${currentPage}`;
       const response = await fetch(url);
       const result = await response.json();
       if (!response.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
@@ -34,12 +34,11 @@ export default function OrdersPage() {
     }
   }
 
-  
   return(
     <div className="px-2 py-4">
       <ListingPageHeader title="Orders" />
       {/* <OrdersFilters />     */}
-      <OrdersListing ordersData={ordersData} currentPage={currentPage} totalPages={totalPages} />
+      <OrdersListing ordersData={ordersData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} />
     </div>
   );
 }

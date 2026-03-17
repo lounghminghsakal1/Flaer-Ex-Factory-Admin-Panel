@@ -181,7 +181,7 @@ function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
       : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments`;
     fetch(url)
       .then((r) => r.json())
-      .then((json) => { if (json.status !== "failure") setShipments(json.data ?? []); })
+      .then((json) => { if (json.status !== "failure") setShipments(json.data ?? []); console.log(json.data) })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [orderId]);
@@ -189,14 +189,15 @@ function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
   const typeOptions = ["All", ...new Set(shipments.map((s) => s.shipment_type).filter(Boolean))];
   const filtered = filter === "All" ? shipments : shipments.filter((s) => s.shipment_type === filter);
 
-  const pushIdToUrl = (id, shipmentType) => {
+  const pushIdToUrl = (id, shipmentType, parentShipmentType) => {
     const params = new URLSearchParams(searchParams.toString());
 
     let intent = "forward";
     if (shipmentType === "drop_shipment") intent = "drop";
     if (shipmentType === "forward_shipment") intent = "forward";
-    if (shipmentType === "reverse_shipment") intent = "reverse_forward";
-    if (shipmentType === "drop_return_shipment") intent = "reverse_drop";
+    if (shipmentType === "reverse_shipment") {
+      intent = parentShipmentType === "drop_shipment" ? "reverse_drop" : "reverse_forward";
+    }
 
     params.set("tab", "shipments");
     params.set("shipment-id", id);
@@ -243,11 +244,12 @@ function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
                 if (setIntent) {
                   if (s.shipment_type === "forward_shipment") setIntent("forward");
                   if (s.shipment_type === "drop_shipment") setIntent("drop");
-                  if (s.shipment_type === "reverse_shipment") setIntent("reverse_forward");
-                  if (s.shipment_type === "drop_return_shipment") setIntent("reverse_drop");
+                  if (s.shipment_type === "reverse_shipment") {
+                    setIntent(s.parent_shipment_type === "drop_shipment" ? "reverse_drop" : "reverse_forward");
+                  }
                 }
                 onSelectShipment(s.id);
-                pushIdToUrl(s.id, s.shipment_type);
+                pushIdToUrl(s.id, s.shipment_type, s.parent_shipment_type); 
               }}
                 className="hover:bg-gray-100 transition-colors cursor-pointer">
                 <td className="px-4 py-3 font-medium text-gray-800">{s.shipment_number ?? s.id ?? "—"}</td>
@@ -353,7 +355,7 @@ function CreateForwardShipment({ orderId, onBack, onSuccess }) {
   };
 
   const cols = [
-    { label: "SKU Name", cls: "" },   // auto / fills remaining
+    { label: "SKU Name", cls: "" },   // auto -> fills remaining
     { label: "Quantity", cls: "w-36" },
     { label: "MRP", cls: "w-24" },
     { label: "Selling Price", cls: "w-28" },

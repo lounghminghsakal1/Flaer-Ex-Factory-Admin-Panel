@@ -55,6 +55,8 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
   // Kebab menu state
   const [openKebab, setOpenKebab] = useState(false);
   const kebabRef = useRef(null);
+  // const [skuOptions, setSkuOptions] = useState(null);
+  // const [fetchingSkuOptions, setFetchingSkuOptions] = useState(false);
 
   // Close kebab on outside click
   useEffect(() => {
@@ -70,6 +72,22 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
       fetchReturnShipment(return_shipment_id);
     }
   }, [return_shipment_id]);
+
+  // useEffect(() => {
+  //   fetchReturnableLineItemsSKus(); // need to be changed to data coming from this api's response ${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${parentShipmentId}/returnable_line_items
+  // },[]);
+
+  // const fetchReturnableLineItemsSKus = () => {
+  //   try {
+  //     setFetchingSkuOptions(true);
+  //     const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/11/returnable_line_items`;
+
+  //   } catch(err) {
+
+  //   } finally {
+  //     setFetchingSkuOptions(false);
+  //   }
+  // }
 
   const skuOptions = (shipment?.line_items ?? []).map((li) => ({
     id: li.id,

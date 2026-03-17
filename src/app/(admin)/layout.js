@@ -38,15 +38,13 @@ const SidebarItem = ({
       <Link href={href || '#'}>
         <button
           className={`
-            ${
-              isActive
-                ? 'bg-[#1a2332] text-white font-semibold border-l-4 border-secondary'
-                : 'text-gray-400 border-l-4 border-transparent'
+            ${isActive
+              ? 'bg-[#1a2332] text-white font-semibold border-l-4 border-secondary'
+              : 'text-gray-400 border-l-4 border-transparent'
             }
-            ${
-              isCollapsed
-                ? 'flex flex-col items-center justify-center h-12 px-2'
-                : 'flex flex-row items-center h-12 px-4 gap-3'
+            ${isCollapsed
+              ? 'flex flex-col items-center justify-center h-12 px-2'
+              : 'flex flex-row items-center h-12 px-4 gap-3'
             }
             w-full
             hover:bg-[#1a2332] hover:text-white hover:border-l-4 hover:border-blue-400
@@ -57,7 +55,7 @@ const SidebarItem = ({
           `}
         >
           <Icon className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} ${isCollapsed ? 'mb-1' : ''} flex-shrink-0`} />
-          
+
           <span
             className={`
               ${isCollapsed ? 'text-[9px] text-center leading-tight' : 'text-xs flex-1 text-left'}
@@ -121,7 +119,7 @@ const FloatingSubmenu = ({
             <h4 className="text-[10px] mb-1 font-semibold uppercase text-gray-500 px-1">
               {section.heading}
             </h4>
-            
+
             <div className="space-y-0.5">
               {section.items.map((item, itemIdx) => {
                 const isActive = bestMatch?.href === item.href;
@@ -134,10 +132,9 @@ const FloatingSubmenu = ({
                     className={`
                       block px-1 py-0.5 rounded text-xs
                       transition-all duration-150
-                      ${
-                        isActive
-                          ? 'bg-[#1a2332] text-white font-semibold border-l-2 border-blue-500'
-                          : 'text-gray-400 hover:bg-[#1a2332] hover:text-white hover:font-medium hover:border-l-2 hover:border-blue-400 border-l-2 border-transparent'
+                      ${isActive
+                        ? 'bg-[#1a2332] text-white font-semibold border-l-2 border-blue-500'
+                        : 'text-gray-400 hover:bg-[#1a2332] hover:text-white hover:font-medium hover:border-l-2 hover:border-blue-400 border-l-2 border-transparent'
                       }
                     `}
                   >
@@ -306,14 +303,41 @@ const SidebarLayout = ({ children }) => {
       label: 'Inventory',
       shortName: 'Inventory',
       icon: Warehouse,
-      href: '/inventory',
+      href: '/inventory/node_inventories',
+      hasSubmenu: true,
+      submenuData: [
+        {
+          heading: 'Node Inventory',
+          items: [
+            { label: 'Node inventories', href: '/inventory/node_inventories' },
+          ],
+        },
+        {
+          heading: 'Batch Inventory',
+          items: [
+            { label: 'Batch Inventory', href: '/inventory/batch_inventories' },
+          ],
+        },
+        {
+          heading: 'Serial Inventory',
+          items: [
+            { label: 'Serial Inventory', href: '/inventory/serial_inventories' },
+          ],
+        },
+        {
+          heading: 'Untracked Inventory',
+          items: [
+            { label: 'Untracked Inventory', href: '/inventory/untracked_inventories' },
+          ],
+        },
+      ]
     },
   ];
 
   const getSubmenuPosition = (itemId) => {
     const ref = itemRefs.current[itemId];
     if (!ref) return { top: '0px' };
-    
+
     const rect = ref.getBoundingClientRect();
     return { top: `${rect.top}px` };
   };
@@ -366,7 +390,7 @@ const SidebarLayout = ({ children }) => {
                   ALL MATERIALS AND PRODUCTS
                 </div>
               </div>
-              
+
               <button
                 onClick={toggleSidebar}
                 className="w-8 h-8 bg-[#1a2332] hover:bg-[#2a3442] rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-200 hover:scale-110"
@@ -387,7 +411,7 @@ const SidebarLayout = ({ children }) => {
               cleanPathname === cleanItemHref ||
               cleanPathname.startsWith(cleanItemHref + '/') ||
               isSubmenuItemActive(item);
-            
+
             return (
               <div
                 key={item.id}

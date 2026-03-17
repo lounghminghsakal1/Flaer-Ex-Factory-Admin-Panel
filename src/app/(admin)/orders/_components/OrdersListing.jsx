@@ -13,18 +13,14 @@ const statusStyles = {
   cancelled: "bg-red-100 text-red-700 border border-red-200",
 };
 
-const sourceStyles = {
-  admin: "bg-indigo-100 text-indigo-700 border border-indigo-200",
-};
-
-export default function OrdersListing({ ordersData, currentPage, totalPages }) {
+export default function OrdersListing({ ordersData, currentPage, setCurrentPage ,totalPages }) {
 
   const columns = [
     {
       key: "order_number",
       label: "Order Number",
       render: (val) => (
-        <span className="font-mono font-semibold text-primary text-[10px]">
+        <span className="font-mono text-nowrap font-semibold text-primary text-[10px]">
           {val}
         </span>
       ),
@@ -52,7 +48,7 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       key: "source_type",
       label: "Source",
       render: (val) => (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${sourceStyles[val] ?? "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize bg-gray-100 text-gray-600 border border-gray-200`}>
           {val ?? "—"}
         </span>
       ),
@@ -153,10 +149,10 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
               const colorClass = s.status === "cancelled" ? tp.cancelledColor : tp.color;
               return (
                 <div key={s.id} className="flex items-center gap-1 whitespace-nowrap w-fit">
-                  <span className={`text-[10px] font-medium ${colorClass}`}>
+                  <span className={`text-[10px] font-medium `}>
                     {tp.shortName}-{s.shipment_number}
                   </span>
-                  <span className={`text-[10px] font-bold ${colorClass}`}>
+                  <span className={`text-[10px] font-bold `}>
                     {sc.label}
                   </span>
                 </div>
@@ -183,7 +179,9 @@ export default function OrdersListing({ ordersData, currentPage, totalPages }) {
       columns={columns}
       rowKey="id"
       currentPage={currentPage}
+      onPageChange={setCurrentPage}
       totalPages={totalPages}
+      hideActionColumn={true}
       getDetailsLink={(row) => `/orders/${row.id}`}
     />
   );

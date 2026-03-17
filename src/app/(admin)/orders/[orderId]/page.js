@@ -128,6 +128,7 @@ export default function OrderDetailsPage() {
                   ) : "—"
                 }
               />
+              <SidebarRow label="Cart No." value={orderData?.cart?.cart_number ?? "—"} />
               <SidebarRow
                 label="Confirmed At"
                 value={

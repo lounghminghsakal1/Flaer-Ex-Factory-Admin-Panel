@@ -538,7 +538,7 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
                   className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-purple-700 hover:opacity-80 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {sendingToGetInvoice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FormIcon className="w-3.5 h-3.5" />}
-                  Get Invoice
+                  Create Invoice
                 </button>
               ) : shipment?.status === "invoiced" ? (
                 <button
@@ -2109,7 +2109,7 @@ function ChildShipmentsAccordion({ childShipments, expandedChildId, onToggle, pa
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100">
           <h3 className="text-sm font-bold text-primary">
-            Child Shipments
+            Return Shipments
             <span className="ml-2 text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
               {childShipments.length}
             </span>

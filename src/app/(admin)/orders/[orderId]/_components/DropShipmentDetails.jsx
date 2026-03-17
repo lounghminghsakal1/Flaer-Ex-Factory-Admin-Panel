@@ -558,7 +558,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
                     {sendingToGetInvoice
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       : <FileText className="w-3.5 h-3.5" />}
-                    Get Invoice
+                    Create Invoice
                   </button>
                 )}
 
