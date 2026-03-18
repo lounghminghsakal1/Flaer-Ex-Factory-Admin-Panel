@@ -21,7 +21,6 @@ const fmtDate = (d) => {
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-// Statuses that mean this shipment IS itself a return shipment
 const RETURN_STATUSES = new Set([
   "return_initiated",
   "return_completed",
@@ -336,7 +335,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
   const lineItems = shipment?.line_items ?? [];
   const agg = shipment?.aggregates ?? {};
 
-  /*  CASE A — This shipment IS a return shipment                       */
+  /*  CASE A - This shipment IS a return shipment                       */
   const isReturnShipment = RETURN_STATUSES.has(shipment.status);
 
   if (isReturnShipment) {
@@ -352,18 +351,18 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
     return (
       <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
         <DropReturnShipment
-          shipment={parentShipment ?? null}   //  parent (delivered), null if cancelled standalone
+          shipment={parentShipment ?? null}   
           return_shipment_id={shipment.id}
           onCancel={onBack}
           onSuccess={() => fetchShipment()}
           backRoute={onBack}
-          fromChild={true}                    //  match accordion behavior
+          fromChild={true}                    
         />
       </div>
     );
   }
 
-  /*  CASE B — Normal drop shipment                            */
+  /*  CASE B - Normal drop shipment                            */
   return (
     <div className="flex flex-col gap-4" onClick={() => setOpenOptions(false)}>
 
@@ -401,7 +400,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
                 className="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-white rounded-md shadow-lg border border-gray-100 p-1 overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Edit — only when created and no PO yet */}
+                {/* Edit - only when created and no PO yet */}
                 {!editMode && shipment?.status === "created" && shipment?.purchase_order === null && (
                   <div
                     role="button"
@@ -413,7 +412,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
                   </div>
                 )}
 
-                {/* Cancel — only when created */}
+                {/* Cancel - only when created */}
                 {shipment?.status === "created" && (
                   <div
                     role="button"
@@ -425,7 +424,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
                   </div>
                 )}
 
-                {/* Return — only when delivered */}
+                {/* Return - only when delivered */}
                 {shipment?.status === "delivered" && (
                   <div
                     role="button"
@@ -533,7 +532,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
                   </button>
                 )}
 
-              {/* Go to PO details — PO exists but not yet completed */}
+              {/* Go to PO details - PO exists but not yet completed */}
               {shipment?.purchase_order !== null &&
                 ["created", "waiting_for_approval", "approved"].includes(shipment?.purchase_order?.status) && (
                   <button
@@ -546,7 +545,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
                   </button>
                 )}
 
-              {/* Get Invoice — PO completed, shipment still created */}
+              {/* Get Invoice - PO completed, shipment still created */}
               {shipment?.status === "created" &&
                 shipment?.purchase_order !== null &&
                 shipment?.purchase_order?.status === "completed" && (
@@ -792,7 +791,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
         </div>
       </div>
 
-      {/* ── Child Shipments (Return Shipments) ── */}
+      {/*  Child Shipments (Return Shipments)  */}
       {(shipment?.child_shipments ?? []).length > 0 && (
         <ChildShipmentsAccordion
           childShipments={shipment.child_shipments}
@@ -803,7 +802,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
         />
       )}
 
-      {/* ── Inline Return Panel (shown from kebab menu) ── */}
+      {/*  Inline Return Panel (shown from kebab menu)  */}
       {showReturnPanel && (
         <DropReturnShipment
           shipment={shipment}
@@ -818,7 +817,7 @@ export default function DropShipmentDetails({ shipmentId, onBack, orderId }) {
         />
       )}
 
-      {/* ── Cancel Modal ── */}
+      {/*  Cancel Modal  */}
       {cancelModalOpen && (
         <CancelModal
           onClose={() => setCancelModalOpen(false)}

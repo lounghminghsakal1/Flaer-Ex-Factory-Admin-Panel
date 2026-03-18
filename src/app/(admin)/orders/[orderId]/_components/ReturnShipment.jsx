@@ -73,35 +73,62 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
     }
   }, [return_shipment_id]);
 
-  // useEffect(() => {
-  //   fetchReturnableLineItemsSKus(); // need to be changed to data coming from this api's response ${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${parentShipmentId}/returnable_line_items
-  // },[]);
+  const [skuOptions, setSkuOptions] = useState([]);
+  const [fetchingSkuOptions, setFetchingSkuOptions] = useState(false);
 
-  // const fetchReturnableLineItemsSKus = () => {
-  //   try {
-  //     setFetchingSkuOptions(true);
-  //     const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/11/returnable_line_items`;
+  useEffect(() => {
+    if (shipment) {
+      fetchReturnableLineItems();
+    }
+  }, [shipment]);
 
-  //   } catch(err) {
+  const fetchReturnableLineItems = async () => {
+    try {
+      setFetchingSkuOptions(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipment.id}/returnable_line_items`;
+      const response = await fetch(url);
+      const result = await response.json();
+      if (!response.ok || result?.status === "failure")
+        throw new Error(result?.errors[0] ?? "Something went wrong");
 
-  //   } finally {
-  //     setFetchingSkuOptions(false);
-  //   }
-  // }
+      setSkuOptions(
+        (result?.data ?? []).map((item) => ({
+          id: item.shipment_line_item_id,
+          shipment_line_item_id: item.shipment_line_item_id,
+          order_line_item_id: item.order_line_item_id,
+          sku_name: item.product_sku?.sku_name,
+          sku_code: item.product_sku?.sku_code,
+          tracking_type: item.product_sku?.tracking_type,
+          mrp: item.mrp,
+          selling_price: item.selling_price,
+          final_amount: item.final_amount,
+          quantity: item.quantity,
+          max_qty: item.returnable_quantity,  
+          returned_quantity: item.returned_quantity,
+          returnable_quantity: item.returnable_quantity,
+        }))
+      );
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to fetch returnable line items: " + err.message);
+    } finally {
+      setFetchingSkuOptions(false);
+    }
+  };
 
-  const skuOptions = (shipment?.line_items ?? []).map((li) => ({
-    id: li.id,
-    shipment_line_item_id: li.id,
-    sku_name: li.product_sku?.sku_name,
-    sku_code: li.product_sku?.sku_code,
-    mrp: li.mrp,
-    selling_price: li.selling_price,
-    final_amount: li.final_amount,
-    quantity: li.quantity,
-    max_qty: li.quantity,
-    order_line_item_id: li.order_line_item?.id,
-    tracking_type: li.product_sku?.tracking_type,
-  }));
+  // const skuOptions = (shipment?.line_items ?? []).map((li) => ({
+  //   id: li.id,
+  //   shipment_line_item_id: li.id,
+  //   sku_name: li.product_sku?.sku_name,
+  //   sku_code: li.product_sku?.sku_code,
+  //   mrp: li.mrp,
+  //   selling_price: li.selling_price,
+  //   final_amount: li.final_amount,
+  //   quantity: li.quantity,
+  //   max_qty: li.quantity,
+  //   order_line_item_id: li.order_line_item?.id,
+  //   tracking_type: li.product_sku?.tracking_type,
+  // }));
 
   const takenSkuIds = lineItems.map((r) => r._skuId).filter(Boolean);
 
@@ -223,6 +250,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
         throw new Error(json?.errors?.[0] ?? "Failed to initiate return");
       toast.success(returnShipment ? "Return updated!" : "Return initiated!");
       fetchReturnShipment(json?.data?.id);
+      onSuccess();
       populateStep2(json.data);
       setStep(2);
     } catch (err) {
@@ -636,6 +664,7 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                           onWheel={(e) => e.target.blur()}
                           className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center"
                         />
+                        <p className="text-[10px] mt-1">Max Qty: {row.max_qty}</p>
                         {errors[`qty_${idx}`] && (
                           <p className="text-[10px] text-red-500 mt-0.5">{errors[`qty_${idx}`]}</p>
                         )}
@@ -880,25 +909,25 @@ export default function ReturnShipment({ shipment, return_shipment_id, onCancel,
                                   />
                                 )}
                                 {returnShipment?.status !== "cancelled" && (
-                                   <button
-                                  onClick={() => {
-                                    if (trackingType === "batch") setBatchModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
-                                    else if (trackingType === "serial") setSerialModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
-                                    else setUntrackedModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
-                                  }}
-                                  className={`inline-flex items-center gap-1 text-[10px] font-semibold cursor-pointer transition-colors ${status.complete
-                                    ? "text-emerald-600 hover:text-emerald-700"
-                                    : "text-primary hover:underline"
-                                    }`}
-                                >
-                                  {status.complete ? (
-                                    <><CheckCircle2 className="w-3 h-3" /> {status.label}</>
-                                  ) : (
-                                    <><Plus className="w-2.5 h-2.5" /> Assign {trackingType}</>
-                                  )}
-                                </button>
+                                  <button
+                                    onClick={() => {
+                                      if (trackingType === "batch") setBatchModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
+                                      else if (trackingType === "serial") setSerialModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
+                                      else setUntrackedModal({ li, qty, readOnly: isCompleted, isConfirmed: status.complete });
+                                    }}
+                                    className={`inline-flex items-center gap-1 text-[10px] font-semibold cursor-pointer transition-colors ${status.complete
+                                      ? "text-emerald-600 hover:text-emerald-700"
+                                      : "text-primary hover:underline"
+                                      }`}
+                                  >
+                                    {status.complete ? (
+                                      <><CheckCircle2 className="w-3 h-3" /> {status.label}</>
+                                    ) : (
+                                      <><Plus className="w-2.5 h-2.5" /> Assign {trackingType}</>
+                                    )}
+                                  </button>
                                 )}
-                               
+
                               </div>
                             </td>
                           )}

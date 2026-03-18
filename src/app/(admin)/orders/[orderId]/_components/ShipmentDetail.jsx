@@ -378,12 +378,12 @@ export default function ShipmentDetail({ shipmentId, onBack }) {
         </div> */}
 
         <ReturnShipment
-          shipment={parentShipment}           //  parent (delivered), not the return shipment
-          return_shipment_id={shipment.id}    //  the return shipment id (154)
+          shipment={parentShipment}           
+          return_shipment_id={shipment.id}    
           onCancel={onBack}
           onSuccess={() => fetchShipment()}
           backRoute={onBack}
-          fromChild={true}                    //  match accordion behavior exactly
+          fromChild={true}                   
         />
       </div>
     );

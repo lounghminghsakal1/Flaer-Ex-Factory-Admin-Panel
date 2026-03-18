@@ -38,6 +38,9 @@ export default function DropReturnShipment({
   const [errors, setErrors] = useState({});
   const [initiating, setInitiating] = useState(false);
 
+  const [skuOptions, setSkuOptions] = useState([]);
+  const [fetchingSkuOptions, setFetchingSkuOptions] = useState(false);
+
   const [returnShipment, setReturnShipment] = useState(null);
   const [loadingReturn, setLoadingReturn] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -56,27 +59,64 @@ export default function DropReturnShipment({
     return () => document.removeEventListener("mousedown", handler);
   }, [openKebab]);
 
+  useEffect(() => {
+    if (shipment?.id) fetchReturnableLineItems();
+  }, [shipment?.id]);
+
+  const fetchReturnableLineItems = async () => {
+    try {
+      setFetchingSkuOptions(true);
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${shipment.id}/returnable_line_items`;
+      const response = await fetch(url);
+      const result = await response.json();
+      if (!response.ok || result?.status === "failure")
+        throw new Error(result?.errors[0] ?? "Something went wrong");
+
+      setSkuOptions(
+        (result?.data ?? []).map((item) => ({
+          id: item.shipment_line_item_id,
+          shipment_line_item_id: item.shipment_line_item_id,
+          order_line_item_id: item.order_line_item_id,
+          sku_name: item.product_sku?.sku_name,
+          sku_code: item.product_sku?.sku_code,
+          tracking_type: item.product_sku?.tracking_type,
+          mrp: item.mrp,
+          selling_price: item.selling_price,
+          final_amount: item.final_amount,
+          quantity: item.quantity,
+          max_qty: item.returnable_quantity,
+          returned_quantity: item.returned_quantity,
+          returnable_quantity: item.returnable_quantity,
+        }))
+      );
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to fetch returnable line items: " + err.message);
+    } finally {
+      setFetchingSkuOptions(false);
+    }
+  };
+
   // Pre-fill step 1 from the existing return shipment so user can edit and re-submit
   const handleEditReturn = () => {
     if (!returnShipment) return;
     setOpenKebab(false);
 
-    // Re-build lineItems from the return shipment's line_items
-    // matching each back to the parent shipment's line item for order_line_item_id
+    // Re-build lineItems from the return shipment's line_items,
+    // matching each back to the skuOptions fetched from the API
     const rebuilt = (returnShipment.line_items ?? []).map((rli) => {
-      // Find the corresponding parent shipment line item by product_sku id
-      const parentLi = (shipment?.line_items ?? []).find(
-        (pli) => pli.product_sku?.id === rli.product_sku?.id
+      const skuOpt = skuOptions.find(
+        (s) => s.shipment_line_item_id === rli.id || s.sku_code === rli.product_sku?.sku_code
       );
       return {
         tempId: Date.now() + Math.random(),
-        _skuId: parentLi?.id ?? null,
+        _skuId: skuOpt?.id ?? null,
         sku_name: rli.product_sku?.sku_name,
         sku_code: rli.product_sku?.sku_code,
         mrp: rli.mrp,
-        max_qty: parentLi?.quantity ?? rli.quantity,
-        order_line_item_id: parentLi?.order_line_item?.id ?? null,
-        shipment_line_item_id: parentLi?.id ?? null,
+        max_qty: skuOpt?.max_qty ?? rli.quantity,
+        order_line_item_id: skuOpt?.order_line_item_id ?? null,
+        shipment_line_item_id: skuOpt?.shipment_line_item_id ?? rli.id,
         quantity: rli.quantity,
       };
     });
@@ -86,16 +126,6 @@ export default function DropReturnShipment({
     setErrors({});
     setStep(1);
   };
-
-  // SKU options derived from shipment line items
-  const skuOptions = (shipment?.line_items ?? []).map((li) => ({
-    id: li.id,
-    sku_name: li.product_sku?.sku_name,
-    sku_code: li.product_sku?.sku_code,
-    mrp: li.mrp,
-    quantity: li.quantity,
-    order_line_item_id: li.order_line_item?.id,
-  }));
 
   const takenSkuIds = lineItems.map((r) => r._skuId).filter(Boolean);
 
@@ -127,16 +157,16 @@ export default function DropReturnShipment({
       prev.map((r) =>
         r.tempId === tempId
           ? {
-            ...r,
-            _skuId: skuId,
-            sku_name: sku.sku_name,
-            sku_code: sku.sku_code,
-            mrp: sku.mrp,
-            max_qty: sku.quantity,
-            order_line_item_id: sku.order_line_item_id,
-            shipment_line_item_id: sku.id,
-            quantity: "",
-          }
+              ...r,
+              _skuId: skuId,
+              sku_name: sku.sku_name,
+              sku_code: sku.sku_code,
+              mrp: sku.mrp,
+              max_qty: sku.max_qty,           
+              order_line_item_id: sku.order_line_item_id,
+              shipment_line_item_id: sku.shipment_line_item_id,
+              quantity: "",
+            }
           : r
       )
     );
@@ -146,7 +176,7 @@ export default function DropReturnShipment({
     const row = lineItems.find((r) => r.tempId === tempId);
     const parsed = parseInt(val);
     if (row?.max_qty && !isNaN(parsed) && parsed > row.max_qty) {
-      toast.error(`Cannot exceed max quantity of ${row.max_qty}`);
+      toast.error(`Cannot exceed returnable quantity of ${row.max_qty}`);
       setLineItems((prev) =>
         prev.map((r) => (r.tempId === tempId ? { ...r, quantity: row.max_qty } : r))
       );
@@ -195,7 +225,7 @@ export default function DropReturnShipment({
       if (!li._skuId) errs[`sku_${idx}`] = "Select a SKU.";
       if (!li.quantity || li.quantity < 1) errs[`qty_${idx}`] = "Qty must be ≥ 1.";
       if (li.max_qty && li.quantity > li.max_qty)
-        errs[`qty_${idx}`] = `Max qty is ${li.max_qty}.`;
+        errs[`qty_${idx}`] = `Max returnable qty is ${li.max_qty}.`;
     });
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -212,7 +242,7 @@ export default function DropReturnShipment({
           shipment_line_item_id: li.shipment_line_item_id,
           quantity: Number(li.quantity),
         })),
-        ...(returnShipment ? { return_shipment_id: returnShipment.id } : {})
+        ...(returnShipment ? { return_shipment_id: returnShipment.id } : {}),
       };
 
       const res = await fetch(
@@ -228,6 +258,9 @@ export default function DropReturnShipment({
         throw new Error(json?.errors?.[0] ?? "Failed to initiate return");
 
       toast.success(returnShipment ? "Return updated!" : "Return initiated!");
+      // Re-fetch returnable items so max_qty reflects the newly initiated return
+      await fetchReturnableLineItems();
+      onSuccess();
       await fetchReturnShipment(json?.data?.id);
       setStep(2);
     } catch (err) {
@@ -240,14 +273,14 @@ export default function DropReturnShipment({
   const handleCompleteReturn = async () => {
     setCompleting(true);
     try {
-      const lineItems = (returnShipment?.line_items ?? []).map((li) => ({
+      const lineItemsPayload = (returnShipment?.line_items ?? []).map((li) => ({
         shipment_line_item_id: li.id,
       }));
 
       const body = {
         inventory_required: false,
         create_replacement: false,
-        line_items: lineItems,
+        line_items: lineItemsPayload,
       };
 
       const res = await fetch(
@@ -277,24 +310,29 @@ export default function DropReturnShipment({
     try {
       setCancellingReturnShipment(true);
       const url = `${process.env.NEXT_PUBLIC_BASE_URL}/admin/api/v1/sales/shipments/${returnShipment.id}/cancel?cancellation_reason=${rejection_reason}`;
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" } });
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
       const result = await res.json();
-      if (!res.ok || result?.status === "failure") throw new Error(result?.errors[0] ?? "Something went wrong");
+      if (!res.ok || result?.status === "failure")
+        throw new Error(result?.errors[0] ?? "Something went wrong");
       toast.success("Return shipment cancelled successfully");
       await fetchReturnShipment(returnShipment?.id);
       onSuccess();
     } catch (err) {
       console.log(err);
-      toast.error("Failed to cancel return shipment ", err.message);
+      toast.error("Failed to cancel return shipment " + err.message);
     } finally {
       setCancellingReturnShipment(false);
     }
-  }
+  };
 
   return (
     <div
-      className={`${fromChild ? "bg-gray-50" : "bg-white"
-        } rounded-xl border border-gray-100 shadow-sm overflow-visible`}
+      className={`${
+        fromChild ? "bg-gray-50" : "bg-white"
+      } rounded-xl border border-gray-100 shadow-sm overflow-visible`}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
@@ -307,9 +345,7 @@ export default function DropReturnShipment({
               <ArrowLeft className="w-3.5 h-3.5" />
             </button>
           )}
-          <h2 className="flex-1 text-sm font-bold text-primary">
-            Return Shipment
-          </h2>
+          <h2 className="flex-1 text-sm font-bold text-primary">Return Shipment</h2>
         </div>
 
         <div className="flex items-center gap-3">
@@ -320,7 +356,10 @@ export default function DropReturnShipment({
             shipment && (
               <div className="relative" ref={kebabRef}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setOpenKebab((p) => !p); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenKebab((p) => !p);
+                  }}
                   className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
                 >
                   <MoreVertical className="w-4 h-4" />
@@ -350,7 +389,13 @@ export default function DropReturnShipment({
                     )}
 
                     {cancelShipmentModalOpen && (
-                      <ShipmentCancelModal isOpen={cancelShipmentModalOpen} onClose={() => setCancelShipmentModalOpen(false)} onCancel={handleCancelReturnShipment} rejection_reason={rejection_reason} setRejection_reason={setRejection_reason} />
+                      <ShipmentCancelModal
+                        isOpen={cancelShipmentModalOpen}
+                        onClose={() => setCancelShipmentModalOpen(false)}
+                        onCancel={handleCancelReturnShipment}
+                        rejection_reason={rejection_reason}
+                        setRejection_reason={setRejection_reason}
+                      />
                     )}
                   </div>
                 )}
@@ -360,19 +405,21 @@ export default function DropReturnShipment({
           {/* Step indicator */}
           <div className="flex items-center gap-2">
             <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step === 1
-                ? "bg-primary border-primary text-white"
-                : "bg-green-500 border-green-500 text-white"
-                }`}
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                step === 1
+                  ? "bg-primary border-primary text-white"
+                  : "bg-green-500 border-green-500 text-white"
+              }`}
             >
               {step === 1 ? "1" : <Check className="w-3.5 h-3.5" />}
             </div>
             <div className={`w-16 h-0.5 ${step >= 2 ? "bg-primary" : "bg-gray-300"}`} />
             <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step >= 2
-                ? "bg-primary border-primary text-white"
-                : "bg-white border-gray-300 text-gray-400"
-                }`}
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                step >= 2
+                  ? "bg-primary border-primary text-white"
+                  : "bg-white border-gray-300 text-gray-400"
+              }`}
             >
               2
             </div>
@@ -397,8 +444,9 @@ export default function DropReturnShipment({
                   }}
                   placeholder="Enter a min. of 6 characters"
                   rows={2}
-                  className={`w-full text-xs border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 resize-none ${errors.returnReason ? "border-red-400" : "border-gray-200"
-                    }`}
+                  className={`w-full text-xs border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 resize-none ${
+                    errors.returnReason ? "border-red-400" : "border-gray-200"
+                  }`}
                 />
                 {errors.returnReason && (
                   <p className="text-[11px] text-red-500 flex items-center gap-1">
@@ -412,6 +460,12 @@ export default function DropReturnShipment({
           {/* Line items table header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
             <h3 className="text-sm font-bold text-primary">Shipment Line Items</h3>
+            {/* Show a spinner while SKU options are loading */}
+            {fetchingSkuOptions && (
+              <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                <Loader2 className="w-3 h-3 animate-spin" /> Loading SKUs…
+              </span>
+            )}
           </div>
 
           {/* Line items table */}
@@ -427,14 +481,16 @@ export default function DropReturnShipment({
               </colgroup>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {["SKU Name", "SKU Code", "Max Qty", "MRP", "Return Qty", ""].map((col) => (
-                    <th
-                      key={col}
-                      className="px-3 py-2.5 text-left text-[10px] font-bold text-gray-700 uppercase tracking-wide"
-                    >
-                      {col}
-                    </th>
-                  ))}
+                  {["SKU Name", "SKU Code", "Returnable Qty", "MRP", "Return Qty", ""].map(
+                    (col) => (
+                      <th
+                        key={col}
+                        className="px-3 py-2.5 text-left text-[10px] font-bold text-gray-700 uppercase tracking-wide"
+                      >
+                        {col}
+                      </th>
+                    )
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -449,6 +505,7 @@ export default function DropReturnShipment({
                           placeholder="Select SKU…"
                           options={availableSkus}
                           value={row._skuId ?? null}
+                          disabled={fetchingSkuOptions}
                           onChange={(val) => {
                             handleSkuSelect(row.tempId, val);
                             setErrors((p) => ({ ...p, [`sku_${idx}`]: undefined }));
@@ -457,19 +514,29 @@ export default function DropReturnShipment({
                           labelKey="sku_name"
                           renderOption={(opt) => (
                             <div className="flex flex-col gap-0.5">
-                              <span className="font-medium text-gray-800 text-xs leading-snug">{opt.sku_name}</span>
-                              <span className="text-[10px] text-gray-400 font-mono">{opt.sku_code}</span>
+                              <span className="font-medium text-gray-800 text-xs leading-snug">
+                                {opt.sku_name}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-mono">
+                                {opt.sku_code}
+                              </span>
                             </div>
                           )}
                           renderSelected={(opt) => (
                             <div className="flex flex-col gap-0.5 text-left">
-                              <span className="text-xs font-medium text-gray-800 leading-tight truncate">{opt.sku_name}</span>
-                              <span className="text-[10px] text-gray-400 font-mono truncate">{opt.sku_code}</span>
+                              <span className="text-xs font-medium text-gray-800 leading-tight truncate">
+                                {opt.sku_name}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-mono truncate">
+                                {opt.sku_code}
+                              </span>
                             </div>
                           )}
                         />
                         {errors[`sku_${idx}`] && (
-                          <p className="text-[10px] text-red-500 mt-0.5">{errors[`sku_${idx}`]}</p>
+                          <p className="text-[10px] text-red-500 mt-0.5">
+                            {errors[`sku_${idx}`]}
+                          </p>
                         )}
                       </td>
                       <td className="px-3 py-3 font-mono text-gray-500 text-[11px]">
@@ -490,11 +557,14 @@ export default function DropReturnShipment({
                           onChange={(e) => updateQty(row.tempId, e.target.value, idx)}
                           onWheel={(e) => e.target.blur()}
                           placeholder="0"
-                          className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center ${errors[`qty_${idx}`] ? "border-red-400" : "border-gray-200"
-                            }`}
+                          className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 text-center ${
+                            errors[`qty_${idx}`] ? "border-red-400" : "border-gray-200"
+                          }`}
                         />
                         {errors[`qty_${idx}`] && (
-                          <p className="text-[10px] text-red-500 mt-0.5">{errors[`qty_${idx}`]}</p>
+                          <p className="text-[10px] text-red-500 mt-0.5">
+                            {errors[`qty_${idx}`]}
+                          </p>
                         )}
                       </td>
                       <td className="px-3 py-3">
@@ -510,7 +580,9 @@ export default function DropReturnShipment({
                 })}
                 <tr>
                   <td colSpan={6} className="px-3 py-2.5">
-                    {skuOptions.length > takenSkuIds.length ? (
+                    {fetchingSkuOptions ? (
+                      <p className="text-xs text-gray-400 py-2">Loading available SKUs…</p>
+                    ) : skuOptions.length > takenSkuIds.length ? (
                       <button
                         onClick={addLineItem}
                         className="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:underline cursor-pointer"
@@ -519,9 +591,13 @@ export default function DropReturnShipment({
                       </button>
                     ) : lineItems.length === 0 ? (
                       <p className="text-xs text-gray-400 py-4 text-center">
-                        All SKUs have been added
+                        No returnable SKUs available
                       </p>
-                    ) : null}
+                    ) : (
+                      <p className="text-xs text-gray-400 py-2 text-center">
+                        All returnable SKUs have been added
+                      </p>
+                    )}
                   </td>
                 </tr>
               </tbody>
@@ -538,7 +614,7 @@ export default function DropReturnShipment({
           <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50">
             <button
               onClick={handleInitiateReturn}
-              disabled={initiating}
+              disabled={initiating || fetchingSkuOptions}
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors cursor-pointer shadow-md"
             >
               {initiating ? (
@@ -546,7 +622,11 @@ export default function DropReturnShipment({
               ) : (
                 <RotateCcw className="w-3.5 h-3.5" />
               )}
-              {initiating ? "Initiating..." : returnShipment ? "Update Return" : "1. Initiate Return"}
+              {initiating
+                ? "Initiating..."
+                : returnShipment
+                ? "Update Return"
+                : "1. Initiate Return"}
             </button>
             <button
               onClick={onCancel}
@@ -554,8 +634,6 @@ export default function DropReturnShipment({
             >
               Cancel
             </button>
-
-
           </div>
         </>
       )}
@@ -565,9 +643,7 @@ export default function DropReturnShipment({
           {loadingReturn ? (
             <div className="py-20 flex flex-col items-center gap-3">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <p className="text-xs text-gray-400">
-                Loading return shipment…
-              </p>
+              <p className="text-xs text-gray-400">Loading return shipment…</p>
             </div>
           ) : (
             <>
@@ -597,9 +673,7 @@ export default function DropReturnShipment({
 
               {/* Return line items table header */}
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
-                <h3 className="text-sm font-bold text-primary">
-                  Return Shipment Line Items
-                </h3>
+                <h3 className="text-sm font-bold text-primary">Return Shipment Line Items</h3>
                 <span className="text-[11px] text-gray-500 font-medium">
                   Shipment #{returnShipment?.shipment_number}
                 </span>
@@ -664,9 +738,7 @@ export default function DropReturnShipment({
                         </td>
                         <td className="px-3 py-3 text-xs tabular-nums">
                           {parseFloat(li.discount_amount) > 0 ? (
-                            <span className="text-red-500">
-                              -{fmt(li.discount_amount)}
-                            </span>
+                            <span className="text-red-500">-{fmt(li.discount_amount)}</span>
                           ) : (
                             <span className="text-gray-300">—</span>
                           )}
@@ -707,7 +779,6 @@ export default function DropReturnShipment({
                         Cancel
                       </button>
                     )}
-
                   </div>
                 )}
             </>
@@ -718,13 +789,10 @@ export default function DropReturnShipment({
   );
 }
 
-
 function MetaCell({ label, value }) {
   return (
     <div className="flex flex-col gap-0.5 px-5 py-3">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-        {label}
-      </p>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
       <div className="text-xs text-gray-700">{value ?? "—"}</div>
     </div>
   );
@@ -738,8 +806,9 @@ function StatusBadge({ status }) {
   };
   return (
     <span
-      className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"
-        }`}
+      className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${
+        map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600"
+      }`}
     >
       {status?.replace(/_/g, " ") ?? "—"}
     </span>
@@ -801,8 +870,9 @@ function InlineDropdown({
             : placeholder}
         </span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""
-            }`}
+          className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
         />
       </button>
 
@@ -842,9 +912,11 @@ function InlineDropdown({
                       setQuery("");
                     }}
                     className={`w-full text-left px-3 py-2.5 text-xs transition-colors flex items-start justify-between gap-2
-                      ${isSelected
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-gray-700 hover:bg-gray-50"}`}
+                      ${
+                        isSelected
+                          ? "bg-primary/10 text-primary font-semibold"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                   >
                     <span className="leading-snug whitespace-normal break-words flex-1 min-w-0">
                       {renderOption ? renderOption(opt) : opt[labelKey]}

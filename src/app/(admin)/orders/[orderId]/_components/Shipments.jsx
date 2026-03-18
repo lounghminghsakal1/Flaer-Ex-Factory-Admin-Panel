@@ -249,7 +249,7 @@ function ShipmentsList({ orderId, onSelectShipment, setIntent = null }) {
                   }
                 }
                 onSelectShipment(s.id);
-                pushIdToUrl(s.id, s.shipment_type, s.parent_shipment_type); 
+                pushIdToUrl(s.id, s.shipment_type, s.parent_shipment?.shipment_type); 
               }}
                 className="hover:bg-gray-100 transition-colors cursor-pointer">
                 <td className="px-4 py-3 font-medium text-gray-800">{s.shipment_number ?? s.id ?? "—"}</td>
